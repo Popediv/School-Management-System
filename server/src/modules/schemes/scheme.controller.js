@@ -1,0 +1,286 @@
+const prisma = require('../../config/db');
+const fs = require('fs');
+const path = require('path');
+
+// GET /api/schemes
+const getAll = async (req, res, next) => {
+  try {
+    const { subjectId, classId, term, session } = req.query;
+
+    const where = {};
+    if (subjectId) where.subjectId = subjectId;
+    if (classId) where.classId = classId;
+    if (term) where.term = term;
+    if (session) where.session = session;
+
+    // Check if the current user has student or parent roles to restrict notes access
+    const isRestricted = req.user.role === 'STUDENT' || req.user.role === 'PARENT';
+
+    const select = {
+      id: true,
+      subjectId: true,
+      classId: true,
+      term: true,
+      session: true,
+      week: true,
+      topic: true,
+      objectives: true,
+      createdAt: true,
+      updatedAt: true,
+      subject: {
+        select: {
+          name: true,
+          code: true,
+        },
+      },
+      class: {
+        select: {
+          name: true,
+        },
+      },
+    };
+
+    // Only include notes text and file path for admin/teachers
+    if (!isRestricted) {
+      select.notesText = true;
+      select.notesFile = true;
+    }
+
+    const schemes = await prisma.schemeOfWork.findMany({
+      where,
+      select,
+      orderBy: { week: 'asc' },
+    });
+
+    res.json({ schemes });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /api/schemes/:id
+const getById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const isRestricted = req.user.role === 'STUDENT' || req.user.role === 'PARENT';
+
+    const select = {
+      id: true,
+      subjectId: true,
+      classId: true,
+      term: true,
+      session: true,
+      week: true,
+      topic: true,
+      objectives: true,
+      createdAt: true,
+      updatedAt: true,
+      subject: {
+        select: {
+          name: true,
+          code: true,
+        },
+      },
+      class: {
+        select: {
+          name: true,
+        },
+      },
+    };
+
+    if (!isRestricted) {
+      select.notesText = true;
+      select.notesFile = true;
+    }
+
+    const scheme = await prisma.schemeOfWork.findUnique({
+      where: { id },
+      select,
+    });
+
+    if (!scheme) {
+      return res.status(404).json({ message: 'Scheme of work entry not found' });
+    }
+
+    res.json(scheme);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /api/schemes
+const create = async (req, res, next) => {
+  try {
+    const { subjectId, classId, term, session, week, topic, objectives, notesText } = req.body;
+
+    if (!subjectId || !classId || !term || !session || !week || !topic) {
+      // Clean up uploaded file if validation fails
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({ message: 'subjectId, classId, term, session, week, and topic are required' });
+    }
+
+    const weekNum = parseInt(week);
+    if (isNaN(weekNum)) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return res.status(400).json({ message: 'week must be an integer' });
+    }
+
+    const notesFile = req.file ? req.file.filename : null;
+
+    // Check if duplicate week exists
+    const duplicate = await prisma.schemeOfWork.findUnique({
+      where: {
+        subjectId_classId_term_session_week: {
+          subjectId,
+          classId,
+          term,
+          session,
+          week: weekNum,
+        },
+      },
+    });
+
+    if (duplicate) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return res.status(409).json({ message: `Scheme of work for week ${weekNum} already exists` });
+    }
+
+    const scheme = await prisma.schemeOfWork.create({
+      data: {
+        subjectId,
+        classId,
+        term,
+        session,
+        week: weekNum,
+        topic,
+        objectives,
+        notesText,
+        notesFile,
+      },
+    });
+
+    res.status(201).json({ message: 'Scheme of work created successfully', scheme });
+  } catch (err) {
+    if (req.file) {
+      try { fs.unlinkSync(req.file.path); } catch (e) {}
+    }
+    next(err);
+  }
+};
+
+// PUT /api/schemes/:id
+const update = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { topic, objectives, notesText, week, term, session, subjectId, classId } = req.body;
+
+    const existing = await prisma.schemeOfWork.findUnique({ where: { id } });
+    if (!existing) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return res.status(404).json({ message: 'Scheme of work entry not found' });
+    }
+
+    const data = {};
+    if (topic !== undefined) data.topic = topic;
+    if (objectives !== undefined) data.objectives = objectives;
+    if (notesText !== undefined) data.notesText = notesText;
+    if (term !== undefined) data.term = term;
+    if (session !== undefined) data.session = session;
+    if (subjectId !== undefined) data.subjectId = subjectId;
+    if (classId !== undefined) data.classId = classId;
+
+    if (week !== undefined || classId !== undefined || subjectId !== undefined || term !== undefined || session !== undefined) {
+      const weekNum = week !== undefined ? parseInt(week) : existing.week;
+      if (isNaN(weekNum)) {
+        if (req.file) fs.unlinkSync(req.file.path);
+        return res.status(400).json({ message: 'week must be an integer' });
+      }
+      data.week = weekNum;
+
+      // Check unique constraint violation
+      const checkSubject = subjectId || existing.subjectId;
+      const checkClass = classId || existing.classId;
+      const checkTerm = term || existing.term;
+      const checkSession = session || existing.session;
+
+      const duplicate = await prisma.schemeOfWork.findFirst({
+        where: {
+          id: { not: id },
+          subjectId: checkSubject,
+          classId: checkClass,
+          term: checkTerm,
+          session: checkSession,
+          week: weekNum,
+        },
+      });
+
+      if (duplicate) {
+        if (req.file) fs.unlinkSync(req.file.path);
+        return res.status(409).json({ message: `Scheme of work for week ${weekNum} already exists` });
+      }
+    }
+
+    if (req.file) {
+      data.notesFile = req.file.filename;
+
+      // Clean up old file
+      if (existing.notesFile) {
+        try {
+          const oldPath = path.join(__dirname, '..', '..', '..', 'uploads', existing.notesFile);
+          if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+        } catch (e) {
+          console.error('Failed to delete old notes file:', e.message);
+        }
+      }
+    }
+
+    const updated = await prisma.schemeOfWork.update({
+      where: { id },
+      data,
+    });
+
+    res.json({ message: 'Scheme of work entry updated successfully', scheme: updated });
+  } catch (err) {
+    if (req.file) {
+      try { fs.unlinkSync(req.file.path); } catch (e) {}
+    }
+    next(err);
+  }
+};
+
+// DELETE /api/schemes/:id
+const remove = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const existing = await prisma.schemeOfWork.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ message: 'Scheme of work entry not found' });
+    }
+
+    // Clean up file from filesystem
+    if (existing.notesFile) {
+      try {
+        const filePath = path.join(__dirname, '..', '..', '..', 'uploads', existing.notesFile);
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      } catch (e) {
+        console.error('Failed to delete notes file:', e.message);
+      }
+    }
+
+    await prisma.schemeOfWork.delete({ where: { id } });
+    res.json({ message: 'Scheme of work entry deleted successfully' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = {
+  getAll,
+  getById,
+  create,
+  update,
+  remove,
+};
