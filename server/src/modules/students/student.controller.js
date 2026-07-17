@@ -82,8 +82,8 @@ const create = async (req, res, next) => {
     const defaultEmail     = `${moodleUsername}@patimo.edu`;
     const defaultPassword  = await bcrypt.hash(moodlePassword, 12);
 
-    // Photo path
-    const photo = req.file ? req.file.filename : null;
+    // Photo path (handles both local filename and Cloudinary URL)
+    const photo = req.file ? (req.file.path.startsWith('http') ? req.file.path : req.file.filename) : null;
 
     const result = await prisma.$transaction(async (tx) => {
       // 1. Create user account for student
@@ -158,7 +158,7 @@ const update = async (req, res, next) => {
     const data = {};
     allowed.forEach(k => { if (req.body[k] !== undefined) data[k] = req.body[k]; });
     if (req.body.dateOfBirth) data.dateOfBirth = new Date(req.body.dateOfBirth);
-    if (req.file) data.photo = req.file.filename;
+    if (req.file) data.photo = req.file.path.startsWith('http') ? req.file.path : req.file.filename;
 
     // NOTE: admissionNo, moodleUsername are NEVER updated here
     const student = await prisma.student.update({ where: { id }, data, include: { currentClass: true } });

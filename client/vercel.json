@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://<YOUR_RENDER_BACKEND_URL>/api/$1"
+    },
+    {
+      "source": "/uploads/(.*)",
+      "destination": "https://<YOUR_RENDER_BACKEND_URL>/uploads/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

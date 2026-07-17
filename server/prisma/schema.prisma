@@ -1,367 +1,368 @@
-// This is your Prisma schema file
-
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = "postgresql://postgres:Hiwilmot2019@localhost:5432/patimo_college_db?schema=public"
-}
-
-// ─── Enums ───────────────────────────────────────────────────
-
-enum Role {
-  SUPER_ADMIN
-  PRINCIPAL
-  VICE_PRINCIPAL
-  TEACHER
-  BURSARY
-  PARENT
-  STUDENT
-}
-
-enum StudentStatus {
-  ACTIVE
-  SUSPENDED
-  GRADUATED
-  WITHDRAWN
-}
-
-enum AttendanceStatus {
-  PRESENT
-  ABSENT
-  LATE
-}
-
-enum PaymentStatus {
-  PENDING
-  PAID
-  PARTIAL
-}
-
-enum Term {
-  FIRST
-  SECOND
-  THIRD
-}
-
-// ─── User (Auth) ─────────────────────────────────────────────
-
-model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String
-  role      Role
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  student Student?
-  teacher Teacher?
-  parent  Parent?
-
-  @@map("users")
-}
-
-// ─── Student ─────────────────────────────────────────────────
-
-model Student {
-  id             String        @id @default(uuid())
-  admissionNo    String        @unique          // GFM-2026-0001  — NEVER changes
-  moodleUsername String        @unique          // gfm20260001    — NEVER changes
-  moodlePassword String?                        // stored for reference only
-  firstName      String
-  lastName       String
-  otherNames     String?
-  dateOfBirth    DateTime
-  gender         String
-  photo          String?                        // relative path in /uploads
-  stateOfOrigin  String?
-  lga            String?
-  religion       String?
-  bloodGroup     String?
-  previousSchool String?
-  status         StudentStatus @default(ACTIVE)
-  session        String                         // e.g. "2025/2026"
-
-  userId         String        @unique
-  user           User          @relation(fields: [userId], references: [id])
-
-  parentId       String?
-  parent         Parent?       @relation(fields: [parentId], references: [id])
-
-  currentClassId String?
-  currentClass   Class?        @relation("CurrentClass", fields: [currentClassId], references: [id])
-
-  enrollments    Enrollment[]
-  attendances    Attendance[]
-  results        Result[]
-  payments       Payment[]
-
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  // This is your Prisma schema file
+
+  generator client {
+    provider = "prisma-client-js"
+  }
+
+  datasource db {
+    provider  = "postgresql"
+    url       = env("DATABASE_URL")
+    directUrl = env("DIRECT_URL")
+  }
+
+  // ─── Enums ───────────────────────────────────────────────────
+
+  enum Role {
+    SUPER_ADMIN
+    PRINCIPAL
+    VICE_PRINCIPAL
+    TEACHER
+    BURSARY
+    PARENT
+    STUDENT
+  }
+
+  enum StudentStatus {
+    ACTIVE
+    SUSPENDED
+    GRADUATED
+    WITHDRAWN
+  }
+
+  enum AttendanceStatus {
+    PRESENT
+    ABSENT
+    LATE
+  }
+
+  enum PaymentStatus {
+    PENDING
+    PAID
+    PARTIAL
+  }
+
+  enum Term {
+    FIRST
+    SECOND
+    THIRD
+  }
+
+  // ─── User (Auth) ─────────────────────────────────────────────
+
+  model User {
+    id        String   @id @default(uuid())
+    email     String   @unique
+    password  String
+    name      String
+    role      Role
+    isActive  Boolean  @default(true)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    student Student?
+    teacher Teacher?
+    parent  Parent?
+
+    @@map("users")
+  }
+
+  // ─── Student ─────────────────────────────────────────────────
+
+  model Student {
+    id             String        @id @default(uuid())
+    admissionNo    String        @unique          // GFM-2026-0001  — NEVER changes
+    moodleUsername String        @unique          // gfm20260001    — NEVER changes
+    moodlePassword String?                        // stored for reference only
+    firstName      String
+    lastName       String
+    otherNames     String?
+    dateOfBirth    DateTime
+    gender         String
+    photo          String?                        // relative path in /uploads
+    stateOfOrigin  String?
+    lga            String?
+    religion       String?
+    bloodGroup     String?
+    previousSchool String?
+    status         StudentStatus @default(ACTIVE)
+    session        String                         // e.g. "2025/2026"
+
+    userId         String        @unique
+    user           User          @relation(fields: [userId], references: [id])
+
+    parentId       String?
+    parent         Parent?       @relation(fields: [parentId], references: [id])
+
+    currentClassId String?
+    currentClass   Class?        @relation("CurrentClass", fields: [currentClassId], references: [id])
+
+    enrollments    Enrollment[]
+    attendances    Attendance[]
+    results        Result[]
+    payments       Payment[]
+
+    createdAt      DateTime      @default(now())
+    updatedAt      DateTime      @updatedAt
+
+    @@map("students")
+  }
 
-  @@map("students")
-}
+  // ─── Parent ──────────────────────────────────────────────────
+
+  model Parent {
+    id           String    @id @default(uuid())
+    name         String
+    phone        String
+    email        String?
+    address      String?
+    relationship String?
+    userId       String    @unique
+    user         User      @relation(fields: [userId], references: [id])
+    children     Student[]
 
-// ─── Parent ──────────────────────────────────────────────────
-
-model Parent {
-  id           String    @id @default(uuid())
-  name         String
-  phone        String
-  email        String?
-  address      String?
-  relationship String?
-  userId       String    @unique
-  user         User      @relation(fields: [userId], references: [id])
-  children     Student[]
+    createdAt    DateTime  @default(now())
+    updatedAt    DateTime  @updatedAt
 
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+    @@map("parents")
+  }
 
-  @@map("parents")
-}
+  // ─── Teacher ─────────────────────────────────────────────────
+
+  model Teacher {
+    id          String    @id @default(uuid())
+    staffId     String    @unique              // e.g. GFM-TCH-001
+    phone       String?
+    qualification String?
+    userId      String    @unique
+    user        User      @relation(fields: [userId], references: [id])
+
+    assignments TeacherSubjectClass[]
 
-// ─── Teacher ─────────────────────────────────────────────────
+    createdAt   DateTime  @default(now())
+    updatedAt   DateTime  @updatedAt
 
-model Teacher {
-  id          String    @id @default(uuid())
-  staffId     String    @unique              // e.g. GFM-TCH-001
-  phone       String?
-  qualification String?
-  userId      String    @unique
-  user        User      @relation(fields: [userId], references: [id])
-
-  assignments TeacherSubjectClass[]
-
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@map("teachers")
-}
-
-// ─── Class ───────────────────────────────────────────────────
-
-model Class {
-  id          String    @id @default(uuid())
-  name        String    @unique              // "JSS1A", "SS2B"
-  level       String                         // "JSS", "SS"
-  arm         String                         // "A", "B", "C"
-  session     String
-
-  students    Student[] @relation("CurrentClass")
-  assignments TeacherSubjectClass[]
-  attendances Attendance[]
-  enrollments Enrollment[]
-  schemes     SchemeOfWork[]
-  feeStructures FeeStructure[]
-  subjectPdfs SubjectPdf[]
-
-  createdAt   DateTime  @default(now())
-
-  @@map("classes")
-}
-
-// ─── Subject ─────────────────────────────────────────────────
-
-model Subject {
-  id          String    @id @default(uuid())
-  name        String
-  code        String    @unique
-  level       String?                        // "JSS" | "SS" | "ALL"
-  category    String?                        // "Core" | "Science" | "Commercial" | "Arts"
-
-  assignments TeacherSubjectClass[]
-  results     Result[]
-  schemes     SchemeOfWork[]
-  pdfs        SubjectPdf[]
-
-  createdAt   DateTime  @default(now())
-
-  @@map("subjects")
-}
-
-// ─── Teacher ↔ Subject ↔ Class assignment ───────────────────
-
-model TeacherSubjectClass {
-  id        String   @id @default(uuid())
-  teacherId String
-  subjectId String
-  classId   String
-  session   String
-
-  teacher   Teacher  @relation(fields: [teacherId], references: [id])
-  subject   Subject  @relation(fields: [subjectId], references: [id])
-  class     Class    @relation(fields: [classId],   references: [id])
-
-  @@unique([teacherId, subjectId, classId, session])
-  @@map("teacher_subject_classes")
-}
-
-// ─── Enrollment (class history) ──────────────────────────────
-
-model Enrollment {
-  id        String   @id @default(uuid())
-  studentId String
-  classId   String
-  session   String
-
-  student   Student  @relation(fields: [studentId], references: [id])
-  class     Class    @relation(fields: [classId],   references: [id])
-
-  createdAt DateTime @default(now())
-
-  @@unique([studentId, session])
-  @@map("enrollments")
-}
-
-// ─── Attendance ──────────────────────────────────────────────
-
-model Attendance {
-  id        String           @id @default(uuid())
-  studentId String
-  classId   String
-  date      DateTime
-  status    AttendanceStatus
-  remark    String?
-
-  student   Student          @relation(fields: [studentId], references: [id])
-  class     Class            @relation(fields: [classId],   references: [id])
-
-  @@unique([studentId, classId, date])
-  @@map("attendance")
-}
-
-// ─── Result ──────────────────────────────────────────────────
-
-model Result {
-  id        String   @id @default(uuid())
-  studentId String
-  subjectId String
-  session   String
-  term      Term
-  caScore   Float    @default(0)
-  examScore Float    @default(0)
-  total     Float    @default(0)
-  grade     String   @default("")
-  position  Int?
-  remark    String?
-  published Boolean  @default(false)
-
-  student   Student  @relation(fields: [studentId], references: [id])
-  subject   Subject  @relation(fields: [subjectId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([studentId, subjectId, session, term], name: "result_unique")
-  @@map("results")
-}
-
-// ─── Payment ─────────────────────────────────────────────────
-
-model Payment {
-  id            String        @id @default(uuid())
-  studentId     String
-  amount        Float
-  amountPaid    Float         @default(0)
-  description   String
-  session       String
-  term          Term
-  status        PaymentStatus @default(PENDING)
-  receiptNo     String        @unique
-  paymentMethod String?
-  reference     String?
-  paidAt        DateTime?
-  recordedBy    String?                          // userId of bursary staff
-
-  student       Student       @relation(fields: [studentId], references: [id])
-
-  createdAt     DateTime      @default(now())
-
-  @@map("payments")
-}
-
-// ─── Notification ────────────────────────────────────────────
-
-model Notification {
-  id         String   @id @default(uuid())
-  title      String
-  message    String
-  targetRole Role?                             // null = all
-  sentBy     String?                           // userId
-  createdAt  DateTime @default(now())
-
-  @@map("notifications")
-}
-
-// ─── AcademicSession (calendar) ──────────────────────────────
-
-model AcademicSession {
-  id          String   @id @default(uuid())
-  name        String   @unique              // "2025/2026"
-  currentTerm Term     @default(FIRST)
-  startDate   DateTime
-  endDate     DateTime
-  isActive    Boolean  @default(false)
-
-  createdAt   DateTime @default(now())
-
-  @@map("academic_sessions")
-}
-
-model SchemeOfWork {
-  id          String   @id @default(uuid())
-  subjectId   String
-  classId     String
-  term        Term
-  session     String
-  week        Int
-  topic       String
-  objectives  String?
-  notesText   String?
-  notesFile   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  class       Class    @relation(fields: [classId],   references: [id], onDelete: Cascade)
-
-  @@unique([subjectId, classId, term, session, week])
-  @@map("schemes_of_work")
-}
-
-model SubjectPdf {
-  id        String   @id @default(uuid())
-  subjectId String
-  classId   String
-  pdfFile   String                        // filename stored in /uploads/pdfs/
-  label     String?                       // optional display label
-
-  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  class     Class    @relation(fields: [classId],   references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([subjectId, classId])
-  @@map("subject_pdfs")
-}
-
-model FeeStructure {
-  id          String   @id @default(uuid())
-  classId     String
-  class       Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
-  description String   // e.g. "Tuition Fee", "Development Levy"
-  amount      Float
-  session     String   // e.g. "2025/2026"
-  term        Term
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@unique([classId, description, session, term])
-  @@map("fee_structures")
-}
+    @@map("teachers")
+  }
+
+  // ─── Class ───────────────────────────────────────────────────
+
+  model Class {
+    id          String    @id @default(uuid())
+    name        String    @unique              // "JSS1A", "SS2B"
+    level       String                         // "JSS", "SS"
+    arm         String                         // "A", "B", "C"
+    session     String
+
+    students    Student[] @relation("CurrentClass")
+    assignments TeacherSubjectClass[]
+    attendances Attendance[]
+    enrollments Enrollment[]
+    schemes     SchemeOfWork[]
+    feeStructures FeeStructure[]
+    subjectPdfs SubjectPdf[]
+
+    createdAt   DateTime  @default(now())
+
+    @@map("classes")
+  }
+
+  // ─── Subject ─────────────────────────────────────────────────
+
+  model Subject {
+    id          String    @id @default(uuid())
+    name        String
+    code        String    @unique
+    level       String?                        // "JSS" | "SS" | "ALL"
+    category    String?                        // "Core" | "Science" | "Commercial" | "Arts"
+
+    assignments TeacherSubjectClass[]
+    results     Result[]
+    schemes     SchemeOfWork[]
+    pdfs        SubjectPdf[]
+
+    createdAt   DateTime  @default(now())
+
+    @@map("subjects")
+  }
+
+  // ─── Teacher ↔ Subject ↔ Class assignment ───────────────────
+
+  model TeacherSubjectClass {
+    id        String   @id @default(uuid())
+    teacherId String
+    subjectId String
+    classId   String
+    session   String
+
+    teacher   Teacher  @relation(fields: [teacherId], references: [id])
+    subject   Subject  @relation(fields: [subjectId], references: [id])
+    class     Class    @relation(fields: [classId],   references: [id])
+
+    @@unique([teacherId, subjectId, classId, session])
+    @@map("teacher_subject_classes")
+  }
+
+  // ─── Enrollment (class history) ──────────────────────────────
+
+  model Enrollment {
+    id        String   @id @default(uuid())
+    studentId String
+    classId   String
+    session   String
+
+    student   Student  @relation(fields: [studentId], references: [id])
+    class     Class    @relation(fields: [classId],   references: [id])
+
+    createdAt DateTime @default(now())
+
+    @@unique([studentId, session])
+    @@map("enrollments")
+  }
+
+  // ─── Attendance ──────────────────────────────────────────────
+
+  model Attendance {
+    id        String           @id @default(uuid())
+    studentId String
+    classId   String
+    date      DateTime
+    status    AttendanceStatus
+    remark    String?
+
+    student   Student          @relation(fields: [studentId], references: [id])
+    class     Class            @relation(fields: [classId],   references: [id])
+
+    @@unique([studentId, classId, date])
+    @@map("attendance")
+  }
+
+  // ─── Result ──────────────────────────────────────────────────
+
+  model Result {
+    id        String   @id @default(uuid())
+    studentId String
+    subjectId String
+    session   String
+    term      Term
+    caScore   Float    @default(0)
+    examScore Float    @default(0)
+    total     Float    @default(0)
+    grade     String   @default("")
+    position  Int?
+    remark    String?
+    published Boolean  @default(false)
+
+    student   Student  @relation(fields: [studentId], references: [id])
+    subject   Subject  @relation(fields: [subjectId], references: [id])
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@unique([studentId, subjectId, session, term], name: "result_unique")
+    @@map("results")
+  }
+
+  // ─── Payment ─────────────────────────────────────────────────
+
+  model Payment {
+    id            String        @id @default(uuid())
+    studentId     String
+    amount        Float
+    amountPaid    Float         @default(0)
+    description   String
+    session       String
+    term          Term
+    status        PaymentStatus @default(PENDING)
+    receiptNo     String        @unique
+    paymentMethod String?
+    reference     String?
+    paidAt        DateTime?
+    recordedBy    String?                          // userId of bursary staff
+
+    student       Student       @relation(fields: [studentId], references: [id])
+
+    createdAt     DateTime      @default(now())
+
+    @@map("payments")
+  }
+
+  // ─── Notification ────────────────────────────────────────────
+
+  model Notification {
+    id         String   @id @default(uuid())
+    title      String
+    message    String
+    targetRole Role?                             // null = all
+    sentBy     String?                           // userId
+    createdAt  DateTime @default(now())
+
+    @@map("notifications")
+  }
+
+  // ─── AcademicSession (calendar) ──────────────────────────────
+
+  model AcademicSession {
+    id          String   @id @default(uuid())
+    name        String   @unique              // "2025/2026"
+    currentTerm Term     @default(FIRST)
+    startDate   DateTime
+    endDate     DateTime
+    isActive    Boolean  @default(false)
+
+    createdAt   DateTime @default(now())
+
+    @@map("academic_sessions")
+  }
+
+  model SchemeOfWork {
+    id          String   @id @default(uuid())
+    subjectId   String
+    classId     String
+    term        Term
+    session     String
+    week        Int
+    topic       String
+    objectives  String?
+    notesText   String?
+    notesFile   String?
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+    class       Class    @relation(fields: [classId],   references: [id], onDelete: Cascade)
+
+    @@unique([subjectId, classId, term, session, week])
+    @@map("schemes_of_work")
+  }
+
+  model SubjectPdf {
+    id        String   @id @default(uuid())
+    subjectId String
+    classId   String
+    pdfFile   String                        // filename stored in /uploads/pdfs/
+    label     String?                       // optional display label
+
+    subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+    class     Class    @relation(fields: [classId],   references: [id], onDelete: Cascade)
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@unique([subjectId, classId])
+    @@map("subject_pdfs")
+  }
+
+  model FeeStructure {
+    id          String   @id @default(uuid())
+    classId     String
+    class       Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+    description String   // e.g. "Tuition Fee", "Development Levy"
+    amount      Float
+    session     String   // e.g. "2025/2026"
+    term        Term
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    @@unique([classId, description, session, term])
+    @@map("fee_structures")
+  }

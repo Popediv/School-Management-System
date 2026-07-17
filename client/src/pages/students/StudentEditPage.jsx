@@ -40,7 +40,7 @@ export default function StudentEditPage() {
         status: data.status || 'ACTIVE'
       });
       if (data.photo) {
-        setPhotoPreview(`/uploads/${data.photo}`);
+        setPhotoPreview(data.photo.startsWith('http') ? data.photo : `/uploads/${data.photo}`);
       }
     }
   });
@@ -62,7 +62,7 @@ export default function StudentEditPage() {
         status: student.status || 'ACTIVE'
       });
       if (student.photo) {
-        setPhotoPreview(`/uploads/${student.photo}`);
+        setPhotoPreview(student.photo.startsWith('http') ? student.photo : `/uploads/${student.photo}`);
       }
     }
   }, [student, reset]);
@@ -196,7 +196,7 @@ export default function StudentEditPage() {
                     {photoFile && (
                       <button 
                         type="button"
-                        onClick={() => { setPhotoPreview(student?.photo ? `/uploads/${student.photo}` : null); setPhotoFile(null); }}
+                        onClick={() => { setPhotoPreview(student?.photo ? (student.photo.startsWith('http') ? student.photo : `/uploads/${student.photo}`) : null); setPhotoFile(null); }}
                         style={{ position:'absolute', top:4, right:4, background:'rgba(0,0,0,0.5)', color:'white', border:'none', borderRadius:'50%', padding:4, cursor:'pointer' }}
                       >
                         <X size={12}/>

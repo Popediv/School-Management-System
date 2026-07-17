@@ -10,7 +10,7 @@ const app = express();
 
 // ─── Security middleware ────────────────────────────────────
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:3000'], credentials: true }));
+app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:3000', 'https://patimo-sms.vercel.app'], credentials: true }));
 
 // ─── Rate limiting (login endpoint) ────────────────────────
 const loginLimiter = rateLimit({

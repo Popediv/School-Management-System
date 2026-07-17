@@ -101,7 +101,7 @@ export default function StudentProfilePage() {
             overflow:'hidden'
           }}>
             {student.photo
-              ? <img src={`/uploads/${student.photo}`} alt="passport" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+              ? <img src={student.photo.startsWith('http') ? student.photo : `/uploads/${student.photo}`} alt="passport" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
               : initials
             }
           </div>

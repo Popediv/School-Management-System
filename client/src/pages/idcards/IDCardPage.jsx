@@ -79,7 +79,7 @@ function CardFront({ student, signature, logo, settings }) {
       <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12, position: 'relative', zIndex: 2 }}>
         <div style={{ width: 84, height: 84, borderRadius: '50%', padding: 3, background: 'linear-gradient(135deg, #EAB308, #F59E0B)', boxShadow: '0 4px 14px rgba(234,179,8,0.25)' }}>
           <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', background: '#E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 900, color: '#0F172A', border: '2px solid #fff' }}>
-            {student.photo ? <img src={`/uploads/${student.photo}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}
+            {student.photo ? <img src={student.photo.startsWith('http') ? student.photo : `/uploads/${student.photo}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}
           </div>
         </div>
       </div>
