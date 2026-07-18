@@ -9,6 +9,7 @@ import {
   ChevronDown, ChevronUp, AlertCircle, BookOpenCheck,
   Eye, X, FileSearch, BookMarked
 } from 'lucide-react';
+import GroupedSubjectSelect from '../../components/GroupedSubjectSelect';
 
 export default function SchemesPage() {
   const { user } = useAuth();
@@ -255,15 +256,12 @@ export default function SchemesPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
           <div className="form-group">
             <label className="form-label">Subject</label>
-            <select 
-              className="form-select"
+            <GroupedSubjectSelect
+              subjects={subjects}
               value={selectedSubject}
               onChange={(e) => setSelectedSubject(e.target.value)}
-            >
-              {subjects.map(sub => (
-                <option key={sub.id} value={sub.id}>{sub.name} ({sub.code})</option>
-              ))}
-            </select>
+              selectedClassName={selectedClassName}
+            />
           </div>
 
           <div className="form-group">

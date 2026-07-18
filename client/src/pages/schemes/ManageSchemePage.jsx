@@ -8,6 +8,7 @@ import {
   ArrowLeft, Plus, Edit2, Trash2, Save, FileText, 
   Upload, X, RefreshCw, Calendar 
 } from 'lucide-react';
+import GroupedSubjectSelect from '../../components/GroupedSubjectSelect';
 
 export default function ManageSchemePage() {
   const navigate = useNavigate();
@@ -176,15 +177,12 @@ export default function ManageSchemePage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '16px' }}>
           <div className="form-group">
             <label className="form-label">Subject</label>
-            <select 
-              className="form-select"
+            <GroupedSubjectSelect
+              subjects={subjects}
               value={selectedSubject}
               onChange={(e) => { setSelectedSubject(e.target.value); cancelEdit(); }}
-            >
-              {subjects.map(sub => (
-                <option key={sub.id} value={sub.id}>{sub.name} ({sub.code})</option>
-              ))}
-            </select>
+              selectedClassName={classes.find(c => c.id === selectedClass)?.name || ''}
+            />
           </div>
 
           <div className="form-group">
