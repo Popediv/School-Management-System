@@ -30,6 +30,14 @@ const cloudinaryStorage = new CloudinaryStorage({
   }
 });
 
+const cloudinaryDocStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'sms_documents',
+    resource_type: 'auto',
+  }
+});
+
 const fileFilter = (_req, file, cb) => {
   const allowed = /jpeg|jpg|png|webp/;
   const ok = allowed.test(path.extname(file.originalname).toLowerCase()) &&
@@ -56,8 +64,10 @@ const docFileFilter = (_req, file, cb) => {
   ok ? cb(null, true) : cb(new Error('Only images, PDFs, and Word/text documents are allowed'));
 };
 
+const docStorage = process.env.CLOUDINARY_CLOUD_NAME ? cloudinaryDocStorage : localDiskStorage;
+
 const uploadDoc = multer({
-  storage: localDiskStorage,
+  storage: docStorage,
   fileFilter: docFileFilter,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB limit for notes documents
 });

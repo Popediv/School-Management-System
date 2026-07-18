@@ -106,7 +106,10 @@ export default function SchemesPage() {
 
   const openPdfViewer = () => {
     if (!subjectPdf) return;
-    const url = subjectPdfService.getViewUrl(subjectPdf.id);
+    // If stored on Cloudinary, use the URL directly; otherwise route through backend
+    const url = subjectPdf.pdfFile?.startsWith('http')
+      ? subjectPdf.pdfFile
+      : subjectPdfService.getViewUrl(subjectPdf.id);
     setPdfUrl(url);
     setShowPdfViewer(true);
   };

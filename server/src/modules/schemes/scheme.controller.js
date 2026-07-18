@@ -127,7 +127,7 @@ const create = async (req, res, next) => {
       return res.status(400).json({ message: 'week must be an integer' });
     }
 
-    const notesFile = req.file ? req.file.filename : null;
+    const notesFile = req.file ? (req.file.path.startsWith('http') ? req.file.path : req.file.filename) : null;
 
     // Check if duplicate week exists
     const duplicate = await prisma.schemeOfWork.findUnique({
@@ -223,10 +223,10 @@ const update = async (req, res, next) => {
     }
 
     if (req.file) {
-      data.notesFile = req.file.filename;
+      data.notesFile = req.file.path.startsWith('http') ? req.file.path : req.file.filename;
 
-      // Clean up old file
-      if (existing.notesFile) {
+      // Clean up old file (if it was local)
+      if (existing.notesFile && !existing.notesFile.startsWith('http')) {
         try {
           const oldPath = path.join(__dirname, '..', '..', '..', 'uploads', existing.notesFile);
           if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
@@ -260,8 +260,8 @@ const remove = async (req, res, next) => {
       return res.status(404).json({ message: 'Scheme of work entry not found' });
     }
 
-    // Clean up file from filesystem
-    if (existing.notesFile) {
+    // Clean up file from filesystem (if it was local)
+    if (existing.notesFile && !existing.notesFile.startsWith('http')) {
       try {
         const filePath = path.join(__dirname, '..', '..', '..', 'uploads', existing.notesFile);
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath);

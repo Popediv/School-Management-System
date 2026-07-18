@@ -41,6 +41,11 @@ const viewPdf = async (req, res, next) => {
     const pdf = await prisma.subjectPdf.findUnique({ where: { id } });
     if (!pdf) return res.status(404).json({ message: 'PDF not found' });
 
+    // If the PDF is stored on Cloudinary, redirect to its secure URL
+    if (pdf.pdfFile.startsWith('http')) {
+      return res.redirect(pdf.pdfFile);
+    }
+
     const filePath = path.join(PDF_DIR, pdf.pdfFile);
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ message: 'PDF file missing from storage' });
@@ -77,22 +82,26 @@ const create = async (req, res, next) => {
       where: { subjectId_classId: { subjectId, classId } },
     });
 
+    const newPdfFile = req.file.path.startsWith('http') ? req.file.path : req.file.filename;
+
     if (existing) {
-      // Delete old file
-      try {
-        const oldPath = path.join(PDF_DIR, existing.pdfFile);
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-      } catch (e) {}
+      // Delete old file if local
+      if (!existing.pdfFile.startsWith('http')) {
+        try {
+          const oldPath = path.join(PDF_DIR, existing.pdfFile);
+          if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+        } catch (e) {}
+      }
 
       const updated = await prisma.subjectPdf.update({
         where: { id: existing.id },
-        data: { pdfFile: req.file.filename, label: label || null },
+        data: { pdfFile: newPdfFile, label: label || null },
       });
       return res.json({ message: 'PDF replaced successfully', pdf: updated });
     }
 
     const pdf = await prisma.subjectPdf.create({
-      data: { subjectId, classId, pdfFile: req.file.filename, label: label || null },
+      data: { subjectId, classId, pdfFile: newPdfFile, label: label || null },
     });
 
     res.status(201).json({ message: 'PDF uploaded successfully', pdf });
@@ -112,10 +121,12 @@ const remove = async (req, res, next) => {
     const existing = await prisma.subjectPdf.findUnique({ where: { id } });
     if (!existing) return res.status(404).json({ message: 'PDF not found' });
 
-    try {
-      const filePath = path.join(PDF_DIR, existing.pdfFile);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    } catch (e) {}
+    if (!existing.pdfFile.startsWith('http')) {
+      try {
+        const filePath = path.join(PDF_DIR, existing.pdfFile);
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      } catch (e) {}
+    }
 
     await prisma.subjectPdf.delete({ where: { id } });
     res.json({ message: 'PDF deleted successfully' });
