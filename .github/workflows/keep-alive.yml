@@ -10,6 +10,15 @@ jobs:
   ping-database:
     runs-on: ubuntu-latest
     steps:
+      - name: Validate DATABASE_URL secret exists
+        run: |
+          if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+            echo "❌ DATABASE_URL secret is missing or empty."
+            echo "Go to Settings → Secrets and variables → Actions and add it."
+            exit 1
+          fi
+          echo "✅ DATABASE_URL secret is set."
+
       - name: Install pg package
         run: npm install pg
 
