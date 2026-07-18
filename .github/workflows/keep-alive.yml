@@ -10,9 +10,12 @@ jobs:
   ping-database:
     runs-on: ubuntu-latest
     steps:
+      - name: Install pg package
+        run: npm install pg
+
       - name: Ping Supabase database
         run: |
-          npx -y -p pg node -e "
+          node -e "
           const { Client } = require('pg');
           const client = new Client({
             connectionString: process.env.DATABASE_URL,
