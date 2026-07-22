@@ -22,6 +22,7 @@ const NAV = {
     ]},
     { section: 'Academic', items: [
       { label: 'Classes',     icon: School,          to: '/classes' },
+      { label: 'Subjects',    icon: BookOpen,        to: '/subjects' },
       { label: 'Promotion',   icon: TrendingUp,      to: '/classes/promotion' },
       { label: 'Attendance',  icon: ClipboardList,   to: '/attendance/mark' },
       { label: 'Results',     icon: BookMarked,      to: '/results/upload' },
@@ -43,6 +44,7 @@ const NAV = {
       { label: 'Students',   icon: GraduationCap,  to: '/students' },
       { label: 'Teachers',   icon: UserCog,         to: '/teachers' },
       { label: 'Classes',    icon: School,          to: '/classes' },
+      { label: 'Subjects',   icon: BookOpen,        to: '/subjects' },
       { label: 'Results',    icon: BookMarked,      to: '/results/upload' },
       { label: 'Scheme of Work', icon: BookOpen,     to: '/schemes' },
       { label: 'Attendance', icon: ClipboardList,   to: '/attendance/report' },
@@ -59,6 +61,7 @@ const NAV = {
     { section: 'Academic', items: [
       { label: 'Students',   icon: GraduationCap,  to: '/students' },
       { label: 'Classes',    icon: School,          to: '/classes' },
+      { label: 'Subjects',   icon: BookOpen,        to: '/subjects' },
       { label: 'Scheme of Work', icon: BookOpen,     to: '/schemes' },
       { label: 'Attendance', icon: ClipboardList,   to: '/attendance/report' },
     ]},

@@ -339,6 +339,7 @@
     id        String   @id @default(uuid())
     subjectId String
     classId   String
+    term      Term     @default(FIRST)
     pdfFile   String                        // filename stored in /uploads/pdfs/
     label     String?                       // optional display label
 
@@ -348,7 +349,7 @@
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
-    @@unique([subjectId, classId])
+    @@unique([subjectId, classId, term])
     @@map("subject_pdfs")
   }
 

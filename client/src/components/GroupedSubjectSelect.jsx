@@ -27,9 +27,10 @@ export default function GroupedSubjectSelect({
     ? 'SS'
     : null; // null means show all
 
-  // Filter subjects by the detected level (if any)
+  // Filter subjects by the detected level (if any).
+  // Subjects with level "ALL" are available for both JSS and SS.
   const filtered = detectedLevel
-    ? subjects.filter(s => s.level === detectedLevel)
+    ? subjects.filter(s => s.level === detectedLevel || s.level === 'ALL')
     : subjects;
 
   // Group by level then category

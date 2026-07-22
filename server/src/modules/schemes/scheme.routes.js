@@ -11,8 +11,9 @@ router.use(authenticate);
 router.get('/', ctrl.getAll);
 router.get('/:id', ctrl.getById);
 
-router.post('/', allowRoles(...ADMINS), upload.uploadDoc.single('notesFile'), ctrl.create);
-router.put('/:id', allowRoles(...ADMINS), upload.uploadDoc.single('notesFile'), ctrl.update);
-router.delete('/:id', allowRoles(...ADMINS), ctrl.remove);
+router.post('/',            allowRoles(...ADMINS), upload.uploadDoc.single('notesFile'), ctrl.create);
+router.post('/extract-pdf', allowRoles(...ADMINS), ctrl.extractFromPdf);
+router.put('/:id',          allowRoles(...ADMINS), upload.uploadDoc.single('notesFile'), ctrl.update);
+router.delete('/:id',       allowRoles(...ADMINS), ctrl.remove);
 
 module.exports = router;

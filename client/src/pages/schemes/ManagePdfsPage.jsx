@@ -33,6 +33,8 @@ export default function ManagePdfsPage() {
   const [label, setLabel] = useState('');
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [applyAllTerms, setApplyAllTerms] = useState(false);
+  const [copyingAll, setCopyingAll] = useState(false);
 
   // Load subjects and classes
   useEffect(() => {
@@ -55,7 +57,8 @@ export default function ManagePdfsPage() {
     setLoading(true);
     subjectPdfService.getAll({
       subjectId: selectedSubject,
-      classId: selectedClass
+      classId: selectedClass,
+      term: selectedTerm
     })
       .then(res => {
         const pdfs = res.data.pdfs || [];
@@ -69,6 +72,7 @@ export default function ManagePdfsPage() {
     fetchExistingPdf();
     setFile(null);
     setLabel('');
+    setApplyAllTerms(false);
   }, [selectedSubject, selectedClass, selectedTerm, selectedSession]);
 
   const handleUpload = async () => {
@@ -80,18 +84,39 @@ export default function ManagePdfsPage() {
       const fd = new FormData();
       fd.append('subjectId', selectedSubject);
       fd.append('classId', selectedClass);
+      fd.append('term', selectedTerm);
       fd.append('pdfFile', file);
+      fd.append('applyToAllTerms', applyAllTerms);
       if (label.trim()) fd.append('label', label.trim());
 
       await subjectPdfService.upload(fd);
-      toast.success(existingPdf ? 'PDF replaced successfully!' : 'PDF uploaded successfully!');
+      toast.success(applyAllTerms ? 'PDF uploaded and applied to all terms successfully!' : (existingPdf ? 'PDF replaced successfully!' : 'PDF uploaded successfully!'));
       setFile(null);
       setLabel('');
+      setApplyAllTerms(false);
       fetchExistingPdf();
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Upload failed');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleCopyToAll = async () => {
+    if (!existingPdf) return;
+    setCopyingAll(true);
+    try {
+      await subjectPdfService.copyToAllTerms({
+        subjectId: selectedSubject,
+        classId: selectedClass,
+        sourceTerm: selectedTerm
+      });
+      toast.success('PDF successfully applied/copied to First, Second, and Third terms!');
+      fetchExistingPdf();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to apply to all terms');
+    } finally {
+      setCopyingAll(false);
     }
   };
 
@@ -183,7 +208,7 @@ export default function ManagePdfsPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }} className="grid-2">
+      <div className="grid-split">
         
         {/* Upload Panel */}
         <div className="card">
@@ -286,6 +311,19 @@ export default function ManagePdfsPage() {
             </div>
           </div>
 
+          <div className="form-group mb-6" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px' }}>
+            <input
+              type="checkbox"
+              id="apply-all-terms"
+              checked={applyAllTerms}
+              onChange={(e) => setApplyAllTerms(e.target.checked)}
+              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+            />
+            <label htmlFor="apply-all-terms" className="text-secondary" style={{ fontSize: '0.85rem', cursor: 'pointer', userSelect: 'none' }}>
+              Apply to All 3 Terms (First, Second, and Third Term)
+            </label>
+          </div>
+
           <div style={{ display: 'flex', gap: '10px' }}>
             <button
               className="btn btn-primary"
@@ -368,6 +406,19 @@ export default function ManagePdfsPage() {
                 <AlertCircle size={15} style={{ color: 'var(--danger)', flexShrink: 0 }} />
                 Removing this PDF will immediately hide class notes from all teachers for this subject.
               </div>
+
+              <button
+                className="btn btn-secondary mb-3"
+                style={{ width: '100%', gap: '8px', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', color: 'var(--primary-light)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+                onClick={handleCopyToAll}
+                disabled={copyingAll}
+              >
+                {copyingAll ? (
+                  <span className="animate-spin" style={{ width: 14, height: 14, border: '2px solid var(--primary-light)', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block' }} />
+                ) : (
+                  <><CheckCircle size={14} /> Apply PDF to All Terms (1st, 2nd, 3rd)</>
+                )}
+              </button>
 
               <button
                 className="btn btn-danger"

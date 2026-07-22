@@ -60,6 +60,9 @@ import SchemesPage         from '../pages/schemes/SchemesPage';
 import ManageSchemePage    from '../pages/schemes/ManageSchemePage';
 import ManagePdfsPage      from '../pages/schemes/ManagePdfsPage';
 
+// Subjects
+import SubjectListPage     from '../pages/subjects/SubjectListPage';
+
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
 });
@@ -146,6 +149,13 @@ export default function AppRouter() {
             <Route path="/classes/promotion" element={
               <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PRINCIPAL]}>
                 <DashboardLayout><PromotionPage /></DashboardLayout>
+              </ProtectedRoute>
+            }/>
+
+            {/* Subjects */}
+            <Route path="/subjects" element={
+              <ProtectedRoute roles={ADMIN_ROLES}>
+                <DashboardLayout><SubjectListPage /></DashboardLayout>
               </ProtectedRoute>
             }/>
 

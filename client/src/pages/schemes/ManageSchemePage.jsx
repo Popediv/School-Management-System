@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { subjectService, classService, schemeService } from '../../services';
+import { subjectService, classService, schemeService, subjectPdfService } from '../../services';
 import { toast } from 'react-toastify';
 import { SESSIONS, CURRENT_SESSION } from '../../utils/constants';
 import { 
@@ -32,10 +32,11 @@ export default function ManageSchemePage() {
   const [schemes, setSchemes] = useState([]);
   const [loadingList, setLoadingList] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  
   const [file, setFile] = useState(null);
   const [existingFileName, setExistingFileName] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [hasPdf, setHasPdf] = useState(false);
 
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm();
 
@@ -82,9 +83,43 @@ export default function ManageSchemePage() {
       });
   };
 
+  const checkPdfStatus = () => {
+    if (!selectedSubject || !selectedClass) return;
+    subjectPdfService.getAll({
+      subjectId: selectedSubject,
+      classId: selectedClass,
+      term: selectedTerm
+    })
+      .then(res => {
+        const pdfs = res.data.pdfs || [];
+        setHasPdf(pdfs.length > 0);
+      })
+      .catch(() => setHasPdf(false));
+  };
+
   useEffect(() => {
     fetchSchemes();
+    checkPdfStatus();
   }, [selectedSubject, selectedClass, selectedTerm, selectedSession]);
+
+  const handleAutoExtract = async () => {
+    if (!window.confirm('This will scan the uploaded notes PDF and automatically load weeks 1-12 topics/objectives. Any existing weeks might be updated. Proceed?')) return;
+    setExtracting(true);
+    try {
+      const res = await schemeService.extractFromPdf({
+        subjectId: selectedSubject,
+        classId: selectedClass,
+        term: selectedTerm,
+        session: selectedSession
+      });
+      toast.success(res.data.message || 'Weeks extracted successfully!');
+      fetchSchemes();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to extract weeks from PDF');
+    } finally {
+      setExtracting(false);
+    }
+  };
 
   // Set form for editing
   const startEdit = (scheme) => {
@@ -225,15 +260,59 @@ export default function ManageSchemePage() {
         </div>
       </div>
 
+      {/* Auto-Extract Banner */}
+      {hasPdf && (
+        <div 
+          className="card mb-6"
+          style={{
+            background: 'linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(139,92,246,0.06) 100%)',
+            border: '1px solid rgba(99,102,241,0.25)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '16px',
+            padding: '16px 20px',
+            flexWrap: 'wrap'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ padding: '8px', background: 'rgba(99,102,241,0.15)', borderRadius: '8px', color: 'var(--primary-light)' }}>
+              <FileText size={20} />
+            </div>
+            <div>
+              <div className="font-semibold text-primary" style={{ fontSize: '0.95rem' }}>
+                Auto-Extract Weeks from Notes PDF
+              </div>
+              <div className="text-secondary" style={{ fontSize: '0.82rem', marginTop: '2px' }}>
+                We found a Class Notes PDF. We can scan it to extract and generate all weekly topics automatically.
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleAutoExtract}
+            disabled={extracting}
+            style={{ gap: '6px' }}
+          >
+            {extracting ? (
+              <span className="animate-spin" style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block' }} />
+            ) : (
+              'Auto-Extract Weeks'
+            )}
+          </button>
+        </div>
+      )}
+
       {/* Two Column Layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '7fr 5fr', gap: '24px' }} className="grid-2">
+      <div className="grid-scheme">
         
         {/* Form Column */}
         <div className="card">
           <h3 className="mb-4">{editingId ? 'Edit Week Schedule' : 'Add Week Schedule'}</h3>
           
           <form onSubmit={handleSubmit(onSubmit)}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 3fr', gap: '16px' }} className="mb-4">
+            <div className="grid-week-topic mb-4">
               <div className="form-group">
                 <label className="form-label">Week <span className="required">*</span></label>
                 <input 

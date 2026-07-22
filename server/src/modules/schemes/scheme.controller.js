@@ -268,10 +268,115 @@ const remove = async (req, res, next) => {
   }
 };
 
+// POST /api/schemes/extract-pdf
+const extractFromPdf = async (req, res, next) => {
+  try {
+    const { subjectId, classId, term, session } = req.body;
+
+    if (!subjectId || !classId || !term || !session) {
+      return res.status(400).json({ message: 'subjectId, classId, term, and session are required' });
+    }
+
+    const { extractSchemeFromPdf } = require('../../utils/pdfExtractor');
+
+    // Try finding term-specific PDF, fall back to any PDF for subject+class
+    let pdf = await prisma.subjectPdf.findUnique({
+      where: { subjectId_classId_term: { subjectId, classId, term } }
+    });
+
+    if (!pdf) {
+      pdf = await prisma.subjectPdf.findFirst({
+        where: { subjectId, classId }
+      });
+    }
+
+    if (!pdf) {
+      return res.status(404).json({ message: 'No Class Notes PDF found for this subject and class.' });
+    }
+
+    let filePath;
+    let isTempFile = false;
+
+    if (pdf.pdfFile.startsWith('http')) {
+      const tempFilename = `temp_${Date.now()}_${pdf.id}.pdf`;
+      const tempDir = path.join(__dirname, '..', '..', '..', 'uploads', 'temp');
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+      filePath = path.join(tempDir, tempFilename);
+      
+      const response = await fetch(pdf.pdfFile);
+      if (!response.ok) {
+        throw new Error(`Failed to download PDF from Cloudinary: ${response.statusText}`);
+      }
+      const buffer = await response.arrayBuffer();
+      fs.writeFileSync(filePath, Buffer.from(buffer));
+      isTempFile = true;
+    } else {
+      filePath = path.join(__dirname, '..', '..', '..', 'uploads', 'pdfs', pdf.pdfFile);
+    }
+
+    const extractedWeeks = await extractSchemeFromPdf(filePath, term);
+
+    if (isTempFile) {
+      safeUnlink(filePath);
+    }
+
+    if (!extractedWeeks || extractedWeeks.length === 0) {
+      return res.status(422).json({
+        message: 'No weekly scheme structure could be extracted from this PDF text. Please ensure the PDF contains topics preceded by "Week 1", "Week 2", etc.'
+      });
+    }
+
+    // Upsert extracted weeks
+    const createdOrUpdated = [];
+    for (const item of extractedWeeks) {
+      const data = {
+        subjectId,
+        classId,
+        term,
+        session,
+        week: item.week,
+        topic: item.topic,
+        objectives: item.objectives || '',
+        notesText: item.notesText || ''
+      };
+
+      const record = await prisma.schemeOfWork.upsert({
+        where: {
+          subjectId_classId_term_session_week: {
+            subjectId,
+            classId,
+            term,
+            session,
+            week: item.week
+          }
+        },
+        update: {
+          topic: item.topic,
+          objectives: item.objectives || '',
+          notesText: item.notesText || ''
+        },
+        create: data
+      });
+      createdOrUpdated.push(record);
+    }
+
+    res.json({
+      message: `Successfully extracted and loaded ${createdOrUpdated.length} weeks into the Scheme of Work!`,
+      weeks: createdOrUpdated
+    });
+
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getAll,
   getById,
   create,
   update,
   remove,
+  extractFromPdf,
 };

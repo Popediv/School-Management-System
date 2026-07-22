@@ -5,13 +5,21 @@ const path = require('path');
 const PDF_DIR = path.join(__dirname, '..', '..', '..', 'uploads', 'pdfs');
 if (!fs.existsSync(PDF_DIR)) fs.mkdirSync(PDF_DIR, { recursive: true });
 
-// GET /api/subject-pdfs?subjectId=&classId=
+const safeUnlink = (filePath) => {
+  if (!filePath || typeof filePath !== 'string' || filePath.startsWith('http')) return;
+  try {
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  } catch (e) {}
+};
+
+// GET /api/subject-pdfs?subjectId=&classId=&term=
 const getAll = async (req, res, next) => {
   try {
-    const { subjectId, classId } = req.query;
+    const { subjectId, classId, term } = req.query;
     const where = {};
     if (subjectId) where.subjectId = subjectId;
     if (classId)   where.classId = classId;
+    if (term)      where.term = term;
 
     const pdfs = await prisma.subjectPdf.findMany({
       where,
@@ -64,17 +72,10 @@ const viewPdf = async (req, res, next) => {
   }
 };
 
-const safeUnlink = (filePath) => {
-  if (!filePath || typeof filePath !== 'string' || filePath.startsWith('http')) return;
-  try {
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  } catch (e) {}
-};
-
-// POST /api/subject-pdfs — upload a PDF (one per subject+class)
+// POST /api/subject-pdfs — upload a PDF for a term (or all terms)
 const create = async (req, res, next) => {
   try {
-    const { subjectId, classId, label } = req.body;
+    const { subjectId, classId, term, label, applyToAllTerms } = req.body;
 
     if (!subjectId || !classId) {
       if (req.file) safeUnlink(req.file.path);
@@ -84,35 +85,91 @@ const create = async (req, res, next) => {
       return res.status(400).json({ message: 'A PDF file is required' });
     }
 
-    // Check for existing entry (one PDF per subject+class) and replace
-    const existing = await prisma.subjectPdf.findUnique({
-      where: { subjectId_classId: { subjectId, classId } },
-    });
+    const selectedTerm = term || 'FIRST';
+    const termsToApply = (applyToAllTerms === 'true' || applyToAllTerms === true)
+      ? ['FIRST', 'SECOND', 'THIRD']
+      : [selectedTerm];
 
     const newPdfFile = req.file.path.startsWith('http') ? req.file.path : req.file.filename;
 
-    if (existing) {
-      // Delete old file if local
-      if (!existing.pdfFile.startsWith('http')) {
-        safeUnlink(path.join(PDF_DIR, existing.pdfFile));
-      }
-
-      const updated = await prisma.subjectPdf.update({
-        where: { id: existing.id },
-        data: { pdfFile: newPdfFile, label: label || null },
+    const results = [];
+    for (const t of termsToApply) {
+      const existing = await prisma.subjectPdf.findUnique({
+        where: { subjectId_classId_term: { subjectId, classId, term: t } },
       });
-      return res.json({ message: 'PDF replaced successfully', pdf: updated });
+
+      if (existing) {
+        if (!existing.pdfFile.startsWith('http') && existing.pdfFile !== newPdfFile) {
+          safeUnlink(path.join(PDF_DIR, existing.pdfFile));
+        }
+
+        const updated = await prisma.subjectPdf.update({
+          where: { id: existing.id },
+          data: { pdfFile: newPdfFile, label: label || null },
+        });
+        results.push(updated);
+      } else {
+        const created = await prisma.subjectPdf.create({
+          data: { subjectId, classId, term: t, pdfFile: newPdfFile, label: label || null },
+        });
+        results.push(created);
+      }
     }
 
-    const pdf = await prisma.subjectPdf.create({
-      data: { subjectId, classId, pdfFile: newPdfFile, label: label || null },
+    res.status(201).json({
+      message: termsToApply.length > 1 ? 'PDF applied to all terms successfully' : 'PDF uploaded successfully',
+      pdfs: results,
+      pdf: results[0],
     });
-
-    res.status(201).json({ message: 'PDF uploaded successfully', pdf });
   } catch (err) {
     if (req.file) {
       safeUnlink(req.file.path);
     }
+    next(err);
+  }
+};
+
+// POST /api/subject-pdfs/copy-to-all — Copy an existing PDF record to all terms
+const copyToAllTerms = async (req, res, next) => {
+  try {
+    const { subjectId, classId, sourceTerm } = req.body;
+    if (!subjectId || !classId) {
+      return res.status(400).json({ message: 'subjectId and classId are required' });
+    }
+
+    const source = await prisma.subjectPdf.findFirst({
+      where: { subjectId, classId, ...(sourceTerm ? { term: sourceTerm } : {}) },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    if (!source) {
+      return res.status(404).json({ message: 'No source PDF found to copy' });
+    }
+
+    const allTerms = ['FIRST', 'SECOND', 'THIRD'];
+    const results = [];
+
+    for (const t of allTerms) {
+      const existing = await prisma.subjectPdf.findUnique({
+        where: { subjectId_classId_term: { subjectId, classId, term: t } },
+      });
+
+      if (existing) {
+        const updated = await prisma.subjectPdf.update({
+          where: { id: existing.id },
+          data: { pdfFile: source.pdfFile, label: source.label },
+        });
+        results.push(updated);
+      } else {
+        const created = await prisma.subjectPdf.create({
+          data: { subjectId, classId, term: t, pdfFile: source.pdfFile, label: source.label },
+        });
+        results.push(created);
+      }
+    }
+
+    res.json({ message: 'PDF copied to First, Second, and Third terms successfully', pdfs: results });
+  } catch (err) {
     next(err);
   }
 };
@@ -125,7 +182,12 @@ const remove = async (req, res, next) => {
     const existing = await prisma.subjectPdf.findUnique({ where: { id } });
     if (!existing) return res.status(404).json({ message: 'PDF not found' });
 
-    if (!existing.pdfFile.startsWith('http')) {
+    // Check if other terms are using the same file before deleting local file
+    const sameFileCount = await prisma.subjectPdf.count({
+      where: { pdfFile: existing.pdfFile, id: { not: id } },
+    });
+
+    if (sameFileCount === 0 && !existing.pdfFile.startsWith('http')) {
       safeUnlink(path.join(PDF_DIR, existing.pdfFile));
     }
 
@@ -136,4 +198,4 @@ const remove = async (req, res, next) => {
   }
 };
 
-module.exports = { getAll, viewPdf, create, remove };
+module.exports = { getAll, viewPdf, create, copyToAllTerms, remove };

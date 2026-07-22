@@ -84,7 +84,8 @@ export default function SchemesPage() {
     }
     subjectPdfService.getAll({
       subjectId: selectedSubject,
-      classId: selectedClass
+      classId: selectedClass,
+      term: selectedTerm
     })
       .then(res => {
         const pdfs = res.data.pdfs || [];

@@ -12,8 +12,9 @@ router.use(authenticate);
 router.get('/',        ctrl.getAll);
 router.get('/:id/view', ctrl.viewPdf);
 
-// Only admins can upload/delete
-router.post('/',    allowRoles(...ADMINS), upload.uploadPdf.single('pdfFile'), ctrl.create);
-router.delete('/:id', allowRoles(...ADMINS), ctrl.remove);
+// Only admins can upload/delete/copy
+router.post('/',            allowRoles(...ADMINS), upload.uploadPdf.single('pdfFile'), ctrl.create);
+router.post('/copy-to-all', allowRoles(...ADMINS), ctrl.copyToAllTerms);
+router.delete('/:id',       allowRoles(...ADMINS), ctrl.remove);
 
 module.exports = router;
