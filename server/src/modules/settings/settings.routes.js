@@ -5,6 +5,6 @@ const { authenticate, allowRoles } = require('../../middleware/auth');
 const upload   = require('../../middleware/upload');
 
 router.get('/', ctrl.getSettings);
-router.post('/logo', authenticate, allowRoles('SUPER_ADMIN', 'PRINCIPAL'), upload.single('logo'), ctrl.uploadLogo);
+router.post('/logo', authenticate, allowRoles('SUPER_ADMIN', 'PRINCIPAL'), upload.uploadLogo.single('logo'), ctrl.uploadLogo);
 
 module.exports = router;

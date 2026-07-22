@@ -2,6 +2,13 @@ const prisma = require('../../config/db');
 const fs = require('fs');
 const path = require('path');
 
+const safeUnlink = (filePath) => {
+  if (!filePath || typeof filePath !== 'string' || filePath.startsWith('http')) return;
+  try {
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  } catch (e) {}
+};
+
 // GET /api/schemes
 const getAll = async (req, res, next) => {
   try {
@@ -115,15 +122,13 @@ const create = async (req, res, next) => {
 
     if (!subjectId || !classId || !term || !session || !week || !topic) {
       // Clean up uploaded file if validation fails
-      if (req.file) {
-        fs.unlinkSync(req.file.path);
-      }
+      if (req.file) safeUnlink(req.file.path);
       return res.status(400).json({ message: 'subjectId, classId, term, session, week, and topic are required' });
     }
 
     const weekNum = parseInt(week);
     if (isNaN(weekNum)) {
-      if (req.file) fs.unlinkSync(req.file.path);
+      if (req.file) safeUnlink(req.file.path);
       return res.status(400).json({ message: 'week must be an integer' });
     }
 
@@ -143,7 +148,7 @@ const create = async (req, res, next) => {
     });
 
     if (duplicate) {
-      if (req.file) fs.unlinkSync(req.file.path);
+      if (req.file) safeUnlink(req.file.path);
       return res.status(409).json({ message: `Scheme of work for week ${weekNum} already exists` });
     }
 
@@ -163,9 +168,7 @@ const create = async (req, res, next) => {
 
     res.status(201).json({ message: 'Scheme of work created successfully', scheme });
   } catch (err) {
-    if (req.file) {
-      try { fs.unlinkSync(req.file.path); } catch (e) {}
-    }
+    if (req.file) safeUnlink(req.file.path);
     next(err);
   }
 };
@@ -178,7 +181,7 @@ const update = async (req, res, next) => {
 
     const existing = await prisma.schemeOfWork.findUnique({ where: { id } });
     if (!existing) {
-      if (req.file) fs.unlinkSync(req.file.path);
+      if (req.file) safeUnlink(req.file.path);
       return res.status(404).json({ message: 'Scheme of work entry not found' });
     }
 
@@ -194,7 +197,7 @@ const update = async (req, res, next) => {
     if (week !== undefined || classId !== undefined || subjectId !== undefined || term !== undefined || session !== undefined) {
       const weekNum = week !== undefined ? parseInt(week) : existing.week;
       if (isNaN(weekNum)) {
-        if (req.file) fs.unlinkSync(req.file.path);
+        if (req.file) safeUnlink(req.file.path);
         return res.status(400).json({ message: 'week must be an integer' });
       }
       data.week = weekNum;
@@ -217,7 +220,7 @@ const update = async (req, res, next) => {
       });
 
       if (duplicate) {
-        if (req.file) fs.unlinkSync(req.file.path);
+        if (req.file) safeUnlink(req.file.path);
         return res.status(409).json({ message: `Scheme of work for week ${weekNum} already exists` });
       }
     }
@@ -227,12 +230,7 @@ const update = async (req, res, next) => {
 
       // Clean up old file (if it was local)
       if (existing.notesFile && !existing.notesFile.startsWith('http')) {
-        try {
-          const oldPath = path.join(__dirname, '..', '..', '..', 'uploads', existing.notesFile);
-          if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-        } catch (e) {
-          console.error('Failed to delete old notes file:', e.message);
-        }
+        safeUnlink(path.join(__dirname, '..', '..', '..', 'uploads', existing.notesFile));
       }
     }
 
@@ -243,9 +241,7 @@ const update = async (req, res, next) => {
 
     res.json({ message: 'Scheme of work entry updated successfully', scheme: updated });
   } catch (err) {
-    if (req.file) {
-      try { fs.unlinkSync(req.file.path); } catch (e) {}
-    }
+    if (req.file) safeUnlink(req.file.path);
     next(err);
   }
 };
@@ -262,12 +258,7 @@ const remove = async (req, res, next) => {
 
     // Clean up file from filesystem (if it was local)
     if (existing.notesFile && !existing.notesFile.startsWith('http')) {
-      try {
-        const filePath = path.join(__dirname, '..', '..', '..', 'uploads', existing.notesFile);
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      } catch (e) {
-        console.error('Failed to delete notes file:', e.message);
-      }
+      safeUnlink(path.join(__dirname, '..', '..', '..', 'uploads', existing.notesFile));
     }
 
     await prisma.schemeOfWork.delete({ where: { id } });

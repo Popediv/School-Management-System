@@ -64,13 +64,20 @@ const viewPdf = async (req, res, next) => {
   }
 };
 
+const safeUnlink = (filePath) => {
+  if (!filePath || typeof filePath !== 'string' || filePath.startsWith('http')) return;
+  try {
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  } catch (e) {}
+};
+
 // POST /api/subject-pdfs — upload a PDF (one per subject+class)
 const create = async (req, res, next) => {
   try {
     const { subjectId, classId, label } = req.body;
 
     if (!subjectId || !classId) {
-      if (req.file) fs.unlinkSync(req.file.path);
+      if (req.file) safeUnlink(req.file.path);
       return res.status(400).json({ message: 'subjectId and classId are required' });
     }
     if (!req.file) {
@@ -87,10 +94,7 @@ const create = async (req, res, next) => {
     if (existing) {
       // Delete old file if local
       if (!existing.pdfFile.startsWith('http')) {
-        try {
-          const oldPath = path.join(PDF_DIR, existing.pdfFile);
-          if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-        } catch (e) {}
+        safeUnlink(path.join(PDF_DIR, existing.pdfFile));
       }
 
       const updated = await prisma.subjectPdf.update({
@@ -107,7 +111,7 @@ const create = async (req, res, next) => {
     res.status(201).json({ message: 'PDF uploaded successfully', pdf });
   } catch (err) {
     if (req.file) {
-      try { fs.unlinkSync(req.file.path); } catch (e) {}
+      safeUnlink(req.file.path);
     }
     next(err);
   }
@@ -122,10 +126,7 @@ const remove = async (req, res, next) => {
     if (!existing) return res.status(404).json({ message: 'PDF not found' });
 
     if (!existing.pdfFile.startsWith('http')) {
-      try {
-        const filePath = path.join(PDF_DIR, existing.pdfFile);
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      } catch (e) {}
+      safeUnlink(path.join(PDF_DIR, existing.pdfFile));
     }
 
     await prisma.subjectPdf.delete({ where: { id } });

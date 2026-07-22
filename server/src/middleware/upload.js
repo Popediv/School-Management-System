@@ -45,8 +45,30 @@ const fileFilter = (_req, file, cb) => {
   ok ? cb(null, true) : cb(new Error('Only JPEG/PNG/WEBP images are allowed'));
 };
 
+const hasCloudinary = Boolean(
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET
+);
+
+const cloudinaryPdfStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'sms_pdfs',
+    resource_type: 'auto',
+  }
+});
+
+const cloudinaryLogoStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'sms_logos',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'svg'],
+  }
+});
+
 // Use Cloudinary if credentials are provided, otherwise fallback to local
-const storage = process.env.CLOUDINARY_CLOUD_NAME ? cloudinaryStorage : localDiskStorage;
+const storage = hasCloudinary ? cloudinaryStorage : localDiskStorage;
 
 const upload = multer({
   storage,
@@ -64,7 +86,7 @@ const docFileFilter = (_req, file, cb) => {
   ok ? cb(null, true) : cb(new Error('Only images, PDFs, and Word/text documents are allowed'));
 };
 
-const docStorage = process.env.CLOUDINARY_CLOUD_NAME ? cloudinaryDocStorage : localDiskStorage;
+const docStorage = hasCloudinary ? cloudinaryDocStorage : localDiskStorage;
 
 const uploadDoc = multer({
   storage: docStorage,
@@ -72,6 +94,30 @@ const uploadDoc = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB limit for notes documents
 });
 
+const pdfFilter = (_req, file, cb) => {
+  const ok = file.mimetype === 'application/pdf' ||
+             path.extname(file.originalname).toLowerCase() === '.pdf';
+  ok ? cb(null, true) : cb(new Error('Only PDF files are allowed'));
+};
+
+const pdfStorage = hasCloudinary ? cloudinaryPdfStorage : localDiskStorage;
+
+const uploadPdf = multer({
+  storage: pdfStorage,
+  fileFilter: pdfFilter,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB max per PDF
+});
+
+const logoStorage = hasCloudinary ? cloudinaryLogoStorage : localDiskStorage;
+
+const uploadLogo = multer({
+  storage: logoStorage,
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB max
+});
+
 upload.uploadDoc = uploadDoc;
+upload.uploadPdf = uploadPdf;
+upload.uploadLogo = uploadLogo;
 
 module.exports = upload;
