@@ -4,8 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import { subjectService, classService, schemeService, subjectPdfService } from '../../services';
 import { toast } from 'react-toastify';
 import { SESSIONS, CURRENT_SESSION } from '../../utils/constants';
-import { 
-  BookOpen, Plus, FileText, Lock, Calendar, 
+import {
+  BookOpen, Plus, FileText, Lock, Calendar,
   ChevronDown, ChevronUp, AlertCircle, BookOpenCheck,
   Eye, X, FileSearch, BookMarked
 } from 'lucide-react';
@@ -129,7 +129,7 @@ export default function SchemesPage() {
     <div className="animate-fade-in">
       {/* PDF Viewer Modal */}
       {showPdfViewer && (
-        <div 
+        <div
           style={{
             position: 'fixed',
             inset: 0,
@@ -183,13 +183,14 @@ export default function SchemesPage() {
           </div>
 
           {/* PDF Iframe */}
-          <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+          <div style={{ flex: 1, position: 'relative', overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' }}>
             <iframe
-              src={pdfUrl}
+              src={pdfUrl + '#toolbar=0'} // Attempt to hide toolbar if supported
               title="Class Notes PDF"
               style={{
                 width: '100%',
                 height: '100%',
+                minHeight: '100vh', // Ensures it's at least scren height, letting iOS stretch it fully
                 border: 'none',
                 display: 'block',
               }}
@@ -201,11 +202,12 @@ export default function SchemesPage() {
                 bottom: 0,
                 left: 0,
                 right: 0,
-                height: '60px',
-                // Covers the bottom bar of browser PDF viewer where download appears
+                height: '120px', // increased slightly for mobile bottom bars
                 background: 'transparent',
-                pointerEvents: 'none',
+                pointerEvents: 'auto', // Catch right clicks on bottom edge
+                zIndex: 10
               }}
+              onContextMenu={e => e.preventDefault()}
             />
           </div>
 
@@ -234,14 +236,14 @@ export default function SchemesPage() {
         </div>
         {isAdmin && (
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            <button 
+            <button
               className="btn btn-secondary"
               onClick={() => navigate('/schemes/manage-pdfs', { state: { selectedSubject, selectedClass, selectedTerm, selectedSession } })}
             >
               <FileText size={16} />
               <span>Manage Class Notes</span>
             </button>
-            <button 
+            <button
               className="btn btn-primary"
               onClick={() => navigate('/schemes/manage', { state: { selectedSubject, selectedClass, selectedTerm, selectedSession } })}
             >
@@ -267,7 +269,7 @@ export default function SchemesPage() {
 
           <div className="form-group">
             <label className="form-label">Class</label>
-            <select 
+            <select
               className="form-select"
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
@@ -280,7 +282,7 @@ export default function SchemesPage() {
 
           <div className="form-group">
             <label className="form-label">Term</label>
-            <select 
+            <select
               className="form-select"
               value={selectedTerm}
               onChange={(e) => setSelectedTerm(e.target.value)}
@@ -293,7 +295,7 @@ export default function SchemesPage() {
 
           <div className="form-group">
             <label className="form-label">Academic Session</label>
-            <select 
+            <select
               className="form-select"
               value={selectedSession}
               onChange={(e) => setSelectedSession(e.target.value)}
@@ -307,9 +309,9 @@ export default function SchemesPage() {
 
       {/* Class Notes PDF Banner */}
       {!isRestricted && subjectPdf && (
-        <div 
+        <div
           className="card mb-6"
-          style={{ 
+          style={{
             background: 'linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(139,92,246,0.08) 100%)',
             border: '1px solid rgba(99,102,241,0.3)',
             display: 'flex',
@@ -320,9 +322,9 @@ export default function SchemesPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ 
-              padding: '12px', 
-              background: 'rgba(99,102,241,0.15)', 
+            <div style={{
+              padding: '12px',
+              background: 'rgba(99,102,241,0.15)',
               borderRadius: '10px',
               color: 'var(--primary-light)',
               flexShrink: 0
@@ -354,9 +356,9 @@ export default function SchemesPage() {
 
       {/* No PDF notice for admins only */}
       {isAdmin && !subjectPdf && selectedSubject && selectedClass && (
-        <div 
+        <div
           className="card mb-6"
-          style={{ 
+          style={{
             border: '1px dashed var(--border)',
             display: 'flex',
             alignItems: 'center',
@@ -368,7 +370,7 @@ export default function SchemesPage() {
           <FileText size={18} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
           <span className="text-muted" style={{ fontSize: '0.875rem' }}>
             No class notes PDF uploaded for this subject/class yet.{' '}
-            <button 
+            <button
               style={{ background: 'none', border: 'none', color: 'var(--primary-light)', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
               onClick={() => navigate('/schemes/manage-pdfs', { state: { selectedSubject, selectedClass, selectedTerm, selectedSession } })}
             >
@@ -395,7 +397,7 @@ export default function SchemesPage() {
             There is no curriculum schedule uploaded for this subject in the selected term.
           </p>
           {isAdmin && (
-            <button 
+            <button
               className="btn btn-secondary mt-2"
               onClick={() => navigate('/schemes/manage', { state: { selectedSubject, selectedTerm, selectedSession } })}
             >
@@ -411,7 +413,7 @@ export default function SchemesPage() {
 
             return (
               <div key={scheme.id} className="card" style={{ transition: 'all 0.2s', borderLeft: '4px solid var(--primary)' }}>
-                <div 
+                <div
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', cursor: hasNotes && !isRestricted ? 'pointer' : 'default' }}
                   onClick={() => hasNotes && !isRestricted && toggleWeek(scheme.id)}
                 >
@@ -431,8 +433,8 @@ export default function SchemesPage() {
                   </div>
 
                   {hasNotes && !isRestricted && (
-                    <button 
-                      className="btn btn-secondary btn-icon" 
+                    <button
+                      className="btn btn-secondary btn-icon"
                       style={{ alignSelf: 'center' }}
                       onClick={(e) => { e.stopPropagation(); toggleWeek(scheme.id); }}
                     >
@@ -447,11 +449,11 @@ export default function SchemesPage() {
                     {scheme.notesText && (
                       <div className="mb-4">
                         <h4 className="text-primary mb-2" style={{ fontSize: '0.95rem' }}>Lecture Notes</h4>
-                        <div 
-                          style={{ 
-                            background: 'var(--bg-elevated)', 
-                            padding: '16px', 
-                            borderRadius: 'var(--radius-md)', 
+                        <div
+                          style={{
+                            background: 'var(--bg-elevated)',
+                            padding: '16px',
+                            borderRadius: 'var(--radius-md)',
                             fontSize: '0.9rem',
                             whiteSpace: 'pre-line',
                             color: 'var(--text-primary)'

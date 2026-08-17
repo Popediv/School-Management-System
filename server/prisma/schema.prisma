@@ -361,9 +361,50 @@
     amount      Float
     session     String   // e.g. "2025/2026"
     term        Term
+    category    String?  // e.g. "TUITION", "BOOKS", "UNIFORM" — for Paystack account routing
+    isOneTime   Boolean  @default(false) // true = Application Form (new students only)
+    sortOrder   Int      @default(0)     // display order in letter
     createdAt   DateTime @default(now())
     updatedAt   DateTime @updatedAt
 
     @@unique([classId, description, session, term])
     @@map("fee_structures")
+  }
+
+  // ─── Bill Letter (Parent Fee Letter) ─────────────────────
+
+  model BillLetter {
+    id           String          @id @default(uuid())
+    // Recipient info — free text, no student ID required (works for unregistered students too)
+    parentName   String
+    studentName  String
+    className    String          // name stored directly for historical accuracy
+    classId      String?         // optional link to actual class
+    term         Term
+    session      String
+    notes        String?         // optional admin note printed on letter
+    generatedBy  String          // userId of admin/bursary who created it
+    studentId    String?         // optional link to registered student
+
+    items        BillLetterItem[]
+
+    createdAt    DateTime        @default(now())
+
+    @@map("bill_letters")
+  }
+
+  model BillLetterItem {
+    id              String     @id @default(uuid())
+    letterId        String
+    letter          BillLetter @relation(fields: [letterId], references: [id], onDelete: Cascade)
+    feeLabel        String     // e.g. "Tuition Fee"
+    category        String?    // routing category
+    originalAmount  Float
+    discountPercent Float      @default(0)   // only used for Tuition
+    isScholarship   Boolean    @default(false)
+    finalAmount     Float      // pre-computed: originalAmount * (1 - discountPercent/100)
+    isIncluded      Boolean    @default(true)
+    sortOrder       Int        @default(0)
+
+    @@map("bill_letter_items")
   }

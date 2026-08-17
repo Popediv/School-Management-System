@@ -40,6 +40,7 @@ app.use('/api/subjects', require('./modules/subjects/subject.routes'));
 app.use('/api/attendance', require('./modules/attendance/attendance.routes'));
 app.use('/api/results', require('./modules/results/result.routes'));
 app.use('/api/fees', require('./modules/fees/fee.routes'));
+app.use('/api/bill-letters', require('./modules/bill-letters/bill-letter.routes'));
 app.use('/api/idcards', require('./modules/idcards/idcard.routes'));
 app.use('/api/notifications', require('./modules/notifications/notification.routes'));
 app.use('/api/dashboard', require('./modules/dashboard/dashboard.routes'));
@@ -57,6 +58,25 @@ app.get('/api/health', (req, res) => {
 app.use((req, res) => {
   res.status(404).json({ message: `Route ${req.originalUrl} not found` });
 });
+
+// ─── Keep-alive to prevent Render sleep ──────────────────────
+// Pings the health endpoint every 14 minutes to prevent cold starts
+const keepAliveUrl = process.env.PING_URL || process.env.SERVER_URL;
+if (keepAliveUrl) {
+  setInterval(() => {
+    // dynamically import node-fetch if global fetch is not available (node < 18)
+    const doFetch = typeof fetch !== 'undefined' ? fetch : require('http').get;
+    if (typeof fetch !== 'undefined') {
+      fetch(`${keepAliveUrl}/api/health`)
+        .then(res => console.log(`[Keep-alive] Pinged ${keepAliveUrl} successfully: ${res.status}`))
+        .catch(err => console.error(`[Keep-alive] Ping failed:`, err.message));
+    } else {
+      doFetch(`${keepAliveUrl}/api/health`, (res) => {
+        console.log(`[Keep-alive] Pinged ${keepAliveUrl} via HTTP successfully: ${res.statusCode}`);
+      }).on('error', (err) => console.error(`[Keep-alive] Ping failed:`, err.message));
+    }
+  }, 13 * 60 * 1000); // 13 minutes
+}
 
 // ─── Global error handler ──────────────────────────────────
 app.use((err, req, res, next) => {

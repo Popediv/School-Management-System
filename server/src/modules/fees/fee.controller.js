@@ -38,13 +38,13 @@ const recordPayment = async (req, res, next) => {
     const newStatus = totalPaidNow >= payment.amount ? 'PAID' : 'PARTIAL';
     const updated = await prisma.payment.update({
       where: { id: paymentId },
-      data: { 
-        status: newStatus, 
+      data: {
+        status: newStatus,
         amountPaid: totalPaidNow,
         paymentMethod: paymentMethod || payment.paymentMethod,
         reference: reference || payment.reference,
-        paidAt: new Date(), 
-        recordedBy: req.user.id 
+        paidAt: new Date(),
+        recordedBy: req.user.id
       },
     });
     res.json({ message: 'Payment recorded', payment: updated });
@@ -83,7 +83,7 @@ const getOutstanding = async (req, res, next) => {
         totalOutstanding += (p.amount - (p.amountPaid || 0));
         studentIdsWithBalance.add(p.studentId);
         if (p.status === 'PARTIAL') partialPaid++;
-        
+
         outstanding.push({
           id: p.id,
           studentName: `${p.student.lastName} ${p.student.firstName}`,
@@ -122,7 +122,7 @@ const getFeeStructures = async (req, res, next) => {
 
 const createFeeStructure = async (req, res, next) => {
   try {
-    const { classId, description, amount, session, term } = req.body;
+    const { classId, description, amount, session, term, category, isOneTime, sortOrder } = req.body;
     if (!classId || !description || !amount || !session || !term) {
       return res.status(400).json({ message: 'classId, description, amount, session, term are required' });
     }
@@ -136,13 +136,21 @@ const createFeeStructure = async (req, res, next) => {
           term
         }
       },
-      update: { amount: parseFloat(amount) },
+      update: {
+        amount: parseFloat(amount),
+        category: category || undefined,
+        isOneTime: isOneTime !== undefined ? !!isOneTime : undefined,
+        sortOrder: sortOrder !== undefined ? parseInt(sortOrder) : undefined,
+      },
       create: {
         classId,
         description,
         amount: parseFloat(amount),
         session,
-        term
+        term,
+        category: category || null,
+        isOneTime: !!isOneTime,
+        sortOrder: sortOrder !== undefined ? parseInt(sortOrder) : 0,
       }
     });
 
@@ -155,6 +163,85 @@ const deleteFeeStructure = async (req, res, next) => {
     const { id } = req.params;
     await prisma.feeStructure.delete({ where: { id } });
     res.json({ message: 'Fee structure deleted successfully' });
+  } catch (err) { next(err); }
+};
+
+const updateFeeStructure = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { amount, description, category, isOneTime, sortOrder } = req.body;
+    const updated = await prisma.feeStructure.update({
+      where: { id },
+      data: {
+        ...(amount !== undefined && { amount: parseFloat(amount) }),
+        ...(description !== undefined && { description }),
+        ...(category !== undefined && { category }),
+        ...(isOneTime !== undefined && { isOneTime: !!isOneTime }),
+        ...(sortOrder !== undefined && { sortOrder: parseInt(sortOrder) }),
+      },
+    });
+    res.json({ message: 'Fee structure updated', structure: updated });
+  } catch (err) { next(err); }
+};
+
+/**
+ * GET /api/fees/structures/defaults?classLevel=JSS|SS
+ * Returns the built-in default fee schedule for secondary school classes.
+ * Used for the "Load Defaults" seeder button on the frontend.
+ */
+const getDefaultFeeSchedule = async (req, res, next) => {
+  try {
+    const schedule = [
+      // ── JSS 1 ──────────────────────────────────────────────
+      { classPattern: 'JSS1', description: 'Application Form', amount: 2500, category: 'APPLICATION', isOneTime: true, sortOrder: 1 },
+      { classPattern: 'JSS1', description: 'Uniform', amount: 7000, category: 'UNIFORM', isOneTime: false, sortOrder: 2 },
+      { classPattern: 'JSS1', description: 'ID Card', amount: 2500, category: 'ID_CARD', isOneTime: false, sortOrder: 3 },
+      { classPattern: 'JSS1', description: 'Tuition Fee', amount: 15000, category: 'TUITION', isOneTime: false, sortOrder: 4 },
+      { classPattern: 'JSS1', description: 'Lesson Fee', amount: 8000, category: 'LESSON_FEE', isOneTime: false, sortOrder: 5 },
+      { classPattern: 'JSS1', description: 'Sportswear', amount: 5000, category: 'SPORTSWEAR', isOneTime: false, sortOrder: 6 },
+      { classPattern: 'JSS1', description: 'Friday Wear', amount: 2500, category: 'FRIDAY_WEAR', isOneTime: false, sortOrder: 7 },
+      // ── JSS 2 ──────────────────────────────────────────────
+      { classPattern: 'JSS2', description: 'Application Form', amount: 2500, category: 'APPLICATION', isOneTime: true, sortOrder: 1 },
+      { classPattern: 'JSS2', description: 'Uniform', amount: 7000, category: 'UNIFORM', isOneTime: false, sortOrder: 2 },
+      { classPattern: 'JSS2', description: 'ID Card', amount: 2500, category: 'ID_CARD', isOneTime: false, sortOrder: 3 },
+      { classPattern: 'JSS2', description: 'Tuition Fee', amount: 15000, category: 'TUITION', isOneTime: false, sortOrder: 4 },
+      { classPattern: 'JSS2', description: 'Lesson Fee', amount: 8000, category: 'LESSON_FEE', isOneTime: false, sortOrder: 5 },
+      { classPattern: 'JSS2', description: 'Sportswear', amount: 5000, category: 'SPORTSWEAR', isOneTime: false, sortOrder: 6 },
+      { classPattern: 'JSS2', description: 'Friday Wear', amount: 2500, category: 'FRIDAY_WEAR', isOneTime: false, sortOrder: 7 },
+      // ── JSS 3 ──────────────────────────────────────────────
+      { classPattern: 'JSS3', description: 'Application Form', amount: 2500, category: 'APPLICATION', isOneTime: true, sortOrder: 1 },
+      { classPattern: 'JSS3', description: 'Uniform', amount: 8050, category: 'UNIFORM', isOneTime: false, sortOrder: 2 },
+      { classPattern: 'JSS3', description: 'ID Card', amount: 2500, category: 'ID_CARD', isOneTime: false, sortOrder: 3 },
+      { classPattern: 'JSS3', description: 'Tuition Fee', amount: 18000, category: 'TUITION', isOneTime: false, sortOrder: 4 },
+      { classPattern: 'JSS3', description: 'Lesson Fee', amount: 10000, category: 'LESSON_FEE', isOneTime: false, sortOrder: 5 },
+      { classPattern: 'JSS3', description: 'Sportswear', amount: 6000, category: 'SPORTSWEAR', isOneTime: false, sortOrder: 6 },
+      { classPattern: 'JSS3', description: 'Friday Wear', amount: 2500, category: 'FRIDAY_WEAR', isOneTime: false, sortOrder: 7 },
+      // ── SS 1 ───────────────────────────────────────────────
+      { classPattern: 'SS1', description: 'Application Form', amount: 2500, category: 'APPLICATION', isOneTime: true, sortOrder: 1 },
+      { classPattern: 'SS1', description: 'Uniform', amount: 8000, category: 'UNIFORM', isOneTime: false, sortOrder: 2 },
+      { classPattern: 'SS1', description: 'ID Card', amount: 2500, category: 'ID_CARD', isOneTime: false, sortOrder: 3 },
+      { classPattern: 'SS1', description: 'Tuition Fee', amount: 20000, category: 'TUITION', isOneTime: false, sortOrder: 4 },
+      { classPattern: 'SS1', description: 'Lesson Fee', amount: 10000, category: 'LESSON_FEE', isOneTime: false, sortOrder: 5 },
+      { classPattern: 'SS1', description: 'Sportswear', amount: 6000, category: 'SPORTSWEAR', isOneTime: false, sortOrder: 6 },
+      { classPattern: 'SS1', description: 'Friday Wear', amount: 2500, category: 'FRIDAY_WEAR', isOneTime: false, sortOrder: 7 },
+      // ── SS 2 ───────────────────────────────────────────────
+      { classPattern: 'SS2', description: 'Application Form', amount: 2500, category: 'APPLICATION', isOneTime: true, sortOrder: 1 },
+      { classPattern: 'SS2', description: 'Uniform', amount: 8000, category: 'UNIFORM', isOneTime: false, sortOrder: 2 },
+      { classPattern: 'SS2', description: 'ID Card', amount: 2500, category: 'ID_CARD', isOneTime: false, sortOrder: 3 },
+      { classPattern: 'SS2', description: 'Tuition Fee', amount: 22500, category: 'TUITION', isOneTime: false, sortOrder: 4 },
+      { classPattern: 'SS2', description: 'Lesson Fee', amount: 10000, category: 'LESSON_FEE', isOneTime: false, sortOrder: 5 },
+      { classPattern: 'SS2', description: 'Sportswear', amount: 6000, category: 'SPORTSWEAR', isOneTime: false, sortOrder: 6 },
+      { classPattern: 'SS2', description: 'Friday Wear', amount: 2500, category: 'FRIDAY_WEAR', isOneTime: false, sortOrder: 7 },
+      // ── SS 3 ───────────────────────────────────────────────
+      { classPattern: 'SS3', description: 'Application Form', amount: 2500, category: 'APPLICATION', isOneTime: true, sortOrder: 1 },
+      { classPattern: 'SS3', description: 'Uniform', amount: 8000, category: 'UNIFORM', isOneTime: false, sortOrder: 2 },
+      { classPattern: 'SS3', description: 'ID Card', amount: 2500, category: 'ID_CARD', isOneTime: false, sortOrder: 3 },
+      { classPattern: 'SS3', description: 'Tuition Fee', amount: 25000, category: 'TUITION', isOneTime: false, sortOrder: 4 },
+      { classPattern: 'SS3', description: 'Lesson Fee', amount: 10000, category: 'LESSON_FEE', isOneTime: false, sortOrder: 5 },
+      { classPattern: 'SS3', description: 'Sportswear', amount: 6000, category: 'SPORTSWEAR', isOneTime: false, sortOrder: 6 },
+      { classPattern: 'SS3', description: 'Friday Wear', amount: 2500, category: 'FRIDAY_WEAR', isOneTime: false, sortOrder: 7 },
+    ];
+    res.json(schedule);
   } catch (err) { next(err); }
 };
 
@@ -237,6 +324,8 @@ module.exports = {
   getOutstanding,
   getFeeStructures,
   createFeeStructure,
+  updateFeeStructure,
   deleteFeeStructure,
-  bulkInvoiceClass
+  bulkInvoiceClass,
+  getDefaultFeeSchedule,
 };

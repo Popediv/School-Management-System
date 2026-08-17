@@ -4,25 +4,29 @@ import { Link } from 'react-router-dom';
 import { feeService, classService } from '../../services';
 import { toast } from 'react-toastify';
 import { SESSIONS, CURRENT_SESSION } from '../../utils/constants';
-import { 
-  CreditCard, Search, AlertCircle, CheckCircle, 
-  Clock, Settings, Zap, Trash2, Plus, Landmark, Printer
+import {
+  CreditCard, Search, AlertCircle, CheckCircle,
+  Clock, Settings, Zap, Trash2, Plus, Landmark, Printer,
+  FileText, Activity, Save
 } from 'lucide-react';
 
 const fmt = n => `₦${Number(n).toLocaleString()}`;
-const STATUS_BADGE = { UNPAID:'badge-danger', PARTIAL:'badge-warning', PAID:'badge-success' };
+const STATUS_BADGE = { UNPAID: 'badge-danger', PARTIAL: 'badge-warning', PAID: 'badge-success' };
 
 export default function FeesPage() {
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState('outstanding'); // 'outstanding' | 'templates' | 'bulk'
-  
+
   // Search & Filters for Tab 1
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
   // Form states for Tab 2 (Fee Structures)
-  const [structForm, setStructForm] = useState({ classId: '', description: '', amount: '', term: 'FIRST', session: CURRENT_SESSION });
-  
+  const [structForm, setStructForm] = useState({
+    classId: '', description: '', amount: '', term: 'FIRST', session: CURRENT_SESSION,
+    category: 'TUITION', isOneTime: false, sortOrder: 0
+  });
+
   // Form states for Tab 3 (Bulk Invoicing)
   const [bulkForm, setBulkForm] = useState({ classId: '', term: 'FIRST', session: CURRENT_SESSION });
   const [bulkResult, setBulkResult] = useState(null);
@@ -64,6 +68,15 @@ export default function FeesPage() {
     onError: (err) => toast.error(err.response?.data?.message || 'Failed to delete configuration'),
   });
 
+  const { mutate: loadDefaults, isPending: loadingDefaults } = useMutation({
+    mutationFn: () => feeService.getDefaultSchedule(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['fee-structures'] });
+      toast.success('Default Fee Schedule loaded successfully for all JSS and SS classes!');
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to load defaults'),
+  });
+
   const { mutate: runBulkBilling, isPending: billingInProgress } = useMutation({
     mutationFn: (data) => feeService.bulkInvoice(data),
     onSuccess: (res) => {
@@ -80,7 +93,7 @@ export default function FeesPage() {
   // Handlers
   const handleSaveStructure = (e) => {
     e.preventDefault();
-    if (!structForm.classId || !structForm.description || !structForm.amount) {
+    if (!structForm.classId || !structForm.description || !structForm.amount || !structForm.category) {
       return toast.warning('Please fill in all fee configuration fields');
     }
     saveStructure({
@@ -88,7 +101,10 @@ export default function FeesPage() {
       description: structForm.description,
       amount: parseFloat(structForm.amount),
       term: structForm.term,
-      session: structForm.session
+      session: structForm.session,
+      category: structForm.category,
+      isOneTime: structForm.isOneTime,
+      sortOrder: parseInt(structForm.sortOrder, 10) || 0
     });
   };
 
@@ -132,40 +148,68 @@ export default function FeesPage() {
       </div>
 
       {/* Tabs Menu */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 24, gap: 12 }}>
-        <button 
-          onClick={() => setActiveTab('outstanding')} 
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 24, gap: 12, overflowX: 'auto', paddingBottom: 8 }}>
+        <button
+          onClick={() => setActiveTab('outstanding')}
           style={{
             padding: '12px 20px', fontSize: '0.9rem', fontWeight: 600, border: 'none', background: 'none',
             color: activeTab === 'outstanding' ? 'var(--primary)' : 'var(--text-muted)',
             borderBottom: activeTab === 'outstanding' ? '3px solid var(--primary)' : '3px solid transparent',
-            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s'
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s',
+            whiteSpace: 'nowrap'
           }}
         >
-          <Landmark size={16} /> Outstanding & Payments
+          <Landmark size={16} /> Outstanding Invoices
         </button>
-        <button 
-          onClick={() => setActiveTab('templates')} 
+        <button
+          onClick={() => setActiveTab('templates')}
           style={{
             padding: '12px 20px', fontSize: '0.9rem', fontWeight: 600, border: 'none', background: 'none',
             color: activeTab === 'templates' ? 'var(--primary)' : 'var(--text-muted)',
             borderBottom: activeTab === 'templates' ? '3px solid var(--primary)' : '3px solid transparent',
-            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s'
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s',
+            whiteSpace: 'nowrap'
           }}
         >
           <Settings size={16} /> Configure School Fees
         </button>
-        <button 
-          onClick={() => setActiveTab('bulk')} 
+        <button
+          onClick={() => setActiveTab('bulk')}
           style={{
             padding: '12px 20px', fontSize: '0.9rem', fontWeight: 600, border: 'none', background: 'none',
             color: activeTab === 'bulk' ? 'var(--primary)' : 'var(--text-muted)',
             borderBottom: activeTab === 'bulk' ? '3px solid var(--primary)' : '3px solid transparent',
-            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s'
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s',
+            whiteSpace: 'nowrap'
           }}
         >
           <Zap size={16} /> Bulk Bill Class
         </button>
+
+        <Link
+          to="/fees/letters"
+          style={{
+            padding: '12px 20px', fontSize: '0.9rem', fontWeight: 600, border: 'none', background: 'none',
+            color: 'var(--text-muted)',
+            borderBottom: '3px solid transparent',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s',
+            textDecoration: 'none', whiteSpace: 'nowrap'
+          }}
+        >
+          <FileText size={16} /> Generate Bill Letters
+        </Link>
+        <Link
+          to="/fees/ledger"
+          style={{
+            padding: '12px 20px', fontSize: '0.9rem', fontWeight: 600, border: 'none', background: 'none',
+            color: 'var(--text-muted)',
+            borderBottom: '3px solid transparent',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s',
+            textDecoration: 'none', whiteSpace: 'nowrap'
+          }}
+        >
+          <Activity size={16} /> Account Ledger
+        </Link>
       </div>
 
       {/* Tab 1: Outstanding & Payments */}
@@ -178,28 +222,28 @@ export default function FeesPage() {
           {/* Summary Stats */}
           <div className="grid-stat mb-6">
             <div className="stat-card">
-              <div className="stat-icon red"><AlertCircle size={22}/></div>
+              <div className="stat-icon red"><AlertCircle size={22} /></div>
               <div>
-                <div className="stat-value" style={{ fontSize:'1.3rem' }}>{fmt(outstandingData.summary?.totalOutstanding || 0)}</div>
+                <div className="stat-value" style={{ fontSize: '1.3rem' }}>{fmt(outstandingData.summary?.totalOutstanding || 0)}</div>
                 <div className="stat-label">Total Outstanding</div>
               </div>
             </div>
             <div className="stat-card">
-              <div className="stat-icon amber"><Clock size={22}/></div>
+              <div className="stat-icon amber"><Clock size={22} /></div>
               <div>
                 <div className="stat-value">{outstandingData.summary?.totalStudents || 0}</div>
                 <div className="stat-label">Students with Balance</div>
               </div>
             </div>
             <div className="stat-card">
-              <div className="stat-icon green"><CheckCircle size={22}/></div>
+              <div className="stat-icon green"><CheckCircle size={22} /></div>
               <div>
                 <div className="stat-value">{outstandingData.summary?.fullyPaid || 0}</div>
                 <div className="stat-label">Fully Paid</div>
               </div>
             </div>
             <div className="stat-card">
-              <div className="stat-icon cyan"><CreditCard size={22}/></div>
+              <div className="stat-icon cyan"><CreditCard size={22} /></div>
               <div>
                 <div className="stat-value">{outstandingData.summary?.partialPaid || 0}</div>
                 <div className="stat-label">Partial Payments</div>
@@ -208,13 +252,13 @@ export default function FeesPage() {
           </div>
 
           {/* Filters */}
-          <div className="card mb-4" style={{ padding:'16px 20px' }}>
-            <div style={{ display:'flex', gap:12, flexWrap:'wrap', alignItems:'center' }}>
-              <div className="search-bar" style={{ flex:1, minWidth:200 }}>
-                <Search size={16}/>
-                <input className="form-input" placeholder="Search student name or admission number…" value={search} onChange={e => setSearch(e.target.value)}/>
+          <div className="card mb-4" style={{ padding: '16px 20px' }}>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div className="search-bar" style={{ flex: 1, minWidth: 200 }}>
+                <Search size={16} />
+                <input className="form-input" placeholder="Search student name or admission number…" value={search} onChange={e => setSearch(e.target.value)} />
               </div>
-              <select className="form-select" style={{ width:160 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+              <select className="form-select" style={{ width: 160 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
                 <option value="">All Statuses</option>
                 <option value="UNPAID">Unpaid</option>
                 <option value="PARTIAL">Partial</option>
@@ -227,7 +271,7 @@ export default function FeesPage() {
           </div>
 
           {/* Outstanding Table */}
-          <div className="card" style={{ padding:0 }}>
+          <div className="card" style={{ padding: 0 }}>
             <div className="table-wrapper">
               <table>
                 <thead>
@@ -245,33 +289,33 @@ export default function FeesPage() {
                 </thead>
                 <tbody>
                   {outstandingLoading ? (
-                    Array.from({length:4}).map((_,i) => (
+                    Array.from({ length: 4 }).map((_, i) => (
                       <tr key={i}>
-                        {Array.from({length:8}).map((_,j) => (
-                          <td key={j}><div className="skeleton" style={{height:14,width:'80%'}}/></td>
+                        {Array.from({ length: 8 }).map((_, j) => (
+                          <td key={j}><div className="skeleton" style={{ height: 14, width: '80%' }} /></td>
                         ))}
                       </tr>
                     ))
                   ) : filteredOutstanding.map(r => (
                     <tr key={r.id}>
                       <td><strong>{r.studentName}</strong></td>
-                      <td><code style={{ fontSize:'0.78rem', color:'var(--primary-light)' }}>{r.admissionNo}</code></td>
+                      <td><code style={{ fontSize: '0.78rem', color: 'var(--primary-light)' }}>{r.admissionNo}</code></td>
                       <td>{r.class}</td>
                       <td>{r.type}</td>
-                      <td style={{ fontWeight:600 }}>{fmt(r.amount)}</td>
-                      <td style={{ fontWeight:600, color: r.status === 'UNPAID' ? 'var(--danger)' : 'var(--accent)' }}>{fmt(r.balance)}</td>
+                      <td style={{ fontWeight: 600 }}>{fmt(r.amount)}</td>
+                      <td style={{ fontWeight: 600, color: r.status === 'UNPAID' ? 'var(--danger)' : 'var(--accent)' }}>{fmt(r.balance)}</td>
                       <td className="text-muted">{r.dueDate}</td>
                       <td><span className={`badge ${STATUS_BADGE[r.status] || 'badge-muted'}`}>{r.status}</span></td>
                       <td>
                         <Link to={`/fees/pay/${r.id}`} className="btn btn-primary btn-sm">
-                          <CreditCard size={12}/> Pay
+                          <CreditCard size={12} /> Pay
                         </Link>
                       </td>
                     </tr>
                   ))}
                   {!outstandingLoading && filteredOutstanding.length === 0 && (
                     <tr>
-                      <td colSpan={9} style={{ textAlign:'center', padding:40, color:'var(--text-muted)' }}>
+                      <td colSpan={9} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
                         No outstanding invoices match your search filters.
                       </td>
                     </tr>
@@ -288,41 +332,52 @@ export default function FeesPage() {
         <div className="grid-2" style={{ alignItems: 'start' }}>
           {/* List Configurations */}
           <div className="card">
-            <h3 className="mb-4">Active Fee Templates</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 className="mb-0">Active Fee Templates</h3>
+              <button className="btn btn-secondary btn-sm" onClick={() => loadDefaults()} disabled={loadingDefaults}>
+                {loadingDefaults ? 'Loading...' : 'Load Default JSS/SS Schedule'}
+              </button>
+            </div>
             <p className="text-xs text-muted mb-4">
-              Configure global fee templates by class, term, and academic session. When you run class bulk billing, these structures will determine student bills.
+              Configure global fee templates by class, term, and academic session. When you run class bulk billing or generate letters, these structures will determine student bills.
             </p>
-            
+
             <div className="table-wrapper">
               <table>
                 <thead>
                   <tr>
                     <th>Class</th>
-                    <th>Term</th>
-                    <th>Session</th>
+                    <th>Term & Session</th>
                     <th>Fee Description</th>
+                    <th>Category</th>
                     <th>Amount</th>
                     <th style={{ textAlign: 'center' }}>Delete</th>
                   </tr>
                 </thead>
                 <tbody>
                   {structuresLoading ? (
-                    Array.from({length:3}).map((_,i) => (
+                    Array.from({ length: 3 }).map((_, i) => (
                       <tr key={i}>
-                        {Array.from({length:6}).map((_,j) => (
-                          <td key={j}><div className="skeleton" style={{height:14,width:'70%'}}/></td>
+                        {Array.from({ length: 6 }).map((_, j) => (
+                          <td key={j}><div className="skeleton" style={{ height: 14, width: '70%' }} /></td>
                         ))}
                       </tr>
                     ))
                   ) : structures.map(s => (
                     <tr key={s.id}>
                       <td><strong>{s.class?.name}</strong></td>
-                      <td><span className="badge badge-info">{s.term}</span></td>
-                      <td>{s.session}</td>
-                      <td>{s.description}</td>
+                      <td>
+                        <span className="badge badge-info mr-2">{s.term}</span>
+                        <span className="text-muted" style={{ fontSize: '0.8rem' }}>{s.session}</span>
+                      </td>
+                      <td>
+                        {s.description}
+                        {s.isOneTime && <span className="badge badge-muted ml-2" style={{ fontSize: '0.65rem' }}>ONE-TIME</span>}
+                      </td>
+                      <td><span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>{s.category}</span></td>
                       <td style={{ fontWeight: 600, color: 'var(--accent)' }}>{fmt(s.amount)}</td>
                       <td style={{ textAlign: 'center' }}>
-                        <button 
+                        <button
                           onClick={() => {
                             if (window.confirm(`Are you sure you want to delete the ${s.description} template for ${s.class?.name}?`)) {
                               deleteStructure(s.id);
@@ -338,7 +393,7 @@ export default function FeesPage() {
                   ))}
                   {!structuresLoading && structures.length === 0 && (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding:32, color: 'var(--text-muted)' }}>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>
                         No fee structures configured yet. Please configure standard fee amounts on the right.
                       </td>
                     </tr>
@@ -352,12 +407,12 @@ export default function FeesPage() {
           <div className="card">
             <h3 className="mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Plus size={18} style={{ color: 'var(--primary)' }} /> Configure Fee Template</h3>
             <form onSubmit={handleSaveStructure} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              
+
               <div className="form-group">
                 <label className="form-label">Target Class <span className="required">*</span></label>
-                <select 
-                  className="form-select" 
-                  value={structForm.classId} 
+                <select
+                  className="form-select"
+                  value={structForm.classId}
                   onChange={e => setStructForm(prev => ({ ...prev, classId: e.target.value }))}
                 >
                   <option value="">Select Target Class</option>
@@ -367,9 +422,9 @@ export default function FeesPage() {
 
               <div className="form-group">
                 <label className="form-label">Academic Term <span className="required">*</span></label>
-                <select 
-                  className="form-select" 
-                  value={structForm.term} 
+                <select
+                  className="form-select"
+                  value={structForm.term}
                   onChange={e => setStructForm(prev => ({ ...prev, term: e.target.value }))}
                 >
                   <option value="FIRST">First Term</option>
@@ -380,9 +435,9 @@ export default function FeesPage() {
 
               <div className="form-group">
                 <label className="form-label">Academic Session <span className="required">*</span></label>
-                <select 
-                  className="form-select" 
-                  value={structForm.session} 
+                <select
+                  className="form-select"
+                  value={structForm.session}
                   onChange={e => setStructForm(prev => ({ ...prev, session: e.target.value }))}
                 >
                   {SESSIONS.map(s => <option key={s} value={s}>{s}</option>)}
@@ -391,29 +446,69 @@ export default function FeesPage() {
 
               <div className="form-group">
                 <label className="form-label">Fee Description / Item Name <span className="required">*</span></label>
-                <input 
-                  className="form-input" 
-                  type="text" 
-                  placeholder="e.g. Tuition Fee, Development Levy, Exam Fee" 
-                  value={structForm.description} 
+                <input
+                  className="form-input"
+                  type="text"
+                  placeholder="e.g. Tuition Fee, Development Levy, Exam Fee"
+                  value={structForm.description}
                   onChange={e => setStructForm(prev => ({ ...prev, description: e.target.value }))}
                 />
               </div>
 
               <div className="form-group">
                 <label className="form-label">Standard Amount (₦) <span className="required">*</span></label>
-                <input 
-                  className="form-input" 
-                  type="number" 
-                  placeholder="e.g. 45000" 
-                  value={structForm.amount} 
+                <input
+                  className="form-input"
+                  type="number"
+                  placeholder="e.g. 45000"
+                  value={structForm.amount}
                   onChange={e => setStructForm(prev => ({ ...prev, amount: e.target.value }))}
                 />
               </div>
 
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="form-group">
+                  <label className="form-label">Fee Category <span className="required">*</span></label>
+                  <select
+                    className="form-select"
+                    value={structForm.category}
+                    onChange={e => setStructForm(prev => ({ ...prev, category: e.target.value }))}
+                  >
+                    <option value="TUITION">Tuition</option>
+                    <option value="LESSON">Lesson Fee</option>
+                    <option value="BOOKS">Books & Notebooks</option>
+                    <option value="UNIFORM">Uniform & Wear</option>
+                    <option value="APPLICATION">Application Form</option>
+                    <option value="IDCARD">ID Card</option>
+                    <option value="OTHER">Other / Levy</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Sort Order (Letters)</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    value={structForm.sortOrder}
+                    onChange={e => setStructForm(prev => ({ ...prev, sortOrder: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="checkbox"
+                  id="isOneTime"
+                  checked={structForm.isOneTime}
+                  onChange={e => setStructForm(prev => ({ ...prev, isOneTime: e.target.checked }))}
+                />
+                <label htmlFor="isOneTime" style={{ fontSize: '0.88rem', cursor: 'pointer', margin: 0 }}>
+                  This is a one-time fee (e.g., Application Form, ID Card for new students)
+                </label>
+              </div>
+
               <button type="submit" className="btn btn-primary btn-lg" disabled={savingStructure}>
                 {savingStructure
-                  ? <span className="animate-spin" style={{ width:18, height:18, border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'white', borderRadius:'50%', display:'inline-block' }}/>
+                  ? <span className="animate-spin" style={{ width: 18, height: 18, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block' }} />
                   : 'Save Configuration Template'
                 }
               </button>
@@ -434,9 +529,9 @@ export default function FeesPage() {
             <form onSubmit={handleBulkInvoice} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div className="form-group">
                 <label className="form-label">Select Class to Bill <span className="required">*</span></label>
-                <select 
-                  className="form-select" 
-                  value={bulkForm.classId} 
+                <select
+                  className="form-select"
+                  value={bulkForm.classId}
                   onChange={e => setBulkForm(prev => ({ ...prev, classId: e.target.value }))}
                 >
                   <option value="">Choose Class...</option>
@@ -446,9 +541,9 @@ export default function FeesPage() {
 
               <div className="form-group">
                 <label className="form-label">Billing Term <span className="required">*</span></label>
-                <select 
-                  className="form-select" 
-                  value={bulkForm.term} 
+                <select
+                  className="form-select"
+                  value={bulkForm.term}
                   onChange={e => setBulkForm(prev => ({ ...prev, term: e.target.value }))}
                 >
                   <option value="FIRST">First Term</option>
@@ -459,9 +554,9 @@ export default function FeesPage() {
 
               <div className="form-group">
                 <label className="form-label">Academic Session <span className="required">*</span></label>
-                <select 
-                  className="form-select" 
-                  value={bulkForm.session} 
+                <select
+                  className="form-select"
+                  value={bulkForm.session}
                   onChange={e => setBulkForm(prev => ({ ...prev, session: e.target.value }))}
                 >
                   {SESSIONS.map(s => <option key={s} value={s}>{s}</option>)}
@@ -470,7 +565,7 @@ export default function FeesPage() {
 
               <button type="submit" className="btn btn-primary btn-lg" style={{ marginTop: 8 }} disabled={billingInProgress}>
                 {billingInProgress ? (
-                  <span className="animate-spin" style={{ width:18, height:18, border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'white', borderRadius:'50%', display:'inline-block' }}/>
+                  <span className="animate-spin" style={{ width: 18, height: 18, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block' }} />
                 ) : (
                   <><Zap size={16} /> Run Bulk Billing Generator</>
                 )}
@@ -478,10 +573,10 @@ export default function FeesPage() {
             </form>
 
             {bulkResult && (
-              <div 
-                style={{ 
-                  marginTop: 24, padding: '16px 20px', borderRadius: 'var(--radius-md)', 
-                  background: 'var(--bg-elevated)', border: '1px solid var(--success)' 
+              <div
+                style={{
+                  marginTop: 24, padding: '16px 20px', borderRadius: 'var(--radius-md)',
+                  background: 'var(--bg-elevated)', border: '1px solid var(--success)'
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--success)', fontWeight: 700, fontSize: '0.95rem', marginBottom: 12 }}>

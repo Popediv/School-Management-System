@@ -55,10 +55,21 @@ export const feeService = {
   recordPayment: (data) => api.post('/fees/pay', data),
   getReceipt: (id) => api.get(`/fees/receipt/${id}`),
   getOutstanding: () => api.get('/fees/outstanding'),
-  getStructures: () => api.get('/fees/structures'),
+  getStructures: (params) => api.get('/fees/structures', { params }),
+  getDefaultSchedule: () => api.get('/fees/structures/defaults'),
   createStructure: (data) => api.post('/fees/structures', data),
+  updateStructure: (id, data) => api.patch(`/fees/structures/${id}`, data),
   deleteStructure: (id) => api.delete(`/fees/structures/${id}`),
   bulkInvoice: (data) => api.post('/fees/bulk-invoice', data),
+};
+
+export const billLetterService = {
+  generate: (data) => api.post('/bill-letters/generate', data),
+  generateClass: (data) => api.post('/bill-letters/generate-class', data),
+  getAll: (params) => api.get('/bill-letters', { params }),
+  getById: (id) => api.get(`/bill-letters/${id}`),
+  getByStudent: (studentId) => api.get(`/bill-letters/student/${studentId}`),
+  delete: (id) => api.delete(`/bill-letters/${id}`),
 };
 
 export const idCardService = {
