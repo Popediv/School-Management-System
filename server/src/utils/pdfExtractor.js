@@ -36,12 +36,11 @@ async function readPdfText(pdfPath) {
     console.error('PDF Library text parsing notice:', err.message);
   }
 
-  // 2. Fallback: Raw binary text stream reader (for unencrypted PDF text streams)
+  // 2. Fallback: Raw binary text stream reader
   if (!extractedText || !extractedText.trim()) {
     try {
       const rawString = dataBuffer.toString('binary');
       const textBlocks = [];
-      // Match PDF text operators like (Text) Tj or (Text) TJ
       const tjRegex = /\(([^)]+)\)\s*T[jJ]/g;
       let match;
       while ((match = tjRegex.exec(rawString)) !== null) {
@@ -69,8 +68,8 @@ function parseWeeksFromText(termText) {
 
   const schemes = [];
 
-  // Strategy A: Explicit "Week X", "Wk X", "Lesson X", "Module X", "Unit X"
-  const weekRegex = /(?:week|wk|lesson|module|unit)\s*(\d+)/gi;
+  // Strategy A: Explicit "Week X", "Wk X", "Lesson X", "Topic X", "Module X", "Unit X", "Chapter X"
+  const weekRegex = /(?:week|wk|lesson|topic|module|unit|chapter)\s*(\d+)/gi;
   const matches = [];
   let match;
   while ((match = weekRegex.exec(termText)) !== null) {
@@ -110,10 +109,10 @@ function parseWeeksFromText(termText) {
         topic = topic.substring(0, 147) + '...';
       }
 
-      if (current.week >= 1 && current.week <= 15) {
+      if (current.week >= 1 && current.week <= 50) {
         schemes.push({
           week: current.week,
-          topic: topic || `Week ${current.week} Topic`,
+          topic: topic || `Topic ${current.week}`,
           objectives: objectives || null,
           notesText: notesText || null
         });
@@ -129,7 +128,7 @@ function parseWeeksFromText(termText) {
 
     while ((nMatch = numRegex.exec(termText)) !== null) {
       const wkNum = parseInt(nMatch[1]);
-      if (wkNum >= 1 && wkNum <= 15) {
+      if (wkNum >= 1 && wkNum <= 50) {
         numMatches.push({
           week: wkNum,
           index: nMatch.index,
@@ -158,7 +157,7 @@ function parseWeeksFromText(termText) {
 
         schemes.push({
           week: current.week,
-          topic: topic || `Week ${current.week} Topic`,
+          topic: topic || `Topic ${current.week}`,
           objectives: null,
           notesText: notesText || null
         });
@@ -174,11 +173,11 @@ function parseWeeksFromText(termText) {
       const tableMatch = line.match(/^(\d{1,2})\s*[\|\t\:]\s*(.+)/);
       if (tableMatch) {
         const wkNum = parseInt(tableMatch[1]);
-        if (wkNum >= 1 && wkNum <= 15) {
+        if (wkNum >= 1 && wkNum <= 50) {
           let parts = tableMatch[2].split(/[\|\t]/).map(p => p.trim()).filter(Boolean);
           schemes.push({
             week: wkNum,
-            topic: parts[0] || `Week ${wkNum} Topic`,
+            topic: parts[0] || `Topic ${wkNum}`,
             objectives: parts[1] || null,
             notesText: parts.slice(2).join('\n') || null
           });
@@ -200,7 +199,7 @@ function parseWeeksFromText(termText) {
 
     let weekNum = 1;
     for (const line of rawLines) {
-      if (weekNum > 13) break;
+      if (weekNum > 36) break;
       let cleanTopic = line.replace(/^[\d\.\:\-\s\)\(]+/g, '').trim();
       if (cleanTopic.length > 150) cleanTopic = cleanTopic.substring(0, 147) + '...';
 
@@ -230,6 +229,28 @@ function parseWeeksFromText(termText) {
 }
 
 /**
+ * Distribute extracted weekly topics into FIRST, SECOND, and THIRD terms.
+ */
+function distributeWeeksIntoTerms(allWeeks) {
+  const results = { FIRST: [], SECOND: [], THIRD: [] };
+
+  if (!allWeeks || allWeeks.length === 0) return results;
+
+  const total = allWeeks.length;
+
+  if (total <= 13) {
+    results.FIRST = allWeeks;
+  } else {
+    const chunkSize = Math.ceil(total / 3);
+    results.FIRST = allWeeks.slice(0, chunkSize).map((w, idx) => ({ ...w, week: idx + 1 }));
+    results.SECOND = allWeeks.slice(chunkSize, chunkSize * 2).map((w, idx) => ({ ...w, week: idx + 1 }));
+    results.THIRD = allWeeks.slice(chunkSize * 2).map((w, idx) => ({ ...w, week: idx + 1 }));
+  }
+
+  return results;
+}
+
+/**
  * Main function to extract all schemes across terms from a PDF file.
  */
 async function extractAllSchemesFromPdf(pdfPath) {
@@ -240,6 +261,7 @@ async function extractAllSchemesFromPdf(pdfPath) {
       return { FIRST: [], SECOND: [], THIRD: [] };
     }
 
+    // Check if explicit term headers exist in text
     const pos = { FIRST: -1, SECOND: -1, THIRD: -1 };
     for (const term of ['FIRST', 'SECOND', 'THIRD']) {
       for (const r of termRegexes[term]) {
@@ -251,14 +273,13 @@ async function extractAllSchemesFromPdf(pdfPath) {
       }
     }
 
-    const results = { FIRST: [], SECOND: [], THIRD: [] };
-
     const termsWithPos = Object.keys(pos)
       .map(t => ({ term: t, index: pos[t] }))
       .filter(item => item.index !== -1)
       .sort((a, b) => a.index - b.index);
 
-    if (termsWithPos.length > 0) {
+    if (termsWithPos.length >= 2) {
+      const results = { FIRST: [], SECOND: [], THIRD: [] };
       for (let i = 0; i < termsWithPos.length; i++) {
         const current = termsWithPos[i];
         const next = termsWithPos[i + 1];
@@ -268,19 +289,12 @@ async function extractAllSchemesFromPdf(pdfPath) {
         const termChunk = text.substring(start, end);
         results[current.term] = parseWeeksFromText(termChunk);
       }
-    } else {
-      // Fallback: Parse entire document text sequentially and divide topics across terms if large
-      const allWeeks = parseWeeksFromText(text);
-      if (allWeeks.length > 15) {
-        results.FIRST = allWeeks.slice(0, 12).map((w, idx) => ({ ...w, week: idx + 1 }));
-        results.SECOND = allWeeks.slice(12, 24).map((w, idx) => ({ ...w, week: idx + 1 }));
-        results.THIRD = allWeeks.slice(24).map((w, idx) => ({ ...w, week: idx + 1 }));
-      } else {
-        results.FIRST = allWeeks;
-      }
+      return results;
     }
 
-    return results;
+    // Fallback: Extract all lessons/topics and distribute evenly across First, Second, Third terms
+    const allWeeks = parseWeeksFromText(text);
+    return distributeWeeksIntoTerms(allWeeks);
   } catch (err) {
     console.error('Error extracting text from PDF:', err);
     return { FIRST: [], SECOND: [], THIRD: [] };
