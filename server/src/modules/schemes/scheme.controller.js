@@ -60,6 +60,89 @@ const getAll = async (req, res, next) => {
       orderBy: { week: 'asc' },
     });
 
+    // Auto-extraction disabled — extraction was producing garbled text.
+    // Use the manual Extract button on the PDF manage page instead.
+    if (false && schemes.length === 0 && subjectId && classId) {
+      try {
+        const pdf = await prisma.subjectPdf.findFirst({
+          where: { subjectId, classId },
+          orderBy: { createdAt: 'desc' }
+        });
+
+        if (pdf) {
+          const { extractAllSchemesFromPdf } = require('../../utils/pdfExtractor');
+          let filePath;
+          let isTempFile = false;
+
+          if (pdf.pdfFile.startsWith('http')) {
+            const tempFilename = `auto_temp_${Date.now()}_${pdf.id}.pdf`;
+            const tempDir = path.join(__dirname, '..', '..', '..', 'uploads', 'temp');
+            if (!fs.existsSync(tempDir)) {
+              fs.mkdirSync(tempDir, { recursive: true });
+            }
+            filePath = path.join(tempDir, tempFilename);
+
+            const response = await fetch(pdf.pdfFile);
+            if (response.ok) {
+              const buffer = await response.arrayBuffer();
+              fs.writeFileSync(filePath, Buffer.from(buffer));
+              isTempFile = true;
+            }
+          } else {
+            filePath = path.join(__dirname, '..', '..', '..', 'uploads', 'pdfs', pdf.pdfFile);
+          }
+
+          if (filePath && fs.existsSync(filePath)) {
+            const allTermSchemes = await extractAllSchemesFromPdf(filePath);
+            const targetSession = session || 'GENERAL';
+
+            for (const t of ['FIRST', 'SECOND', 'THIRD']) {
+              const weeks = allTermSchemes[t] || [];
+              for (const item of weeks) {
+                await prisma.schemeOfWork.upsert({
+                  where: {
+                    subjectId_classId_term_session_week: {
+                      subjectId,
+                      classId,
+                      term: t,
+                      session: targetSession,
+                      week: item.week
+                    }
+                  },
+                  update: {
+                    topic: item.topic,
+                    objectives: item.objectives || '',
+                    notesText: item.notesText || ''
+                  },
+                  create: {
+                    subjectId,
+                    classId,
+                    term: t,
+                    session: targetSession,
+                    week: item.week,
+                    topic: item.topic,
+                    objectives: item.objectives || '',
+                    notesText: item.notesText || ''
+                  }
+                });
+              }
+            }
+
+            if (isTempFile) safeUnlink(filePath);
+
+            // Re-query database to fetch freshly extracted schemes
+            schemes = await prisma.schemeOfWork.findMany({
+              where,
+              select,
+              orderBy: { week: 'asc' },
+            });
+          }
+        }
+      } catch (autoErr) {
+        console.error('Auto backend scheme extraction notice:', autoErr.message);
+      }
+    }
+
     res.json({ schemes });
   } catch (err) {
     next(err);
@@ -413,6 +496,16 @@ const extractFromPdf = async (req, res, next) => {
   }
 };
 
+// DELETE /api/schemes/all  — admin cleanup
+const deleteAll = async (req, res, next) => {
+  try {
+    const result = await prisma.schemeOfWork.deleteMany({});
+    res.json({ message: `Deleted ${result.count} scheme records successfully.`, count: result.count });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getAll,
   getById,
@@ -420,4 +513,5 @@ module.exports = {
   update,
   remove,
   extractFromPdf,
+  deleteAll,
 };

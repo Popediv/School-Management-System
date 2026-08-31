@@ -26,10 +26,10 @@ export default function SchemesPage() {
   // PDF viewer state
   const [subjectPdf, setSubjectPdf] = useState(null);
   const [showPdfViewer, setShowPdfViewer] = useState(false);
-  const [showToc, setShowToc] = useState(true);
+  const [showTocSidebar, setShowTocSidebar] = useState(true);
   const [pdfUrl, setPdfUrl] = useState('');
-  const [pdfPageParam, setPdfPageParam] = useState('');
-  const [targetPageInput, setTargetPageInput] = useState('');
+  const [activePage, setActivePage] = useState(1);
+  const [termPages, setTermPages] = useState({ FIRST: 1, SECOND: 10, THIRD: 20 });
   const [extracting, setExtracting] = useState(false);
 
   const isAdmin = ['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL'].includes(user?.role);
@@ -111,16 +111,14 @@ export default function SchemesPage() {
       ? subjectPdf.pdfFile
       : subjectPdfService.getViewUrl(subjectPdf.id);
     setPdfUrl(url);
-    setPdfPageParam('#page=1');
-    setTargetPageInput('1');
+    setActivePage(1);
     setShowPdfViewer(true);
   };
 
   const closePdfViewer = () => {
     setShowPdfViewer(false);
     setPdfUrl('');
-    setPdfPageParam('');
-    setTargetPageInput('');
+    setActivePage(1);
   };
 
   const handleDownloadPdf = () => {
@@ -144,15 +142,20 @@ export default function SchemesPage() {
 
   const jumpToPage = (pageNum) => {
     const page = Math.max(1, parseInt(pageNum) || 1);
-    setTargetPageInput(page.toString());
-    setPdfPageParam(`#page=${page}&reload=${Date.now()}`);
+    setActivePage(page);
   };
 
   const jumpToTermPage = (termName) => {
-    let pageNum = 1;
-    if (termName === 'SECOND') pageNum = 10;
-    if (termName === 'THIRD') pageNum = 20;
-    jumpToPage(pageNum);
+    const page = termPages[termName] || 1;
+    jumpToPage(page);
+  };
+
+  const handleTermPageChange = (termName, pageNum) => {
+    const page = Math.max(1, parseInt(pageNum) || 1);
+    setTermPages(prev => ({
+      ...prev,
+      [termName]: page
+    }));
   };
 
   const handleAutoExtractAll = async () => {
@@ -229,68 +232,6 @@ export default function SchemesPage() {
               </div>
             </div>
 
-            {/* Term Navigation & Direct Page Jump Controls */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span className="text-xs text-muted font-medium mr-1" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                <Layers size={12} /> Jump to:
-              </span>
-              <button
-                className="btn btn-secondary btn-sm"
-                onClick={() => jumpToTermPage('FIRST')}
-                style={{ fontSize: '0.78rem', padding: '4px 10px' }}
-              >
-                1st Term
-              </button>
-              <button
-                className="btn btn-secondary btn-sm"
-                onClick={() => jumpToTermPage('SECOND')}
-                style={{ fontSize: '0.78rem', padding: '4px 10px' }}
-              >
-                2nd Term
-              </button>
-              <button
-                className="btn btn-secondary btn-sm"
-                onClick={() => jumpToTermPage('THIRD')}
-                style={{ fontSize: '0.78rem', padding: '4px 10px' }}
-              >
-                3rd Term
-              </button>
-
-              {/* Direct Page Number Input */}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  jumpToPage(targetPageInput);
-                }}
-                style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '6px' }}
-              >
-                <span className="text-xs text-muted">Page:</span>
-                <input
-                  type="number"
-                  min="1"
-                  value={targetPageInput}
-                  onChange={(e) => setTargetPageInput(e.target.value)}
-                  style={{
-                    width: '52px',
-                    padding: '3px 6px',
-                    fontSize: '0.8rem',
-                    borderRadius: '4px',
-                    border: '1px solid var(--border)',
-                    background: 'var(--bg-elevated)',
-                    color: 'var(--text-primary)',
-                    textAlign: 'center'
-                  }}
-                />
-                <button
-                  type="submit"
-                  className="btn btn-primary btn-sm"
-                  style={{ padding: '3px 10px', fontSize: '0.75rem' }}
-                >
-                  Go
-                </button>
-              </form>
-            </div>
-
             {/* Download, Print & Close Actions */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <button
@@ -316,7 +257,7 @@ export default function SchemesPage() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-secondary btn-sm"
-                title="Open PDF directly in full browser tab for responsive scrolling"
+                title="Open PDF directly in full browser tab"
                 style={{ gap: '6px', fontSize: '0.82rem', textDecoration: 'none' }}
               >
                 <ExternalLink size={15} />
@@ -333,18 +274,10 @@ export default function SchemesPage() {
             </div>
           </div>
 
-          {/* Clean Full-Width PDF Viewport Container */}
-          <div style={{
-            flex: 1,
-            position: 'relative',
-            overflowY: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            touchAction: 'pan-y',
-            background: '#1a1d24'
-          }}>
+          {/* Clean Native PDF Viewport */}
+          <div style={{ flex: 1, position: 'relative', height: '100%', background: '#1a1d24' }}>
             <iframe
-              key={pdfPageParam || 'pdf-viewport'}
-              src={pdfUrl + pdfPageParam}
+              src={pdfUrl}
               title="Class Notes PDF"
               style={{
                 width: '100%',
@@ -365,19 +298,21 @@ export default function SchemesPage() {
           <p className="page-header-subtitle">Academic curriculum schedule and lesson outlines for all terms</p>
         </div>
         {isAdmin && (
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'nowrap', flexShrink: 0 }}>
             <button
-              className="btn btn-secondary"
+              className="btn btn-secondary btn-sm"
               onClick={() => navigate('/schemes/manage-pdfs', { state: { selectedSubject, selectedClass } })}
+              style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
             >
-              <FileText size={16} />
+              <FileText size={15} />
               <span>Manage Class Notes</span>
             </button>
             <button
-              className="btn btn-primary"
+              className="btn btn-primary btn-sm"
               onClick={() => navigate('/schemes/manage', { state: { selectedSubject, selectedClass } })}
+              style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
             >
-              <Plus size={16} />
+              <Plus size={15} />
               <span>Manage Schemes</span>
             </button>
           </div>
@@ -417,68 +352,41 @@ export default function SchemesPage() {
         <div
           className="card mb-6"
           style={{
-            background: 'linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(139,92,246,0.08) 100%)',
-            border: '1px solid rgba(99,102,241,0.3)',
+            padding: '14px 18px',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: '16px',
+            gap: '12px',
             flexWrap: 'wrap',
+            borderRadius: '10px'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{
-              padding: '12px',
-              background: 'rgba(99,102,241,0.15)',
-              borderRadius: '10px',
-              color: 'var(--primary-light)',
-              flexShrink: 0
-            }}>
-              <FileSearch size={24} />
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <FileText size={20} className="text-primary" />
             <div>
-              <div className="font-semibold text-primary" style={{ fontSize: '1rem', marginBottom: '2px' }}>
+              <span className="font-semibold text-primary" style={{ fontSize: '0.92rem' }}>
                 Class Notes PDF Available
-              </div>
-              <div className="text-secondary" style={{ fontSize: '0.85rem' }}>
-                {subjectPdf.label || `${selectedSubjectName} Notes`} — Covers 1st, 2nd & 3rd Terms
-              </div>
-              <div className="text-muted" style={{ fontSize: '0.75rem', marginTop: '2px' }}>
-                {selectedClassName}
-              </div>
+              </span>
+              <span className="text-muted ml-2" style={{ fontSize: '0.8rem' }}>
+                ({selectedSubjectName} · {selectedClassName})
+              </span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            {isAdmin && (
-              <button
-                className="btn btn-secondary"
-                onClick={handleAutoExtractAll}
-                disabled={extracting}
-                style={{ gap: '8px', flexShrink: 0 }}
-                title="Automatically scan and extract weekly topics from PDF into scheme of work"
-              >
-                {extracting ? (
-                  <span className="animate-spin" style={{ width: 14, height: 14, border: '2px solid var(--primary-light)', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block' }} />
-                ) : (
-                  <Wand2 size={16} />
-                )}
-                <span>Extract Scheme from PDF</span>
-              </button>
-            )}
-            <button
-              className="btn btn-primary"
-              onClick={openPdfViewer}
-              style={{ gap: '8px', flexShrink: 0 }}
-            >
-              <Eye size={16} />
-              <span>View Class Notes</span>
-            </button>
-          </div>
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={openPdfViewer}
+            style={{ gap: '6px' }}
+          >
+            <Eye size={15} />
+            <span>Open Class Notes PDF</span>
+          </button>
         </div>
       )}
 
-      {/* No PDF notice for admins only */}
+      {/* No PDF notice for admins */}
       {isAdmin && !subjectPdf && selectedSubject && selectedClass && (
         <div
           className="card mb-6"
@@ -487,188 +395,174 @@ export default function SchemesPage() {
             display: 'flex',
             alignItems: 'center',
             gap: '12px',
-            padding: '14px 18px',
-            opacity: 0.7
+            padding: '12px 16px',
+            opacity: 0.8
           }}
         >
-          <FileText size={18} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-          <span className="text-muted" style={{ fontSize: '0.875rem' }}>
-            No class notes PDF uploaded for this subject/class yet.{' '}
+          <FileText size={16} className="text-muted" />
+          <span className="text-muted text-xs">
+            No class notes PDF uploaded yet.{' '}
             <button
               style={{ background: 'none', border: 'none', color: 'var(--primary-light)', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
               onClick={() => navigate('/schemes/manage-pdfs', { state: { selectedSubject, selectedClass } })}
             >
-              Upload one now
+              Upload PDF
             </button>
           </span>
         </div>
       )}
 
       {/* Content Area — Categorized by Terms */}
-      {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {[1, 2, 3].map(i => (
-            <div key={i} className="card skeleton" style={{ height: '100px', width: '100%' }}></div>
-          ))}
-        </div>
-      ) : schemes.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '48px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-          <div style={{ padding: '16px', borderRadius: '50%', background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
-            <BookOpenCheck size={36} />
+      {
+        loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {[1, 2, 3].map(i => (
+              <div key={i} className="card skeleton" style={{ height: '70px', width: '100%' }}></div>
+            ))}
           </div>
-          <h3 className="text-primary">No Scheme of Work Found</h3>
-          <p className="text-secondary" style={{ maxWidth: '450px' }}>
-            There is no curriculum schedule uploaded for {selectedSubjectName || 'this subject'} in {selectedClassName || 'this class'}.
-          </p>
-          {isAdmin && (
-            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-              {subjectPdf && (
-                <button
-                  className="btn btn-primary"
-                  onClick={handleAutoExtractAll}
-                  disabled={extracting}
-                >
-                  <Wand2 size={16} /> Auto-Extract from PDF
-                </button>
-              )}
+        ) : schemes.length === 0 ? (
+          <div className="card" style={{ textAlign: 'center', padding: '40px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+            <BookOpenCheck size={32} className="text-muted" />
+            <h3 className="text-primary" style={{ fontSize: '1.05rem', margin: 0 }}>No Scheme of Work Found</h3>
+            <p className="text-secondary text-xs" style={{ maxWidth: '400px', margin: 0 }}>
+              No curriculum items available for {selectedSubjectName || 'this subject'} in {selectedClassName || 'this class'}.
+            </p>
+            {isAdmin && (
               <button
-                className="btn btn-secondary"
+                className="btn btn-secondary btn-sm"
+                style={{ marginTop: '8px' }}
                 onClick={() => navigate('/schemes/manage', { state: { selectedSubject, selectedClass } })}
               >
-                <Plus size={16} /> Add Week Manually
+                <Plus size={14} /> Add Week Manually
               </button>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-          {termOrder.map((tKey) => {
-            const termSchemes = groupedSchemes[tKey] || [];
-            if (termSchemes.length === 0) return null;
+            )}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+            {termOrder.map((tKey) => {
+              const termSchemes = groupedSchemes[tKey] || [];
+              if (termSchemes.length === 0) return null;
 
-            return (
-              <div key={tKey} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {/* Term Header */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  paddingBottom: '8px',
-                  borderBottom: '2px solid var(--border)',
-                  color: 'var(--primary-light)'
-                }}>
-                  <BookOpen size={20} />
-                  <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-                    {termLabel[tKey]}
-                  </h2>
-                  <span className="badge badge-secondary" style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
-                    {termSchemes.length} {termSchemes.length === 1 ? 'Week' : 'Weeks'}
-                  </span>
-                </div>
+              return (
+                <div key={tKey} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {/* Simple Term Header */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    paddingBottom: '6px',
+                    borderBottom: '1px solid var(--border)'
+                  }}>
+                    <h2 style={{ fontSize: '1.05rem', fontWeight: 600, margin: 0, color: 'var(--text-primary)' }}>
+                      {termLabel[tKey]}
+                    </h2>
+                    <span className="text-xs text-muted">
+                      ({termSchemes.length} {termSchemes.length === 1 ? 'topic' : 'topics'})
+                    </span>
+                  </div>
 
-                {/* Weeks List under this Term */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  {termSchemes.map((scheme) => {
-                    const isExpanded = expandedWeeks[scheme.id];
-                    const hasNotes = scheme.notesText || scheme.notesFile;
+                  {/* Weeks List under this Term */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {termSchemes.map((scheme) => {
+                      const isExpanded = expandedWeeks[scheme.id];
+                      const hasNotes = scheme.notesText && scheme.notesText.trim().length > 0;
 
-                    return (
-                      <div
-                        key={scheme.id}
-                        className="card"
-                        style={{
-                          transition: 'all 0.2s',
-                          borderLeft: '4px solid var(--primary)'
-                        }}
-                      >
+                      return (
                         <div
+                          key={scheme.id}
+                          className="card"
                           style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'flex-start',
-                            cursor: hasNotes && !isRestricted ? 'pointer' : 'default'
+                            borderLeft: '4px solid var(--primary)',
+                            padding: '16px 20px',
+                            transition: 'box-shadow 0.2s',
                           }}
-                          onClick={() => hasNotes && !isRestricted && toggleWeek(scheme.id)}
                         >
-                          <div style={{ flex: 1 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                              <span className="badge badge-primary">Week {scheme.week}</span>
-                              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <Calendar size={12} /> {termLabel[scheme.term]}
-                              </span>
+                          {/* Header row */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              {/* Week badge + term label */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                                <span className="badge badge-primary">Week {scheme.week}</span>
+                                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <Calendar size={12} />
+                                  {termLabel[scheme.term]}
+                                </span>
+                              </div>
+
+                              {/* Topic title */}
+                              <h3 style={{
+                                fontSize: '1.1rem',
+                                fontWeight: 700,
+                                margin: '0 0 6px',
+                                color: 'var(--text-primary)',
+                                lineHeight: 1.35,
+                                textTransform: 'capitalize',
+                                wordBreak: 'break-word'
+                              }}>
+                                {scheme.topic.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}
+                              </h3>
+
+                              {/* Objectives */}
+                              {scheme.objectives && scheme.objectives.trim() && (
+                                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                                  <strong style={{ color: 'var(--text-primary)' }}>Objectives: </strong>
+                                  {scheme.objectives}
+                                </p>
+                              )}
                             </div>
-                            <h3 style={{ fontSize: '1.15rem', marginBottom: '6px', color: 'var(--text-primary)', fontWeight: 600 }}>
-                              {scheme.topic}
-                            </h3>
-                            {scheme.objectives && (
-                              <p className="text-secondary" style={{ fontSize: '0.88rem', margin: 0 }}>
-                                <strong>Objectives:</strong> {scheme.objectives}
-                              </p>
+
+                            {/* Toggle button */}
+                            {hasNotes && !isRestricted && (
+                              <button
+                                className="btn btn-secondary btn-icon"
+                                style={{ alignSelf: 'flex-start', flexShrink: 0, padding: '6px 8px' }}
+                                onClick={() => toggleWeek(scheme.id)}
+                                title={isExpanded ? 'Hide notes' : 'Read notes'}
+                              >
+                                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                              </button>
                             )}
                           </div>
 
-                          {hasNotes && !isRestricted && (
-                            <button
-                              className="btn btn-secondary btn-icon"
-                              style={{ alignSelf: 'center' }}
-                              onClick={(e) => { e.stopPropagation(); toggleWeek(scheme.id); }}
-                            >
-                              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                            </button>
+                          {/* Collapsible notes */}
+                          {isExpanded && hasNotes && !isRestricted && (
+                            <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
+                              <p className="text-primary" style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '8px' }}>
+                                Lecture Notes
+                              </p>
+                              <div style={{
+                                background: 'var(--bg-elevated)',
+                                padding: '14px 16px',
+                                borderRadius: '8px',
+                                fontSize: '0.875rem',
+                                whiteSpace: 'pre-line',
+                                color: 'var(--text-primary)',
+                                maxHeight: '320px',
+                                overflowY: 'auto',
+                                lineHeight: 1.65,
+                              }}>
+                                {scheme.notesText}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Restricted notice */}
+                          {isRestricted && (
+                            <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                              <Lock size={12} />
+                              <span>Detailed notes are restricted. Contact your class teacher for study materials.</span>
+                            </div>
                           )}
                         </div>
-
-                        {/* Notes and materials section */}
-                        {isExpanded && !isRestricted && (
-                          <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-                            {scheme.notesText && (
-                              <div className="mb-4">
-                                <h4 className="text-primary mb-2" style={{ fontSize: '0.92rem' }}>Lecture Notes</h4>
-                                <div
-                                  style={{
-                                    background: 'var(--bg-elevated)',
-                                    padding: '16px',
-                                    borderRadius: 'var(--radius-md)',
-                                    fontSize: '0.88rem',
-                                    whiteSpace: 'pre-line',
-                                    color: 'var(--text-primary)'
-                                  }}
-                                >
-                                  {scheme.notesText}
-                                </div>
-                              </div>
-                            )}
-
-                            {scheme.notesFile && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(99,102,241,0.05)', border: '1px dashed rgba(99,102,241,0.3)', padding: '12px 16px', borderRadius: 'var(--radius-md)' }}>
-                                <div style={{ padding: '8px', background: 'rgba(99,102,241,0.1)', color: 'var(--primary-light)', borderRadius: '6px' }}>
-                                  <FileText size={18} />
-                                </div>
-                                <div>
-                                  <div className="font-semibold text-sm">Attachment Available</div>
-                                  <div className="text-xs text-muted">Document uploaded by administrator</div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Restricted alert for students and parents */}
-                        {isRestricted && (
-                          <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                            <Lock size={12} />
-                            <span>Detailed notes are restricted to teachers and administrators. Contact your class teacher for study materials.</span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
+              );
+            })}
+          </div>
+        )
+      }
+    </div >
   );
 }

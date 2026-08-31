@@ -7,23 +7,23 @@ const termRegexes = {
 };
 
 /**
- * Smart Spacing Sanitizer: Fixes concatenated words (e.g., "DefinitionofChemistry" -> "Definition of Chemistry")
+ * Smart Spacing Sanitizer: Fixes concatenated words from pdf-parse output
  */
 function sanitizeSpacing(text) {
   if (!text || typeof text !== 'string') return '';
 
   return text
-    // Remove leading hyphens/bullets from headers
+    // Remove leading hyphens/bullets
     .replace(/^[\s\-–—]+/g, '')
-    // Add space between lowercase and uppercase (CamelCase concatenation)
+    // Add space between lowercase → uppercase (CamelCase)
     .replace(/([a-z])([A-Z])/g, '$1 $2')
-    // Add space between uppercase sequences and mixed case
+    // Add space between uppercase block followed by Title Case
     .replace(/([A-Z]{2,})([A-Z][a-z])/g, '$1 $2')
-    // Add space after punctuation attached to words (e.g. "matter.Composition" -> "matter. Composition")
+    // Add space after punctuation glued to next word
     .replace(/([a-zA-Z0-9\)])([.,;:!?])([a-zA-Z])/g, '$1$2 $3')
-    // Convert square/box glyphs to clean bullet points
+    // Clean box/bullet glyphs
     .replace(/[□■●]/g, '• ')
-    // Normalize spaces and tabs
+    // Normalize whitespace
     .replace(/[ \t]+/g, ' ')
     .trim();
 }

@@ -4,9 +4,10 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
-require('dotenv').config();
-
 const app = express();
+
+// Enable trust proxy for Render / Vercel / Cloudflare reverse proxies
+app.set('trust proxy', 1);
 
 // ─── Security middleware ────────────────────────────────────
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
@@ -59,24 +60,23 @@ app.use((req, res) => {
   res.status(404).json({ message: `Route ${req.originalUrl} not found` });
 });
 
-// ─── Keep-alive to prevent Render sleep ──────────────────────
-// Pings the health endpoint every 14 minutes to prevent cold starts
-const keepAliveUrl = process.env.PING_URL || process.env.SERVER_URL;
-if (keepAliveUrl) {
-  setInterval(() => {
-    // dynamically import node-fetch if global fetch is not available (node < 18)
-    const doFetch = typeof fetch !== 'undefined' ? fetch : require('http').get;
-    if (typeof fetch !== 'undefined') {
-      fetch(`${keepAliveUrl}/api/health`)
-        .then(res => console.log(`[Keep-alive] Pinged ${keepAliveUrl} successfully: ${res.status}`))
-        .catch(err => console.error(`[Keep-alive] Ping failed:`, err.message));
-    } else {
-      doFetch(`${keepAliveUrl}/api/health`, (res) => {
-        console.log(`[Keep-alive] Pinged ${keepAliveUrl} via HTTP successfully: ${res.statusCode}`);
-      }).on('error', (err) => console.error(`[Keep-alive] Ping failed:`, err.message));
-    }
-  }, 13 * 60 * 1000); // 13 minutes
-}
+// ─── Keep-alive to prevent Render free-tier sleep ───────────
+// Pings the health endpoint every 12 minutes to prevent cold starts
+const TWELVE_MINUTES = 12 * 60 * 1000;
+setInterval(() => {
+  const targetUrl = process.env.PING_URL || process.env.SERVER_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || 5000}`;
+  const healthEndpoint = `${targetUrl.replace(/\/$/, '')}/api/health`;
+
+  if (typeof fetch !== 'undefined') {
+    fetch(healthEndpoint)
+      .then(res => console.log(`[Keep-alive] 12-min health ping to ${healthEndpoint} OK (${res.status})`))
+      .catch(err => console.error(`[Keep-alive] 12-min health ping error:`, err.message));
+  } else {
+    require('http').get(healthEndpoint, (res) => {
+      console.log(`[Keep-alive] 12-min health ping via HTTP OK (${res.statusCode})`);
+    }).on('error', (err) => console.error(`[Keep-alive] 12-min health ping error:`, err.message));
+  }
+}, TWELVE_MINUTES);
 
 // ─── Global error handler ──────────────────────────────────
 app.use((err, req, res, next) => {
