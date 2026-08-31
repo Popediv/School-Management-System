@@ -7,6 +7,28 @@ const termRegexes = {
 };
 
 /**
+ * Smart Spacing Sanitizer: Fixes concatenated words (e.g., "DefinitionofChemistry" -> "Definition of Chemistry")
+ */
+function sanitizeSpacing(text) {
+  if (!text || typeof text !== 'string') return '';
+
+  return text
+    // Remove leading hyphens/bullets from headers
+    .replace(/^[\s\-–—]+/g, '')
+    // Add space between lowercase and uppercase (CamelCase concatenation)
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    // Add space between uppercase sequences and mixed case
+    .replace(/([A-Z]{2,})([A-Z][a-z])/g, '$1 $2')
+    // Add space after punctuation attached to words (e.g. "matter.Composition" -> "matter. Composition")
+    .replace(/([a-zA-Z0-9\)])([.,;:!?])([a-zA-Z])/g, '$1$2 $3')
+    // Convert square/box glyphs to clean bullet points
+    .replace(/[□■●]/g, '• ')
+    // Normalize spaces and tabs
+    .replace(/[ \t]+/g, ' ')
+    .trim();
+}
+
+/**
  * Universal PDF Text Reader supporting pdf-parse v1, v2, and raw buffer parsing fallback
  */
 async function readPdfText(pdfPath) {
@@ -17,7 +39,7 @@ async function readPdfText(pdfPath) {
   const dataBuffer = fs.readFileSync(pdfPath);
   let extractedText = '';
 
-  // 1. Try standard / v2 pdf-parse module
+  // 1. Try standard / v2 pdf-parse module with explicit itemJoiner spacing
   try {
     const pdfParseModule = require('pdf-parse');
     if (typeof pdfParseModule === 'function') {
@@ -28,7 +50,13 @@ async function readPdfText(pdfPath) {
     } else if (pdfParseModule.PDFParse) {
       const parser = new pdfParseModule.PDFParse({ data: new Uint8Array(dataBuffer) });
       if (typeof parser.getText === 'function') {
-        const res = await parser.getText();
+        // Explicitly instruct pdf-parse v2 to join text items with spaces
+        const res = await parser.getText({
+          itemJoiner: ' ',
+          cellSeparator: ' ',
+          lineEnforce: true,
+          lineThreshold: 2
+        });
         extractedText = typeof res === 'string' ? res : (res?.text || '');
       }
     }
@@ -50,14 +78,14 @@ async function readPdfText(pdfPath) {
         }
       }
       if (textBlocks.length > 5) {
-        extractedText = textBlocks.join('\n');
+        extractedText = textBlocks.join(' ');
       }
     } catch (rawErr) {
       console.error('Raw binary reader notice:', rawErr.message);
     }
   }
 
-  return extractedText || '';
+  return sanitizeSpacing(extractedText);
 }
 
 /**
@@ -93,16 +121,16 @@ function parseWeeksFromText(termText) {
       let lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
       if (lines.length === 0) continue;
 
-      let topic = lines[0].replace(/^[:\-\s\.]+/g, '').trim();
+      let topic = sanitizeSpacing(lines[0].replace(/^[:\-\s\.]+/g, ''));
       let objectives = '';
       let notesText = '';
 
       const objIndex = lines.findIndex(l => /objective/i.test(l));
       if (objIndex !== -1) {
-        objectives = lines.slice(objIndex + 1, objIndex + 4).join('\n');
-        notesText = lines.slice(objIndex + 4).join('\n');
+        objectives = lines.slice(objIndex + 1, objIndex + 4).map(sanitizeSpacing).join('\n');
+        notesText = lines.slice(objIndex + 4).map(sanitizeSpacing).join('\n');
       } else {
-        notesText = lines.slice(1).join('\n');
+        notesText = lines.slice(1).map(sanitizeSpacing).join('\n');
       }
 
       if (topic.length > 150) {
@@ -148,8 +176,8 @@ function parseWeeksFromText(termText) {
         let rawBlock = termText.substring(current.index, end).trim();
         let lines = rawBlock.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
-        let topic = current.rawTopic.replace(/^[:\-\s\.]+/g, '').trim();
-        let notesText = lines.slice(1).join('\n');
+        let topic = sanitizeSpacing(current.rawTopic.replace(/^[:\-\s\.]+/g, ''));
+        let notesText = lines.slice(1).map(sanitizeSpacing).join('\n');
 
         if (topic.length > 150) {
           topic = topic.substring(0, 147) + '...';
@@ -174,7 +202,7 @@ function parseWeeksFromText(termText) {
       if (tableMatch) {
         const wkNum = parseInt(tableMatch[1]);
         if (wkNum >= 1 && wkNum <= 50) {
-          let parts = tableMatch[2].split(/[\|\t]/).map(p => p.trim()).filter(Boolean);
+          let parts = tableMatch[2].split(/[\|\t]/).map(p => sanitizeSpacing(p)).filter(Boolean);
           schemes.push({
             week: wkNum,
             topic: parts[0] || `Topic ${wkNum}`,
@@ -200,7 +228,7 @@ function parseWeeksFromText(termText) {
     let weekNum = 1;
     for (const line of rawLines) {
       if (weekNum > 36) break;
-      let cleanTopic = line.replace(/^[\d\.\:\-\s\)\(]+/g, '').trim();
+      let cleanTopic = sanitizeSpacing(line.replace(/^[\d\.\:\-\s\)\(]+/g, ''));
       if (cleanTopic.length > 150) cleanTopic = cleanTopic.substring(0, 147) + '...';
 
       if (cleanTopic.length > 0) {
@@ -309,4 +337,4 @@ async function extractSchemeFromPdf(pdfPath, targetTerm) {
   return allResults.FIRST.length > 0 ? allResults.FIRST : (allResults.SECOND.length > 0 ? allResults.SECOND : allResults.THIRD);
 }
 
-module.exports = { extractSchemeFromPdf, extractAllSchemesFromPdf, readPdfText };
+module.exports = { extractSchemeFromPdf, extractAllSchemesFromPdf, readPdfText, sanitizeSpacing };

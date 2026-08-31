@@ -229,20 +229,10 @@ export default function SchemesPage() {
               </div>
             </div>
 
-            {/* Term Navigation, Table of Contents & Page Jump Controls */}
+            {/* Term Navigation & Direct Page Jump Controls */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <button
-                className={`btn btn-sm ${showToc ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setShowToc(!showToc)}
-                title="Toggle Table of Contents / Document Bookmarks Sidebar"
-                style={{ gap: '6px', fontSize: '0.8rem' }}
-              >
-                <Layers size={15} />
-                <span>Outline</span>
-              </button>
-
-              <span className="text-xs text-muted font-medium ml-1" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                Jump to:
+              <span className="text-xs text-muted font-medium mr-1" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <Layers size={12} /> Jump to:
               </span>
               <button
                 className="btn btn-secondary btn-sm"
@@ -343,140 +333,27 @@ export default function SchemesPage() {
             </div>
           </div>
 
-          {/* Main Viewer Body with Collapsible Table of Contents Sidebar */}
-          <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
-            {/* Native In-App Table of Contents / Bookmarks Sidebar */}
-            {showToc && (
-              <div
-                style={{
-                  width: '280px',
-                  maxWidth: '85vw',
-                  background: 'var(--bg-surface)',
-                  borderRight: '1px solid var(--border)',
-                  overflowY: 'auto',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  flexShrink: 0,
-                  zIndex: 10
-                }}
-              >
-                <div
-                  style={{
-                    padding: '12px 14px',
-                    borderBottom: '1px solid var(--border)',
-                    fontWeight: 600,
-                    fontSize: '0.88rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    background: 'var(--bg-elevated)'
-                  }}
-                >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <BookMarked size={16} className="text-primary" /> Table of Contents
-                  </span>
-                  <button
-                    onClick={() => setShowToc(false)}
-                    className="btn btn-secondary btn-icon btn-sm"
-                    style={{ padding: '2px 4px' }}
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-
-                <div style={{ padding: '10px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  {termOrder.map(termKey => {
-                    const list = groupedSchemes[termKey] || [];
-                    const termStartPage = termKey === 'FIRST' ? 1 : (termKey === 'SECOND' ? 10 : 20);
-
-                    return (
-                      <div key={termKey} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <div
-                          onClick={() => jumpToTermPage(termKey)}
-                          style={{
-                            padding: '8px 10px',
-                            background: 'rgba(99,102,241,0.1)',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '0.84rem',
-                            fontWeight: 600,
-                            color: 'var(--primary-light)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between'
-                          }}
-                        >
-                          <span>{termLabel[termKey]}</span>
-                          <span style={{ fontSize: '0.72rem', opacity: 0.8 }}>Pg {termStartPage}</span>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '6px' }}>
-                          {list.map(s => {
-                            const approxPg = Math.max(1, termStartPage + Math.floor((s.week - 1) * 0.8));
-                            return (
-                              <div
-                                key={s.id}
-                                onClick={() => jumpToPage(approxPg)}
-                                style={{
-                                  padding: '6px 8px',
-                                  borderRadius: '4px',
-                                  fontSize: '0.78rem',
-                                  cursor: 'pointer',
-                                  background: 'var(--bg-elevated)',
-                                  border: '1px solid var(--border)',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: '2px',
-                                  transition: 'all 0.15s ease'
-                                }}
-                                className="hover:border-primary"
-                              >
-                                <div style={{ fontWeight: 600, color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between' }}>
-                                  <span>Week {s.week}</span>
-                                  <span className="text-muted" style={{ fontSize: '0.7rem' }}>Pg {approxPg}</span>
-                                </div>
-                                <div className="text-muted" style={{ fontSize: '0.74rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                  {s.topic}
-                                </div>
-                              </div>
-                            );
-                          })}
-
-                          {list.length === 0 && (
-                            <div className="text-xs text-muted italic" style={{ padding: '4px 6px' }}>
-                              No topics extracted yet
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* PDF Viewport */}
-            <div style={{
-              flex: 1,
-              position: 'relative',
-              overflowY: 'auto',
-              WebkitOverflowScrolling: 'touch',
-              touchAction: 'pan-y',
-              background: '#1a1d24'
-            }}>
-              <iframe
-                key={pdfPageParam || 'pdf-viewport'}
-                src={pdfUrl + pdfPageParam}
-                title="Class Notes PDF"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  minHeight: '85vh',
-                  border: 'none',
-                  display: 'block'
-                }}
-              />
-            </div>
+          {/* Clean Full-Width PDF Viewport Container */}
+          <div style={{
+            flex: 1,
+            position: 'relative',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y',
+            background: '#1a1d24'
+          }}>
+            <iframe
+              key={pdfPageParam || 'pdf-viewport'}
+              src={pdfUrl + pdfPageParam}
+              title="Class Notes PDF"
+              style={{
+                width: '100%',
+                height: '100%',
+                minHeight: '85vh',
+                border: 'none',
+                display: 'block'
+              }}
+            />
           </div>
         </div>
       )}
