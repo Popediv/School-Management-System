@@ -9,7 +9,7 @@ const safeUnlink = (filePath) => {
   if (!filePath || typeof filePath !== 'string' || filePath.startsWith('http')) return;
   try {
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  } catch (e) {}
+  } catch (e) { }
 };
 
 // GET /api/subject-pdfs?subjectId=&classId=&term=
@@ -18,14 +18,14 @@ const getAll = async (req, res, next) => {
     const { subjectId, classId, term } = req.query;
     const where = {};
     if (subjectId) where.subjectId = subjectId;
-    if (classId)   where.classId = classId;
-    if (term)      where.term = term;
+    if (classId) where.classId = classId;
+    if (term) where.term = term;
 
     const pdfs = await prisma.subjectPdf.findMany({
       where,
       include: {
         subject: { select: { name: true, code: true, level: true, category: true } },
-        class:   { select: { name: true } },
+        class: { select: { name: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -116,10 +116,82 @@ const create = async (req, res, next) => {
       }
     }
 
+    // Automatically trigger PDF Scheme Auto-Extraction in background/after upload
+    let extractedCount = 0;
+    try {
+      const { extractAllSchemesFromPdf } = require('../../utils/pdfExtractor');
+
+      let filePathToExtract;
+      let isTempFile = false;
+
+      if (req.file.path.startsWith('http')) {
+        const tempFilename = `temp_${Date.now()}.pdf`;
+        const tempDir = path.join(__dirname, '..', '..', '..', 'uploads', 'temp');
+        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+        filePathToExtract = path.join(tempDir, tempFilename);
+
+        const response = await fetch(req.file.path);
+        if (response.ok) {
+          const buffer = await response.arrayBuffer();
+          fs.writeFileSync(filePathToExtract, Buffer.from(buffer));
+          isTempFile = true;
+        }
+      } else {
+        filePathToExtract = req.file.path;
+      }
+
+      if (filePathToExtract && fs.existsSync(filePathToExtract)) {
+        const allTermSchemes = await extractAllSchemesFromPdf(filePathToExtract);
+        const targetSession = 'GENERAL';
+
+        for (const t of ['FIRST', 'SECOND', 'THIRD']) {
+          const weeks = allTermSchemes[t] || [];
+          for (const item of weeks) {
+            await prisma.schemeOfWork.upsert({
+              where: {
+                subjectId_classId_term_session_week: {
+                  subjectId,
+                  classId,
+                  term: t,
+                  session: targetSession,
+                  week: item.week
+                }
+              },
+              update: {
+                topic: item.topic,
+                objectives: item.objectives || '',
+                notesText: item.notesText || ''
+              },
+              create: {
+                subjectId,
+                classId,
+                term: t,
+                session: targetSession,
+                week: item.week,
+                topic: item.topic,
+                objectives: item.objectives || '',
+                notesText: item.notesText || ''
+              }
+            });
+            extractedCount++;
+          }
+        }
+      }
+
+      if (isTempFile && filePathToExtract) {
+        try { fs.unlinkSync(filePathToExtract); } catch (e) { }
+      }
+    } catch (autoErr) {
+      console.error('Auto-extraction on upload notice:', autoErr.message);
+    }
+
     res.status(201).json({
-      message: termsToApply.length > 1 ? 'PDF applied to all terms successfully' : 'PDF uploaded successfully',
+      message: extractedCount > 0
+        ? `PDF uploaded and ${extractedCount} weekly topics automatically extracted into Scheme of Work!`
+        : (termsToApply.length > 1 ? 'PDF applied to all terms successfully' : 'PDF uploaded successfully'),
       pdfs: results,
       pdf: results[0],
+      autoExtractedCount: extractedCount
     });
   } catch (err) {
     if (req.file) {

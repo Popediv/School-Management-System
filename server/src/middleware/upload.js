@@ -1,6 +1,6 @@
-const multer  = require('multer');
-const path    = require('path');
-const fs      = require('fs');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const { v2: cloudinary } = require('cloudinary');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
@@ -16,7 +16,7 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const localDiskStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
-  filename:    (_req, file, cb) => {
+  filename: (_req, file, cb) => {
     const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     cb(null, `${unique}${path.extname(file.originalname)}`);
   },
@@ -32,16 +32,22 @@ const cloudinaryStorage = new CloudinaryStorage({
 
 const cloudinaryDocStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  params: {
-    folder: 'sms_documents',
-    resource_type: 'auto',
+  params: async (req, file) => {
+    const rawName = path.parse(file.originalname).name.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    return {
+      folder: 'sms_documents',
+      resource_type: 'auto',
+      public_id: `${rawName}_${Date.now()}`,
+      use_filename: true,
+      unique_filename: false,
+    };
   }
 });
 
 const fileFilter = (_req, file, cb) => {
   const allowed = /jpeg|jpg|png|webp/;
   const ok = allowed.test(path.extname(file.originalname).toLowerCase()) &&
-             allowed.test(file.mimetype);
+    allowed.test(file.mimetype);
   ok ? cb(null, true) : cb(new Error('Only JPEG/PNG/WEBP images are allowed'));
 };
 
@@ -53,9 +59,15 @@ const hasCloudinary = Boolean(
 
 const cloudinaryPdfStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  params: {
-    folder: 'sms_pdfs',
-    resource_type: 'auto',
+  params: async (req, file) => {
+    const rawName = path.parse(file.originalname).name.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    return {
+      folder: 'sms_pdfs',
+      resource_type: 'auto',
+      public_id: `${rawName}_${Date.now()}`,
+      use_filename: true,
+      unique_filename: false,
+    };
   }
 });
 
@@ -79,10 +91,10 @@ const upload = multer({
 const docFileFilter = (_req, file, cb) => {
   const allowed = /jpeg|jpg|png|webp|pdf|doc|docx|txt/;
   const ok = allowed.test(path.extname(file.originalname).toLowerCase()) ||
-             file.mimetype.includes('pdf') ||
-             file.mimetype.includes('msword') ||
-             file.mimetype.includes('officedocument') ||
-             file.mimetype.startsWith('image/');
+    file.mimetype.includes('pdf') ||
+    file.mimetype.includes('msword') ||
+    file.mimetype.includes('officedocument') ||
+    file.mimetype.startsWith('image/');
   ok ? cb(null, true) : cb(new Error('Only images, PDFs, and Word/text documents are allowed'));
 };
 
@@ -96,7 +108,7 @@ const uploadDoc = multer({
 
 const pdfFilter = (_req, file, cb) => {
   const ok = file.mimetype === 'application/pdf' ||
-             path.extname(file.originalname).toLowerCase() === '.pdf';
+    path.extname(file.originalname).toLowerCase() === '.pdf';
   ok ? cb(null, true) : cb(new Error('Only PDF files are allowed'));
 };
 

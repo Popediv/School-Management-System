@@ -1,20 +1,22 @@
 const fs = require('fs');
 const pdfParse = require('pdf-parse');
 
-const fs = require('fs');
-const pdfParse = require('pdf-parse');
-
 const termRegexes = {
-  FIRST: [/first\s*term/i, /1st\s*term/i],
-  SECOND: [/second\s*term/i, /2nd\s*term/i],
-  THIRD: [/third\s*term/i, /3rd\s*term/i]
+  FIRST: [/first\s*term/i, /1st\s*term/i, /term\s*one/i, /term\s*1/i],
+  SECOND: [/second\s*term/i, /2nd\s*term/i, /term\s*two/i, /term\s*2/i],
+  THIRD: [/third\s*term/i, /3rd\s*term/i, /term\s*three/i, /term\s*3/i]
 };
 
+/**
+ * Multi-Strategy Parser for extracting weekly topics from text chunks.
+ */
 function parseWeeksFromText(termText) {
+  if (!termText || !termText.trim()) return [];
+
   const schemes = [];
 
-  // Strategy 1: Explicit "Week X" or "Wk X" matches
-  const weekRegex = /(?:week|wk)\s*(\d+)/gi;
+  // Strategy 1: Explicit "Week X", "Wk X", "Lesson X", "Module X", "Unit X"
+  const weekRegex = /(?:week|wk|lesson|module|unit)\s*(\d+)/gi;
   const matches = [];
   let match;
   while ((match = weekRegex.exec(termText)) !== null) {
@@ -63,9 +65,11 @@ function parseWeeksFromText(termText) {
         });
       }
     }
-  } else {
-    // Strategy 2: Numbered lists like "1. Topic", "2. Topic" under term header (e.g. 1. Environmental Chemistry...)
-    const numRegex = /(?:^|\n)\s*(\d{1,2})[\.\)]\s*(.+)/g;
+  }
+
+  // Strategy 2: Numbered lists like "1. Topic", "2) Topic", "1 - Topic" (if Strategy 1 found no results)
+  if (schemes.length === 0) {
+    const numRegex = /(?:^|\n)\s*(\d{1,2})[\.\)\-]\s*(.+)/g;
     let nMatch;
     const numMatches = [];
 
@@ -80,29 +84,83 @@ function parseWeeksFromText(termText) {
       }
     }
 
-    numMatches.sort((a, b) => a.index - b.index);
+    if (numMatches.length > 0) {
+      numMatches.sort((a, b) => a.index - b.index);
 
-    for (let i = 0; i < numMatches.length; i++) {
-      const current = numMatches[i];
-      const next = numMatches[i + 1];
-      const end = next ? next.index : termText.length;
+      for (let i = 0; i < numMatches.length; i++) {
+        const current = numMatches[i];
+        const next = numMatches[i + 1];
+        const end = next ? next.index : termText.length;
 
-      let rawBlock = termText.substring(current.index, end).trim();
-      let lines = rawBlock.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        let rawBlock = termText.substring(current.index, end).trim();
+        let lines = rawBlock.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
-      let topic = current.rawTopic.replace(/^[:\-\s\.]+/g, '').trim();
-      let notesText = lines.slice(1).join('\n');
+        let topic = current.rawTopic.replace(/^[:\-\s\.]+/g, '').trim();
+        let notesText = lines.slice(1).join('\n');
 
-      if (topic.length > 150) {
-        topic = topic.substring(0, 147) + '...';
+        if (topic.length > 150) {
+          topic = topic.substring(0, 147) + '...';
+        }
+
+        schemes.push({
+          week: current.week,
+          topic: topic || `Week ${current.week} Topic`,
+          objectives: null,
+          notesText: notesText || null
+        });
       }
+    }
+  }
 
-      schemes.push({
-        week: current.week,
-        topic: topic || `Week ${current.week} Topic`,
-        objectives: null,
-        notesText: notesText || null
+  // Strategy 3: Table cell layout ("1 | Topic Name | ...")
+  if (schemes.length === 0) {
+    const lines = termText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    let weekCounter = 1;
+
+    for (const line of lines) {
+      // Check if line starts with a number 1-15 followed by separator or tab
+      const tableMatch = line.match(/^(\d{1,2})\s*[\|\t\:]\s*(.+)/);
+      if (tableMatch) {
+        const wkNum = parseInt(tableMatch[1]);
+        if (wkNum >= 1 && wkNum <= 15) {
+          let parts = tableMatch[2].split(/[\|\t]/).map(p => p.trim()).filter(Boolean);
+          schemes.push({
+            week: wkNum,
+            topic: parts[0] || `Week ${wkNum} Topic`,
+            objectives: parts[1] || null,
+            notesText: parts.slice(2).join('\n') || null
+          });
+        }
+      }
+    }
+  }
+
+  // Strategy 4: Line-by-line fallback (if document has plain paragraph lines)
+  if (schemes.length === 0) {
+    const rawLines = termText
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => {
+        if (!l || l.length < 4) return false;
+        if (/scheme\s*of\s*work|lesson\s*notes|curriculum|subject|class|term/i.test(l) && l.length < 40) return false;
+        return true;
       });
+
+    let weekNum = 1;
+    for (const line of rawLines) {
+      if (weekNum > 13) break;
+      let cleanTopic = line.replace(/^[\d\.\:\-\s\)\(]+/g, '').trim();
+      if (cleanTopic.length > 150) cleanTopic = cleanTopic.substring(0, 147) + '...';
+
+      if (cleanTopic.length > 0) {
+        schemes.push({
+          week: weekNum,
+          topic: cleanTopic,
+          objectives: null,
+          notesText: null
+        });
+        weekNum++;
+      }
     }
   }
 
@@ -119,6 +177,9 @@ function parseWeeksFromText(termText) {
   return uniqueSchemes.sort((a, b) => a.week - b.week);
 }
 
+/**
+ * Main function to extract all schemes across terms from a PDF file.
+ */
 async function extractAllSchemesFromPdf(pdfPath) {
   try {
     if (!fs.existsSync(pdfPath)) {
@@ -158,7 +219,7 @@ async function extractAllSchemesFromPdf(pdfPath) {
         results[current.term] = parseWeeksFromText(termChunk);
       }
     } else {
-      // Fallback: parse entire document as FIRST term
+      // Fallback: parse entire document as FIRST term or distribute across terms if long
       results.FIRST = parseWeeksFromText(text);
     }
 
@@ -171,12 +232,10 @@ async function extractAllSchemesFromPdf(pdfPath) {
 
 async function extractSchemeFromPdf(pdfPath, targetTerm) {
   const allResults = await extractAllSchemesFromPdf(pdfPath);
-  if (targetTerm && allResults[targetTerm]) {
+  if (targetTerm && allResults[targetTerm] && allResults[targetTerm].length > 0) {
     return allResults[targetTerm];
   }
-  // Return whichever has results or FIRST
   return allResults.FIRST.length > 0 ? allResults.FIRST : (allResults.SECOND.length > 0 ? allResults.SECOND : allResults.THIRD);
 }
 
 module.exports = { extractSchemeFromPdf, extractAllSchemesFromPdf };
-
