@@ -5,17 +5,18 @@ import {
   TrendingUp, ClipboardCheck, UserPlus, ArrowRight,
   Upload, CheckCircle2, AlertCircle
 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
 } from 'recharts';
 import api from '../../services/api';
+import { SESSIONS } from '../../utils/constants';
 
 /* ── Stat Card ── */
 function StatCard({ label, value, icon: Icon, color, loading }) {
   // Use strictly `??` so that if the DB returns exactly 0, it renders "0" instead of "—"
-  const displayValue = value ?? '—'; 
+  const displayValue = value ?? '—';
 
   return (
     <div className="stat-card card-hover">
@@ -70,11 +71,40 @@ function SchoolSettingsCard() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef();
   const [uploading, setUploading] = useState(false);
+  const [savingConfig, setSavingConfig] = useState(false);
 
   const { data: settings } = useQuery({
     queryKey: ['school-settings'],
     queryFn: () => api.get('/settings').then(r => r.data)
   });
+
+  const [admissionPrefix, setAdmissionPrefix] = useState('');
+  const [admissionStartingSequence, setAdmissionStartingSequence] = useState(1);
+  const [currentSession, setCurrentSession] = useState('2025/2026');
+  const [currentTerm, setCurrentTerm] = useState('FIRST');
+
+  // Sync state with settings
+  React.useEffect(() => {
+    if (settings) {
+      if (settings.admissionPrefix) setAdmissionPrefix(settings.admissionPrefix);
+      if (settings.admissionStartingSequence) setAdmissionStartingSequence(settings.admissionStartingSequence);
+      if (settings.currentSession) setCurrentSession(settings.currentSession);
+      if (settings.currentTerm) setCurrentTerm(settings.currentTerm);
+    }
+  }, [settings]);
+
+  const handleSaveConfig = async () => {
+    setSavingConfig(true);
+    try {
+      await api.post('/settings', { admissionPrefix, admissionStartingSequence, currentSession, currentTerm });
+      toast.success('Configuration saved!');
+      queryClient.invalidateQueries({ queryKey: ['school-settings'] });
+    } catch (err) {
+      toast.error('Failed to save settings');
+    } finally {
+      setSavingConfig(false);
+    }
+  };
 
   const handleLogoUpload = async (e) => {
     const file = e.target.files[0];
@@ -118,16 +148,16 @@ function SchoolSettingsCard() {
           )}
         </div>
 
-        <button 
-          className="btn btn-secondary btn-sm" 
+        <button
+          className="btn btn-secondary btn-sm"
           onClick={() => fileInputRef.current.click()}
           disabled={uploading}
         >
           <Upload size={14} /> {uploading ? 'Uploading...' : 'Upload Logo'}
         </button>
-        <input 
-          ref={fileInputRef} type="file" accept="image/*" 
-          style={{ display: 'none' }} onChange={handleLogoUpload} 
+        <input
+          ref={fileInputRef} type="file" accept="image/*"
+          style={{ display: 'none' }} onChange={handleLogoUpload}
         />
       </div>
 
@@ -138,6 +168,43 @@ function SchoolSettingsCard() {
         </div>
         <div className="text-sm font-bold mt-1" style={{ textTransform: 'uppercase', color: 'var(--primary)' }}>
           {settings?.schoolName || 'Not Set'}
+        </div>
+      </div>
+
+      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginTop: 16 }}>
+        <h4 style={{ marginBottom: 12, fontSize: '0.9rem' }}>Global Academic Calendar</h4>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: '0.75rem' }}>Active Session</label>
+            <select className="form-select" style={{ padding: '6px 12px', fontSize: '0.85rem' }} value={currentSession} onChange={e => setCurrentSession(e.target.value)}>
+              {SESSIONS.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: '0.75rem' }}>Active Term</label>
+            <select className="form-select" style={{ padding: '6px 12px', fontSize: '0.85rem' }} value={currentTerm} onChange={e => setCurrentTerm(e.target.value)}>
+              <option value="FIRST">First Term</option>
+              <option value="SECOND">Second Term</option>
+              <option value="THIRD">Third Term</option>
+            </select>
+          </div>
+        </div>
+
+        <h4 style={{ marginBottom: 12, fontSize: '0.9rem' }}>Admission Number Configuration</h4>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: '0.75rem' }}>Prefix</label>
+            <input type="text" className="form-input" style={{ padding: '6px 12px', fontSize: '0.85rem' }} value={admissionPrefix} onChange={e => setAdmissionPrefix(e.target.value)} placeholder="e.g. PCI-2026-" />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: '0.75rem' }}>Starting Number</label>
+            <input type="number" min="1" className="form-input" style={{ padding: '6px 12px', fontSize: '0.85rem' }} value={admissionStartingSequence} onChange={e => setAdmissionStartingSequence(e.target.value)} placeholder="e.g. 1" />
+          </div>
+          <button className="btn btn-primary btn-sm mt-2" onClick={handleSaveConfig} disabled={savingConfig}>
+            {savingConfig ? 'Saving...' : 'Save Configuration'}
+          </button>
         </div>
       </div>
     </div>
@@ -179,12 +246,12 @@ export default function AdminDashboard() {
 
       {/* Stats Grid */}
       <div className="grid-stat mb-6">
-        <StatCard label="Total Students"   value={stats?.students}        icon={GraduationCap} color="indigo" loading={isLoading} />
-        <StatCard label="Teaching Staff"   value={stats?.teachers}        icon={UserCog}        color="cyan"   loading={isLoading} />
-        <StatCard label="Active Classes"   value={stats?.classes}         icon={School}         color="amber"  loading={isLoading} />
-        <StatCard label="Attendance Rate"  value={stats?.attendanceRate !== undefined ? `${stats.attendanceRate}%` : undefined} icon={ClipboardCheck} color="green" loading={isLoading} />
+        <StatCard label="Total Students" value={stats?.students} icon={GraduationCap} color="indigo" loading={isLoading} />
+        <StatCard label="Teaching Staff" value={stats?.teachers} icon={UserCog} color="cyan" loading={isLoading} />
+        <StatCard label="Active Classes" value={stats?.classes} icon={School} color="amber" loading={isLoading} />
+        <StatCard label="Attendance Rate" value={stats?.attendanceRate !== undefined ? `${stats.attendanceRate}%` : undefined} icon={ClipboardCheck} color="green" loading={isLoading} />
         <StatCard label="Outstanding Fees" value={stats?.outstandingFees !== undefined ? `₦${stats.outstandingFees.toLocaleString()}` : undefined} icon={CreditCard} color="red" loading={isLoading} />
-        <StatCard label="New This Term"    value={stats?.newThisTerm}     icon={TrendingUp}     color="indigo" loading={isLoading} />
+        <StatCard label="New This Term" value={stats?.newThisTerm} icon={TrendingUp} color="indigo" loading={isLoading} />
       </div>
 
       {/* Charts + Quick Actions */}
@@ -199,8 +266,8 @@ export default function AdminDashboard() {
               <AreaChart data={stats.enrollmentChart}>
                 <defs>
                   <linearGradient id="gradStudents" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="var(--primary)"  stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="var(--primary)"  stopOpacity={0}/>
+                    <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
@@ -223,24 +290,24 @@ export default function AdminDashboard() {
         <div>
           <h3 style={{ marginBottom: 16 }}>Quick Actions</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <QuickAction label="Register New Student" to="/students/register"  icon={UserPlus}       desc="Add a new student and auto-generate admission number" />
-            <QuickAction label="Mark Attendance"      to="/attendance/mark"    icon={ClipboardCheck} desc="Record today's attendance for a class" />
-            <QuickAction label="Upload Results"       to="/results/upload"     icon={TrendingUp}     desc="Enter CA and exam scores for a subject" />
-            <QuickAction label="Generate ID Cards"    to="/idcards"            icon={CreditCard}     desc="Print student ID cards with QR code" />
+            <QuickAction label="Register New Student" to="/students/register" icon={UserPlus} desc="Add a new student and auto-generate admission number" />
+            <QuickAction label="Mark Attendance" to="/attendance/mark" icon={ClipboardCheck} desc="Record today's attendance for a class" />
+            <QuickAction label="Upload Results" to="/results/upload" icon={TrendingUp} desc="Enter CA and exam scores for a subject" />
+            <QuickAction label="Generate ID Cards" to="/idcards" icon={CreditCard} desc="Print student ID cards with QR code" />
           </div>
         </div>
       </div>
 
       {/* Bottom Grid: Recent Students & Settings */}
       <div className="grid-2-col" style={{ display: 'grid', gridTemplateColumns: '2fr 1.1fr', gap: 24, alignItems: 'start' }}>
-        
+
         {/* Recent Students Table */}
         <div className="card" style={{ margin: 0 }}>
           <div className="flex items-center justify-between mb-4">
             <h3>Recently Registered Students</h3>
             <Link to="/students" className="btn btn-secondary btn-sm">View All</Link>
           </div>
-          
+
           <div className="table-wrapper">
             <table>
               <thead>

@@ -266,6 +266,7 @@ function LetterPreview({ letter, schoolName = 'PATIMO COLLEGE', forwardRef }) {
 export default function BillLetterPage() {
     const qc = useQueryClient();
     const printRef = useRef(null);
+    const { currentSession, currentTerm } = useSettings();
 
     // Tab: 'single' | 'bulk' | 'history'
     const [mode, setMode] = useState('single');
@@ -276,8 +277,8 @@ export default function BillLetterPage() {
         studentName: '',
         classId: '',
         className: '',
-        term: 'FIRST',
-        session: CURRENT_SESSION,
+        term: currentTerm,
+        session: currentSession,
         notes: '',
         studentId: '',
     });
@@ -294,13 +295,21 @@ export default function BillLetterPage() {
 
     // Bulk mode state
     const [bulkClassId, setBulkClassId] = useState('');
-    const [bulkTerm, setBulkTerm] = useState('FIRST');
-    const [bulkSession, setBulkSession] = useState(CURRENT_SESSION);
+    const [bulkTerm, setBulkTerm] = useState(currentTerm);
+    const [bulkSession, setBulkSession] = useState(currentSession);
     const [bulkNotes, setBulkNotes] = useState('');
     const [bulkItems, setBulkItems] = useState([]);
     const [bulkIncludeBooks, setBulkIncludeBooks] = useState(false);
     const [bulkBooksAmount, setBulkBooksAmount] = useState('');
     const [bulkResult, setBulkResult] = useState(null);
+
+    useEffect(() => {
+        if (currentSession || currentTerm) {
+            setForm(f => ({ ...f, session: currentSession, term: currentTerm }));
+            setBulkSession(currentSession);
+            setBulkTerm(currentTerm);
+        }
+    }, [currentSession, currentTerm]);
 
     // Queries
     const { data: classes = [] } = useQuery({

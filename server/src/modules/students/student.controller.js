@@ -1,6 +1,9 @@
-const bcrypt  = require('bcryptjs');
-const prisma  = require('../../config/db');
+const bcrypt = require('bcryptjs');
+const prisma = require('../../config/db');
 const { generateAdmissionNo, generateMoodleUsername, generateMoodlePassword } = require('../../utils/generators');
+const archiver = require('archiver');
+const fs = require('fs');
+const path = require('path');
 
 // GET /api/students
 const getAll = async (req, res, next) => {
@@ -14,9 +17,10 @@ const getAll = async (req, res, next) => {
       ...(classId && { currentClassId: classId }),
       ...(search && {
         OR: [
-          { firstName:   { contains: search, mode: 'insensitive' } },
-          { lastName:    { contains: search, mode: 'insensitive' } },
+          { firstName: { contains: search, mode: 'insensitive' } },
+          { lastName: { contains: search, mode: 'insensitive' } },
           { admissionNo: { contains: search, mode: 'insensitive' } },
+          { currentClass: { name: { contains: search, mode: 'insensitive' } } },
         ],
       }),
     };
@@ -76,11 +80,11 @@ const create = async (req, res, next) => {
       return res.status(400).json({ message: 'Missing required student fields' });
 
     // Generate permanent identifiers
-    const admissionNo      = await generateAdmissionNo(prisma);
-    const moodleUsername   = generateMoodleUsername(admissionNo);
-    const moodlePassword   = generateMoodlePassword(lastName, dateOfBirth);
-    const defaultEmail     = `${moodleUsername}@patimo.edu`;
-    const defaultPassword  = await bcrypt.hash(moodlePassword, 12);
+    const admissionNo = await generateAdmissionNo(prisma);
+    const moodleUsername = generateMoodleUsername(admissionNo);
+    const moodlePassword = generateMoodlePassword(lastName);
+    const defaultEmail = `${admissionNo.toLowerCase()}@gmail.com`;
+    const defaultPassword = await bcrypt.hash(moodlePassword, 12);
 
     // Photo path (handles both local filename and Cloudinary URL)
     const photo = req.file ? (req.file.path.startsWith('http') ? req.file.path : req.file.filename) : null;
@@ -97,7 +101,7 @@ const create = async (req, res, next) => {
         let parentUser = await tx.user.findFirst({ where: { name: parentName, role: 'PARENT' } });
         if (!parentUser) {
           const parentEmail2 = parentEmail || `parent.${Date.now()}@patimo.edu`;
-          const parentPwd    = await bcrypt.hash('Parent@123', 12);
+          const parentPwd = await bcrypt.hash('Parent@123', 12);
           parentUser = await tx.user.create({
             data: { name: parentName, email: parentEmail2, password: parentPwd, role: 'PARENT' },
           });
@@ -152,8 +156,8 @@ const update = async (req, res, next) => {
   try {
     const { id } = req.params;
     const allowed = [
-      'firstName','lastName','otherNames','dateOfBirth','gender',
-      'stateOfOrigin','lga','religion','bloodGroup','status','previousSchool',
+      'firstName', 'lastName', 'otherNames', 'dateOfBirth', 'gender',
+      'stateOfOrigin', 'lga', 'religion', 'bloodGroup', 'status', 'previousSchool',
     ];
     const data = {};
     allowed.forEach(k => { if (req.body[k] !== undefined) data[k] = req.body[k]; });
@@ -171,7 +175,7 @@ const remove = async (req, res, next) => {
   try {
     await prisma.student.update({
       where: { id: req.params.id },
-      data:  { status: 'WITHDRAWN', user: { update: { isActive: false } } },
+      data: { status: 'WITHDRAWN', user: { update: { isActive: false } } },
     });
     res.json({ message: 'Student withdrawn successfully' });
   } catch (err) { next(err); }
@@ -189,12 +193,12 @@ const promote = async (req, res, next) => {
       // Update current class — admission number NEVER changes
       const updated = await tx.student.update({
         where: { id },
-        data:  { currentClassId: newClassId, session },
+        data: { currentClassId: newClassId, session },
       });
 
       // Add enrollment record for history
       await tx.enrollment.upsert({
-        where:  { studentId_session: { studentId: id, session } },
+        where: { studentId_session: { studentId: id, session } },
         update: { classId: newClassId },
         create: { studentId: id, classId: newClassId, session },
       });
@@ -254,7 +258,7 @@ const exportMoodle = async (req, res, next) => {
   try {
     const students = await prisma.student.findMany({
       where: { status: 'ACTIVE' },
-      include: { 
+      include: {
         user: { select: { email: true } },
         currentClass: { select: { name: true } }
       },
@@ -283,4 +287,70 @@ const exportMoodle = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { getAll, getById, create, update, remove, promote, bulkPromote, exportMoodle };
+// GET /api/students/moodle-import
+const exportCustomMoodle = async (req, res, next) => {
+  try {
+    const students = await prisma.student.findMany({
+      where: { status: 'ACTIVE' },
+      include: {
+        user: { select: { email: true } },
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const headers = ['username', 'firstname', 'lastname', 'email', 'password'];
+    const rows = students.map(s => {
+      // Escape fields that might contain commas
+      const escape = (str) => `"${(str || '').replace(/"/g, '""')}"`;
+      return [
+        escape(s.moodleUsername),
+        escape(s.firstName),
+        escape(s.lastName),
+        // Use default format if no email exists on user
+        escape(s.user?.email || `${s.admissionNo.toLowerCase()}@gmail.com`),
+        escape(s.moodlePassword || s.lastName.trim().toLowerCase()),
+      ].join(',');
+    });
+
+    const csvData = [headers.join(','), ...rows].join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="moodle_users_import.csv"');
+    res.status(200).send(csvData);
+  } catch (err) { next(err); }
+};
+
+// GET /api/students/pictures-zip
+const exportPicturesZip = async (req, res, next) => {
+  try {
+    const students = await prisma.student.findMany({
+      where: { status: 'ACTIVE', photo: { not: null } }
+    });
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', 'attachment; filename="student_pictures.zip"');
+
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    archive.pipe(res);
+
+    archive.on('error', (err) => {
+      throw err;
+    });
+
+    for (const student of students) {
+      if (!student.photo.startsWith('http')) {
+        const photoFilename = path.basename(student.photo);
+        const photoPath = path.join(__dirname, '..', '..', '..', '..', 'uploads', photoFilename);
+        if (fs.existsSync(photoPath)) {
+          const ext = path.extname(photoFilename) || '.jpg';
+          const filename = `${student.admissionNo}${ext}`;
+          archive.append(fs.createReadStream(photoPath), { name: filename });
+        }
+      }
+    }
+
+    archive.finalize();
+  } catch (err) { next(err); }
+};
+
+module.exports = { getAll, getById, create, update, remove, promote, bulkPromote, exportMoodle, exportCustomMoodle, exportPicturesZip };

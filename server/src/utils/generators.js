@@ -1,22 +1,31 @@
+const { getStoredSettings } = require('../modules/settings/settings.controller');
+
 /**
  * Generates admission number: GFM-2026-0001
  * Never changes after creation.
  */
 async function generateAdmissionNo(prisma) {
-  const year   = new Date().getFullYear();
-  const prefix = `${process.env.SCHOOL_CODE || 'PCI'}-${year}`;
+  const settings = getStoredSettings();
+  const year = new Date().getFullYear();
+  const prefix = settings.admissionPrefix || `${process.env.SCHOOL_CODE || 'PCI'}-${year}-`;
+  const startingSeq = parseInt(settings.admissionStartingSequence, 10) || 1;
 
   const last = await prisma.student.findFirst({
-    where:   { admissionNo: { startsWith: prefix } },
+    where: { admissionNo: { startsWith: prefix } },
     orderBy: { admissionNo: 'desc' },
-    select:  { admissionNo: true },
+    select: { admissionNo: true },
   });
 
-  const nextNum = last
-    ? parseInt(last.admissionNo.split('-')[2], 10) + 1
-    : 1;
+  let nextNum = startingSeq;
+  if (last) {
+    const lastNumStr = last.admissionNo.replace(prefix, '');
+    const lastNum = parseInt(lastNumStr, 10);
+    if (!isNaN(lastNum) && lastNum >= startingSeq) {
+      nextNum = lastNum + 1;
+    }
+  }
 
-  return `${prefix}-${String(nextNum).padStart(4, '0')}`;
+  return `${prefix}${String(nextNum).padStart(4, '0')}`;
 }
 
 /**
@@ -30,12 +39,10 @@ function generateMoodleUsername(admissionNo) {
 
 /**
  * Generates a simple default Moodle password.
- * e.g. surname "okonkwo" + birth year "2012" → Okonkwo2012
+ * e.g. surname "okonkwo" in lowercase
  */
-function generateMoodlePassword(lastName, dateOfBirth) {
-  const year = new Date(dateOfBirth).getFullYear();
-  const name = lastName.charAt(0).toUpperCase() + lastName.slice(1).toLowerCase();
-  return `${name}${year}`;
+function generateMoodlePassword(lastName) {
+  return lastName.trim().toLowerCase();
 }
 
 /**

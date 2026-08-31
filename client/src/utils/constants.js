@@ -1,4 +1,5 @@
 export const CURRENT_SESSION = '2025/2026';
+export const CURRENT_TERM = 'FIRST';
 
 export const generateSessions = (startYear = 2023, numYears = 20) => {
   return Array.from({ length: numYears }, (_, i) => {
@@ -8,3 +9,4 @@ export const generateSessions = (startYear = 2023, numYears = 20) => {
 };
 
 export const SESSIONS = generateSessions();
+

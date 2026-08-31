@@ -104,6 +104,10 @@
     createdAt      DateTime      @default(now())
     updatedAt      DateTime      @updatedAt
 
+    @@index([currentClassId])
+    @@index([status])
+    @@index([lastName, firstName])
+    @@index([createdAt])
     @@map("students")
   }
 
@@ -232,6 +236,9 @@
     student   Student          @relation(fields: [studentId], references: [id])
     class     Class            @relation(fields: [classId],   references: [id])
 
+    @@index([studentId])
+    @@index([classId])
+    @@index([date])
     @@unique([studentId, classId, date])
     @@map("attendance")
   }
@@ -258,6 +265,9 @@
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
+    @@index([studentId])
+    @@index([subjectId])
+    @@index([session, term])
     @@unique([studentId, subjectId, session, term], name: "result_unique")
     @@map("results")
   }
@@ -283,6 +293,9 @@
 
     createdAt     DateTime      @default(now())
 
+    @@index([studentId])
+    @@index([status])
+    @@index([createdAt])
     @@map("payments")
   }
 

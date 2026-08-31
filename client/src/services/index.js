@@ -51,6 +51,8 @@ export const resultService = {
 
 export const feeService = {
   getStudentFees: (id) => api.get(`/fees/student/${id}`),
+  getLedger: (id) => api.get(`/fees/student/${id}/ledger`),
+  getGlobalLedger: (params) => api.get('/fees/ledger/global', { params }),
   createInvoice: (data) => api.post('/fees/invoice', data),
   recordPayment: (data) => api.post('/fees/pay', data),
   getReceipt: (id) => api.get(`/fees/receipt/${id}`),
@@ -110,5 +112,11 @@ export const subjectPdfService = {
     const token = localStorage.getItem('sms_token');
     return `/api/subject-pdfs/${id}/view?token=${token}#toolbar=0&navpanes=0&scrollbar=0`;
   },
+};
+
+export const settingService = {
+  getSettings: () => api.get('/settings'),
+  updateSettings: (data) => api.post('/settings', data),
+  uploadLogo: (data) => api.post('/settings/logo', data, { headers: { 'Content-Type': 'multipart/form-data' } })
 };
 

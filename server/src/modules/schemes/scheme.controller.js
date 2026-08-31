@@ -6,7 +6,7 @@ const safeUnlink = (filePath) => {
   if (!filePath || typeof filePath !== 'string' || filePath.startsWith('http')) return;
   try {
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  } catch (e) {}
+  } catch (e) { }
 };
 
 // GET /api/schemes
@@ -18,6 +18,7 @@ const getAll = async (req, res, next) => {
     if (subjectId) where.subjectId = subjectId;
     if (classId) where.classId = classId;
     if (term) where.term = term;
+    // session is optional for scheme of work search so curriculum is reusable across academic years
     if (session) where.session = session;
 
     // Check if the current user has student or parent roles to restrict notes access
@@ -120,10 +121,11 @@ const create = async (req, res, next) => {
   try {
     const { subjectId, classId, term, session, week, topic, objectives, notesText } = req.body;
 
-    if (!subjectId || !classId || !term || !session || !week || !topic) {
+    const targetSession = session || 'GENERAL';
+    if (!subjectId || !classId || !term || !week || !topic) {
       // Clean up uploaded file if validation fails
       if (req.file) safeUnlink(req.file.path);
-      return res.status(400).json({ message: 'subjectId, classId, term, session, week, and topic are required' });
+      return res.status(400).json({ message: 'subjectId, classId, term, week, and topic are required' });
     }
 
     const weekNum = parseInt(week);
@@ -141,7 +143,7 @@ const create = async (req, res, next) => {
           subjectId,
           classId,
           term,
-          session,
+          session: targetSession,
           week: weekNum,
         },
       },
@@ -157,7 +159,7 @@ const create = async (req, res, next) => {
         subjectId,
         classId,
         term,
-        session,
+        session: targetSession,
         week: weekNum,
         topic,
         objectives,
@@ -272,23 +274,19 @@ const remove = async (req, res, next) => {
 const extractFromPdf = async (req, res, next) => {
   try {
     const { subjectId, classId, term, session } = req.body;
+    const targetSession = session || 'GENERAL';
 
-    if (!subjectId || !classId || !term || !session) {
-      return res.status(400).json({ message: 'subjectId, classId, term, and session are required' });
+    if (!subjectId || !classId) {
+      return res.status(400).json({ message: 'subjectId and classId are required' });
     }
 
-    const { extractSchemeFromPdf } = require('../../utils/pdfExtractor');
+    const { extractSchemeFromPdf, extractAllSchemesFromPdf } = require('../../utils/pdfExtractor');
 
-    // Try finding term-specific PDF, fall back to any PDF for subject+class
-    let pdf = await prisma.subjectPdf.findUnique({
-      where: { subjectId_classId_term: { subjectId, classId, term } }
+    // Find any PDF for subject+class
+    let pdf = await prisma.subjectPdf.findFirst({
+      where: { subjectId, classId },
+      orderBy: { createdAt: 'desc' }
     });
-
-    if (!pdf) {
-      pdf = await prisma.subjectPdf.findFirst({
-        where: { subjectId, classId }
-      });
-    }
 
     if (!pdf) {
       return res.status(404).json({ message: 'No Class Notes PDF found for this subject and class.' });
@@ -304,7 +302,7 @@ const extractFromPdf = async (req, res, next) => {
         fs.mkdirSync(tempDir, { recursive: true });
       }
       filePath = path.join(tempDir, tempFilename);
-      
+
       const response = await fetch(pdf.pdfFile);
       if (!response.ok) {
         throw new Error(`Failed to download PDF from Cloudinary: ${response.statusText}`);
@@ -316,54 +314,97 @@ const extractFromPdf = async (req, res, next) => {
       filePath = path.join(__dirname, '..', '..', '..', 'uploads', 'pdfs', pdf.pdfFile);
     }
 
-    const extractedWeeks = await extractSchemeFromPdf(filePath, term);
+    let totalExtracted = 0;
+    const createdOrUpdated = [];
+
+    if (!term || term === 'ALL') {
+      const allTermSchemes = await extractAllSchemesFromPdf(filePath);
+
+      for (const t of ['FIRST', 'SECOND', 'THIRD']) {
+        const weeks = allTermSchemes[t] || [];
+        for (const item of weeks) {
+          const record = await prisma.schemeOfWork.upsert({
+            where: {
+              subjectId_classId_term_session_week: {
+                subjectId,
+                classId,
+                term: t,
+                session: targetSession,
+                week: item.week
+              }
+            },
+            update: {
+              topic: item.topic,
+              objectives: item.objectives || '',
+              notesText: item.notesText || ''
+            },
+            create: {
+              subjectId,
+              classId,
+              term: t,
+              session: targetSession,
+              week: item.week,
+              topic: item.topic,
+              objectives: item.objectives || '',
+              notesText: item.notesText || ''
+            }
+          });
+          createdOrUpdated.push(record);
+        }
+      }
+      totalExtracted = createdOrUpdated.length;
+    } else {
+      let extractedWeeks = await extractSchemeFromPdf(filePath, term);
+      if (!extractedWeeks || extractedWeeks.length === 0) {
+        // Fallback: extract all and take term
+        const allTermSchemes = await extractAllSchemesFromPdf(filePath);
+        extractedWeeks = allTermSchemes[term] || [];
+      }
+
+      for (const item of extractedWeeks) {
+        const record = await prisma.schemeOfWork.upsert({
+          where: {
+            subjectId_classId_term_session_week: {
+              subjectId,
+              classId,
+              term,
+              session: targetSession,
+              week: item.week
+            }
+          },
+          update: {
+            topic: item.topic,
+            objectives: item.objectives || '',
+            notesText: item.notesText || ''
+          },
+          create: {
+            subjectId,
+            classId,
+            term,
+            session: targetSession,
+            week: item.week,
+            topic: item.topic,
+            objectives: item.objectives || '',
+            notesText: item.notesText || ''
+          }
+        });
+        createdOrUpdated.push(record);
+      }
+      totalExtracted = createdOrUpdated.length;
+    }
 
     if (isTempFile) {
       safeUnlink(filePath);
     }
 
-    if (!extractedWeeks || extractedWeeks.length === 0) {
+    if (totalExtracted === 0) {
       return res.status(422).json({
-        message: 'No weekly scheme structure could be extracted from this PDF text. Please ensure the PDF contains topics preceded by "Week 1", "Week 2", etc.'
+        message: 'No weekly scheme structure could be extracted from this PDF. Please ensure the PDF text contains topics or numbered lists under term headings.'
       });
-    }
-
-    // Upsert extracted weeks
-    const createdOrUpdated = [];
-    for (const item of extractedWeeks) {
-      const data = {
-        subjectId,
-        classId,
-        term,
-        session,
-        week: item.week,
-        topic: item.topic,
-        objectives: item.objectives || '',
-        notesText: item.notesText || ''
-      };
-
-      const record = await prisma.schemeOfWork.upsert({
-        where: {
-          subjectId_classId_term_session_week: {
-            subjectId,
-            classId,
-            term,
-            session,
-            week: item.week
-          }
-        },
-        update: {
-          topic: item.topic,
-          objectives: item.objectives || '',
-          notesText: item.notesText || ''
-        },
-        create: data
-      });
-      createdOrUpdated.push(record);
     }
 
     res.json({
-      message: `Successfully extracted and loaded ${createdOrUpdated.length} weeks into the Scheme of Work!`,
+      message: `Successfully extracted and loaded ${totalExtracted} weekly topics into the Scheme of Work!`,
       weeks: createdOrUpdated
     });
 

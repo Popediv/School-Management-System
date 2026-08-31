@@ -4,9 +4,9 @@ import { useForm } from 'react-hook-form';
 import { subjectService, classService, schemeService, subjectPdfService } from '../../services';
 import { toast } from 'react-toastify';
 import { SESSIONS, CURRENT_SESSION } from '../../utils/constants';
-import { 
-  ArrowLeft, Plus, Edit2, Trash2, Save, FileText, 
-  Upload, X, RefreshCw, Calendar 
+import {
+  ArrowLeft, Plus, Edit2, Trash2, Save, FileText,
+  Upload, X, RefreshCw, Calendar
 } from 'lucide-react';
 import GroupedSubjectSelect from '../../components/GroupedSubjectSelect';
 
@@ -19,7 +19,6 @@ export default function ManageSchemePage() {
     selectedSubject: '',
     selectedClass: '',
     selectedTerm: 'FIRST',
-    selectedSession: CURRENT_SESSION
   };
 
   const [subjects, setSubjects] = useState([]);
@@ -27,8 +26,7 @@ export default function ManageSchemePage() {
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState(defaults.selectedClass);
   const [selectedTerm, setSelectedTerm] = useState(defaults.selectedTerm);
-  const [selectedSession, setSelectedSession] = useState(defaults.selectedSession);
-  
+
   const [schemes, setSchemes] = useState([]);
   const [loadingList, setLoadingList] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -70,7 +68,6 @@ export default function ManageSchemePage() {
       subjectId: selectedSubject,
       classId: selectedClass,
       term: selectedTerm,
-      session: selectedSession
     })
       .then(res => {
         setSchemes(res.data.schemes || []);
@@ -100,7 +97,7 @@ export default function ManageSchemePage() {
   useEffect(() => {
     fetchSchemes();
     checkPdfStatus();
-  }, [selectedSubject, selectedClass, selectedTerm, selectedSession]);
+  }, [selectedSubject, selectedClass, selectedTerm]);
 
   const handleAutoExtract = async () => {
     if (!window.confirm('This will scan the uploaded notes PDF and automatically load weeks 1-12 topics/objectives. Any existing weeks might be updated. Proceed?')) return;
@@ -110,7 +107,6 @@ export default function ManageSchemePage() {
         subjectId: selectedSubject,
         classId: selectedClass,
         term: selectedTerm,
-        session: selectedSession
       });
       toast.success(res.data.message || 'Weeks extracted successfully!');
       fetchSchemes();
@@ -148,7 +144,7 @@ export default function ManageSchemePage() {
   // Handle delete
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this week from the scheme of work?')) return;
-    
+
     try {
       await schemeService.delete(id);
       toast.success('Scheme of work entry deleted successfully');
@@ -167,7 +163,6 @@ export default function ManageSchemePage() {
       fd.append('subjectId', selectedSubject);
       fd.append('classId', selectedClass);
       fd.append('term', selectedTerm);
-      fd.append('session', selectedSession);
       fd.append('week', data.week);
       fd.append('topic', data.topic);
       fd.append('objectives', data.objectives || '');
@@ -183,7 +178,7 @@ export default function ManageSchemePage() {
         await schemeService.create(fd);
         toast.success('Scheme of work entry added successfully');
       }
-      
+
       cancelEdit();
       fetchSchemes();
     } catch (err) {
@@ -222,7 +217,7 @@ export default function ManageSchemePage() {
 
           <div className="form-group">
             <label className="form-label">Class</label>
-            <select 
+            <select
               className="form-select"
               value={selectedClass}
               onChange={(e) => { setSelectedClass(e.target.value); cancelEdit(); }}
@@ -235,7 +230,7 @@ export default function ManageSchemePage() {
 
           <div className="form-group">
             <label className="form-label">Term</label>
-            <select 
+            <select
               className="form-select"
               value={selectedTerm}
               onChange={(e) => { setSelectedTerm(e.target.value); cancelEdit(); }}
@@ -246,23 +241,12 @@ export default function ManageSchemePage() {
             </select>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Session</label>
-            <select 
-              className="form-select"
-              value={selectedSession}
-              onChange={(e) => { setSelectedSession(e.target.value); cancelEdit(); }}
-            >
-              <option value="2025/2026">2025/2026</option>
-              <option value="2026/2027">2026/2027</option>
-            </select>
-          </div>
         </div>
       </div>
 
       {/* Auto-Extract Banner */}
       {hasPdf && (
-        <div 
+        <div
           className="card mb-6"
           style={{
             background: 'linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(139,92,246,0.06) 100%)',
@@ -306,17 +290,17 @@ export default function ManageSchemePage() {
 
       {/* Two Column Layout */}
       <div className="grid-scheme">
-        
+
         {/* Form Column */}
         <div className="card">
           <h3 className="mb-4">{editingId ? 'Edit Week Schedule' : 'Add Week Schedule'}</h3>
-          
+
           <form onSubmit={handleSubmit(onSubmit)}>
             <div className="grid-week-topic mb-4">
               <div className="form-group">
                 <label className="form-label">Week <span className="required">*</span></label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   className={`form-input ${errors.week ? 'error' : ''}`}
                   placeholder="e.g. 1"
                   min="1"
@@ -328,8 +312,8 @@ export default function ManageSchemePage() {
 
               <div className="form-group">
                 <label className="form-label">Topic / Lesson Title <span className="required">*</span></label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   className={`form-input ${errors.topic ? 'error' : ''}`}
                   placeholder="e.g., Introduction to Algebra"
                   {...register('topic', { required: 'Topic name is required' })}
@@ -340,7 +324,7 @@ export default function ManageSchemePage() {
 
             <div className="form-group mb-4">
               <label className="form-label">Objectives</label>
-              <textarea 
+              <textarea
                 className="form-textarea"
                 placeholder="Describe what the students will learn during this week..."
                 {...register('objectives')}
@@ -349,7 +333,7 @@ export default function ManageSchemePage() {
 
             <div className="form-group mb-4">
               <label className="form-label">Teaching Notes (Text)</label>
-              <textarea 
+              <textarea
                 className="form-textarea"
                 style={{ minHeight: '150px' }}
                 placeholder="Type or paste the lecture notes content here..."
@@ -360,15 +344,15 @@ export default function ManageSchemePage() {
             {/* Note document attachments upload */}
             <div className="form-group mb-6">
               <label className="form-label">Attachment (PDF/Word/Images)</label>
-              
+
               {!file && existingFileName && (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-elevated)', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
                   <span style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <FileText size={16} style={{ color: 'var(--primary-light)' }} />
                     <span className="truncate" style={{ maxWidth: '280px' }}>{existingFileName}</span>
                   </span>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     className="btn btn-danger btn-sm"
                     style={{ padding: '4px 8px' }}
                     onClick={() => setExistingFileName('')}
@@ -380,22 +364,22 @@ export default function ManageSchemePage() {
 
               {(!existingFileName || file) && (
                 <div style={{ position: 'relative' }}>
-                  <input 
-                    type="file" 
+                  <input
+                    type="file"
                     id="file-upload"
                     style={{ display: 'none' }}
                     accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.txt"
                     onChange={(e) => setFile(e.target.files[0])}
                   />
-                  <label 
+                  <label
                     htmlFor="file-upload"
                     className="form-input"
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      gap: '10px', 
-                      padding: '24px', 
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '10px',
+                      padding: '24px',
                       border: '2px dashed var(--border)',
                       background: 'rgba(255,255,255,0.01)',
                       cursor: 'pointer',
@@ -409,10 +393,10 @@ export default function ManageSchemePage() {
                       {file ? file.name : 'Upload notes document (Max 10MB)'}
                     </span>
                   </label>
-                  
+
                   {file && (
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => setFile(null)}
                       style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}
                     >
@@ -431,7 +415,7 @@ export default function ManageSchemePage() {
               )}
               <button type="submit" className="btn btn-primary" disabled={submitting}>
                 {submitting ? (
-                  <span className="animate-spin" style={{ width:16, height:16, border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'white', borderRadius:'50%', display:'inline-block' }} />
+                  <span className="animate-spin" style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block' }} />
                 ) : (
                   <><Save size={16} /> {editingId ? 'Update Entry' : 'Add Entry'}</>
                 )}
@@ -455,11 +439,11 @@ export default function ManageSchemePage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {schemes.map(sch => (
-                <div 
-                  key={sch.id} 
-                  style={{ 
-                    border: '1px solid var(--border)', 
-                    borderRadius: 'var(--radius-md)', 
+                <div
+                  key={sch.id}
+                  style={{
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-md)',
                     padding: '12px 16px',
                     background: editingId === sch.id ? 'rgba(79,70,229,0.05)' : 'var(--bg-elevated)',
                     borderColor: editingId === sch.id ? 'var(--primary)' : 'var(--border)',
@@ -478,15 +462,15 @@ export default function ManageSchemePage() {
                   </div>
 
                   <div style={{ display: 'flex', gap: '6px' }}>
-                    <button 
-                      className="btn btn-secondary btn-icon btn-sm" 
+                    <button
+                      className="btn btn-secondary btn-icon btn-sm"
                       title="Edit"
                       onClick={() => startEdit(sch)}
                     >
                       <Edit2 size={12} />
                     </button>
-                    <button 
-                      className="btn btn-danger btn-icon btn-sm" 
+                    <button
+                      className="btn btn-danger btn-icon btn-sm"
                       title="Delete"
                       onClick={() => handleDelete(sch.id)}
                     >

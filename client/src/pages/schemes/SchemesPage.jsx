@@ -1,13 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { subjectService, classService, schemeService, subjectPdfService } from '../../services';
 import { toast } from 'react-toastify';
-import { SESSIONS, CURRENT_SESSION } from '../../utils/constants';
 import {
   BookOpen, Plus, FileText, Lock, Calendar,
   ChevronDown, ChevronUp, AlertCircle, BookOpenCheck,
-  Eye, X, FileSearch, BookMarked
+  Eye, X, FileSearch, BookMarked, Download, Printer,
+  ExternalLink, Wand2, Layers
 } from 'lucide-react';
 import GroupedSubjectSelect from '../../components/GroupedSubjectSelect';
 
@@ -19,8 +19,6 @@ export default function SchemesPage() {
   const [selectedSubject, setSelectedSubject] = useState('');
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState('');
-  const [selectedTerm, setSelectedTerm] = useState('FIRST');
-  const [selectedSession, setSelectedSession] = useState(CURRENT_SESSION);
   const [schemes, setSchemes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [expandedWeeks, setExpandedWeeks] = useState({});
@@ -29,6 +27,8 @@ export default function SchemesPage() {
   const [subjectPdf, setSubjectPdf] = useState(null);
   const [showPdfViewer, setShowPdfViewer] = useState(false);
   const [pdfUrl, setPdfUrl] = useState('');
+  const [pdfPageParam, setPdfPageParam] = useState('');
+  const [extracting, setExtracting] = useState(false);
 
   const isAdmin = ['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL'].includes(user?.role);
   const isRestricted = user?.role === 'STUDENT' || user?.role === 'PARENT';
@@ -61,8 +61,6 @@ export default function SchemesPage() {
     schemeService.getAll({
       subjectId: selectedSubject,
       classId: selectedClass,
-      term: selectedTerm,
-      session: selectedSession
     })
       .then(res => {
         setSchemes(res.data.schemes || []);
@@ -84,8 +82,7 @@ export default function SchemesPage() {
     }
     subjectPdfService.getAll({
       subjectId: selectedSubject,
-      classId: selectedClass,
-      term: selectedTerm
+      classId: selectedClass
     })
       .then(res => {
         const pdfs = res.data.pdfs || [];
@@ -97,7 +94,7 @@ export default function SchemesPage() {
   useEffect(() => {
     fetchSchemes();
     fetchSubjectPdf();
-  }, [selectedSubject, selectedClass, selectedTerm, selectedSession]);
+  }, [selectedSubject, selectedClass]);
 
   const toggleWeek = (id) => {
     setExpandedWeeks(prev => ({
@@ -108,22 +105,79 @@ export default function SchemesPage() {
 
   const openPdfViewer = () => {
     if (!subjectPdf) return;
-    // If stored on Cloudinary, use the URL directly; otherwise route through backend
     const url = subjectPdf.pdfFile?.startsWith('http')
       ? subjectPdf.pdfFile
       : subjectPdfService.getViewUrl(subjectPdf.id);
     setPdfUrl(url);
+    setPdfPageParam('');
     setShowPdfViewer(true);
   };
 
   const closePdfViewer = () => {
     setShowPdfViewer(false);
     setPdfUrl('');
+    setPdfPageParam('');
   };
 
-  const termLabel = { FIRST: 'First Term', SECOND: 'Second Term', THIRD: 'Third Term' };
+  const handleDownloadPdf = () => {
+    if (!pdfUrl) return;
+    const link = document.createElement('a');
+    link.href = pdfUrl;
+    link.target = '_blank';
+    link.download = `${selectedSubjectName}_${selectedClassName}_ClassNotes.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handlePrintPdf = () => {
+    if (!pdfUrl) return;
+    const printWin = window.open(pdfUrl, '_blank');
+    if (printWin) {
+      printWin.focus();
+    }
+  };
+
+  const jumpToTermPage = (termName) => {
+    // Standard PDF fragments for term jumps: First Term (page 1), Second Term (estimated/bookmark), Third Term
+    let pageNum = 1;
+    if (termName === 'SECOND') pageNum = 12;
+    if (termName === 'THIRD') pageNum = 24;
+    setPdfPageParam(`#page=${pageNum}`);
+  };
+
+  const handleAutoExtractAll = async () => {
+    if (!selectedSubject || !selectedClass) return;
+    if (!window.confirm('Scan the uploaded Class Notes PDF to automatically extract and populate weekly topics for ALL terms? Existing entries will be updated.')) return;
+
+    setExtracting(true);
+    try {
+      const res = await schemeService.extractFromPdf({
+        subjectId: selectedSubject,
+        classId: selectedClass,
+        term: 'ALL'
+      });
+      toast.success(res.data.message || 'Schemes of work extracted successfully!');
+      fetchSchemes();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to extract schemes from PDF');
+    } finally {
+      setExtracting(false);
+    }
+  };
+
   const selectedSubjectName = subjects.find(s => s.id === selectedSubject)?.name || '';
   const selectedClassName = classes.find(c => c.id === selectedClass)?.name || '';
+
+  // Group schemes by Term
+  const termOrder = ['FIRST', 'SECOND', 'THIRD'];
+  const termLabel = { FIRST: 'First Term', SECOND: 'Second Term', THIRD: 'Third Term' };
+
+  const groupedSchemes = {
+    FIRST: schemes.filter(s => s.term === 'FIRST').sort((a, b) => a.week - b.week),
+    SECOND: schemes.filter(s => s.term === 'SECOND').sort((a, b) => a.week - b.week),
+    THIRD: schemes.filter(s => s.term === 'THIRD').sort((a, b) => a.week - b.week),
+  };
 
   return (
     <div className="animate-fade-in">
@@ -134,118 +188,150 @@ export default function SchemesPage() {
             position: 'fixed',
             inset: 0,
             zIndex: 1000,
-            background: 'rgba(0,0,0,0.85)',
+            background: 'rgba(0,0,0,0.9)',
             display: 'flex',
             flexDirection: 'column',
             backdropFilter: 'blur(6px)',
           }}
         >
-          {/* Modal Header */}
+          {/* Modal Header Toolbar */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '14px 20px',
+            padding: '12px 18px',
             background: 'var(--bg-surface)',
             borderBottom: '1px solid var(--border)',
             flexShrink: 0,
+            gap: '12px',
+            flexWrap: 'wrap'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{ padding: '8px', background: 'rgba(99,102,241,0.15)', borderRadius: '8px', color: 'var(--primary-light)' }}>
-                <BookMarked size={18} />
+                <BookMarked size={20} />
               </div>
               <div>
-                <div className="font-semibold text-primary" style={{ fontSize: '1rem' }}>
+                <div className="font-semibold text-primary" style={{ fontSize: '0.98rem' }}>
                   {selectedSubjectName} — Class Notes
                 </div>
                 <div className="text-muted" style={{ fontSize: '0.78rem' }}>
-                  {selectedClassName} · {termLabel[selectedTerm]} · {selectedSession} · Read-only
+                  {selectedClassName} · Full Academic Year Notes
                 </div>
               </div>
             </div>
-            <button
-              onClick={closePdfViewer}
-              style={{
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border)',
-                borderRadius: '8px',
-                padding: '8px',
-                cursor: 'pointer',
-                color: 'var(--text-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '0.85rem'
-              }}
-            >
-              <X size={16} /> Close
-            </button>
+
+            {/* Term Navigation Jump Controls */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <span className="text-xs text-muted font-medium mr-1" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <Layers size={12} /> Jump to:
+              </span>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => jumpToTermPage('FIRST')}
+                style={{ fontSize: '0.78rem', padding: '4px 10px' }}
+              >
+                1st Term
+              </button>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => jumpToTermPage('SECOND')}
+                style={{ fontSize: '0.78rem', padding: '4px 10px' }}
+              >
+                2nd Term
+              </button>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => jumpToTermPage('THIRD')}
+                style={{ fontSize: '0.78rem', padding: '4px 10px' }}
+              >
+                3rd Term
+              </button>
+            </div>
+
+            {/* Download, Print & Close Actions */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={handleDownloadPdf}
+                title="Download PDF file to your device"
+                style={{ gap: '6px', fontSize: '0.82rem' }}
+              >
+                <Download size={15} />
+                <span className="hidden-mobile">Download</span>
+              </button>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={handlePrintPdf}
+                title="Print PDF document"
+                style={{ gap: '6px', fontSize: '0.82rem' }}
+              >
+                <Printer size={15} />
+                <span className="hidden-mobile">Print</span>
+              </button>
+              <a
+                href={pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-secondary btn-sm"
+                title="Open PDF directly in full browser tab for responsive scrolling"
+                style={{ gap: '6px', fontSize: '0.82rem', textDecoration: 'none' }}
+              >
+                <ExternalLink size={15} />
+                <span className="hidden-mobile">Fullscreen</span>
+              </a>
+              <button
+                onClick={closePdfViewer}
+                className="btn btn-secondary btn-icon btn-sm"
+                title="Close viewer"
+                style={{ padding: '6px' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
           </div>
 
-          {/* PDF Iframe */}
-          <div style={{ flex: 1, position: 'relative', overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' }}>
+          {/* PDF Viewport Container - Mobile Scroll Optimized */}
+          <div style={{
+            flex: 1,
+            position: 'relative',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y',
+            background: '#1a1d24'
+          }}>
             <iframe
-              src={pdfUrl + '#toolbar=0'} // Attempt to hide toolbar if supported
+              src={pdfUrl + pdfPageParam}
               title="Class Notes PDF"
               style={{
                 width: '100%',
                 height: '100%',
-                minHeight: '100vh', // Ensures it's at least scren height, letting iOS stretch it fully
+                minHeight: '85vh',
                 border: 'none',
-                display: 'block',
+                display: 'block'
               }}
             />
-            {/* Overlay to block right-click context menu on the iframe area */}
-            <div
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: '120px', // increased slightly for mobile bottom bars
-                background: 'transparent',
-                pointerEvents: 'auto', // Catch right clicks on bottom edge
-                zIndex: 10
-              }}
-              onContextMenu={e => e.preventDefault()}
-            />
-          </div>
-
-          {/* Read-only notice */}
-          <div style={{
-            padding: '8px 20px',
-            background: 'var(--bg-surface)',
-            borderTop: '1px solid var(--border)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            fontSize: '0.78rem',
-            color: 'var(--text-muted)',
-            flexShrink: 0,
-          }}>
-            <Lock size={12} />
-            <span>This document is for viewing only. Downloading or printing is not permitted.</span>
           </div>
         </div>
       )}
 
+      {/* Page Header */}
       <div className="page-header">
         <div>
           <h1 className="page-header-title">Scheme of Work</h1>
-          <p className="page-header-subtitle">Academic curriculum schedule and lesson outlines</p>
+          <p className="page-header-subtitle">Academic curriculum schedule and lesson outlines for all terms</p>
         </div>
         {isAdmin && (
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <button
               className="btn btn-secondary"
-              onClick={() => navigate('/schemes/manage-pdfs', { state: { selectedSubject, selectedClass, selectedTerm, selectedSession } })}
+              onClick={() => navigate('/schemes/manage-pdfs', { state: { selectedSubject, selectedClass } })}
             >
               <FileText size={16} />
               <span>Manage Class Notes</span>
             </button>
             <button
               className="btn btn-primary"
-              onClick={() => navigate('/schemes/manage', { state: { selectedSubject, selectedClass, selectedTerm, selectedSession } })}
+              onClick={() => navigate('/schemes/manage', { state: { selectedSubject, selectedClass } })}
             >
               <Plus size={16} />
               <span>Manage Schemes</span>
@@ -254,9 +340,9 @@ export default function SchemesPage() {
         )}
       </div>
 
-      {/* Filters Card */}
+      {/* Filters Card — Session & Term Removed */}
       <div className="card mb-6">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
           <div className="form-group">
             <label className="form-label">Subject</label>
             <GroupedSubjectSelect
@@ -277,31 +363,6 @@ export default function SchemesPage() {
               {classes.map(cls => (
                 <option key={cls.id} value={cls.id}>{cls.name}</option>
               ))}
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Term</label>
-            <select
-              className="form-select"
-              value={selectedTerm}
-              onChange={(e) => setSelectedTerm(e.target.value)}
-            >
-              <option value="FIRST">First Term</option>
-              <option value="SECOND">Second Term</option>
-              <option value="THIRD">Third Term</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Academic Session</label>
-            <select
-              className="form-select"
-              value={selectedSession}
-              onChange={(e) => setSelectedSession(e.target.value)}
-            >
-              <option value="2025/2026">2025/2026</option>
-              <option value="2026/2027">2026/2027</option>
             </select>
           </div>
         </div>
@@ -333,24 +394,43 @@ export default function SchemesPage() {
             </div>
             <div>
               <div className="font-semibold text-primary" style={{ fontSize: '1rem', marginBottom: '2px' }}>
-                Class Notes Available
+                Class Notes PDF Available
               </div>
               <div className="text-secondary" style={{ fontSize: '0.85rem' }}>
-                {subjectPdf.label || `${selectedSubjectName} Notes`}
+                {subjectPdf.label || `${selectedSubjectName} Notes`} — Covers 1st, 2nd & 3rd Terms
               </div>
               <div className="text-muted" style={{ fontSize: '0.75rem', marginTop: '2px' }}>
                 {selectedClassName}
               </div>
             </div>
           </div>
-          <button
-            className="btn btn-primary"
-            onClick={openPdfViewer}
-            style={{ gap: '8px', flexShrink: 0 }}
-          >
-            <Eye size={16} />
-            <span>View Class Notes</span>
-          </button>
+
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            {isAdmin && (
+              <button
+                className="btn btn-secondary"
+                onClick={handleAutoExtractAll}
+                disabled={extracting}
+                style={{ gap: '8px', flexShrink: 0 }}
+                title="Automatically scan and extract weekly topics from PDF into scheme of work"
+              >
+                {extracting ? (
+                  <span className="animate-spin" style={{ width: 14, height: 14, border: '2px solid var(--primary-light)', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block' }} />
+                ) : (
+                  <Wand2 size={16} />
+                )}
+                <span>Extract Scheme from PDF</span>
+              </button>
+            )}
+            <button
+              className="btn btn-primary"
+              onClick={openPdfViewer}
+              style={{ gap: '8px', flexShrink: 0 }}
+            >
+              <Eye size={16} />
+              <span>View Class Notes</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -372,7 +452,7 @@ export default function SchemesPage() {
             No class notes PDF uploaded for this subject/class yet.{' '}
             <button
               style={{ background: 'none', border: 'none', color: 'var(--primary-light)', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
-              onClick={() => navigate('/schemes/manage-pdfs', { state: { selectedSubject, selectedClass, selectedTerm, selectedSession } })}
+              onClick={() => navigate('/schemes/manage-pdfs', { state: { selectedSubject, selectedClass } })}
             >
               Upload one now
             </button>
@@ -380,7 +460,7 @@ export default function SchemesPage() {
         </div>
       )}
 
-      {/* Content Area */}
+      {/* Content Area — Categorized by Terms */}
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {[1, 2, 3].map(i => (
@@ -393,98 +473,153 @@ export default function SchemesPage() {
             <BookOpenCheck size={36} />
           </div>
           <h3 className="text-primary">No Scheme of Work Found</h3>
-          <p className="text-secondary" style={{ maxWidth: '400px' }}>
-            There is no curriculum schedule uploaded for this subject in the selected term.
+          <p className="text-secondary" style={{ maxWidth: '450px' }}>
+            There is no curriculum schedule uploaded for {selectedSubjectName || 'this subject'} in {selectedClassName || 'this class'}.
           </p>
           {isAdmin && (
-            <button
-              className="btn btn-secondary mt-2"
-              onClick={() => navigate('/schemes/manage', { state: { selectedSubject, selectedTerm, selectedSession } })}
-            >
-              <Plus size={16} /> Add First Week
-            </button>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+              {subjectPdf && (
+                <button
+                  className="btn btn-primary"
+                  onClick={handleAutoExtractAll}
+                  disabled={extracting}
+                >
+                  <Wand2 size={16} /> Auto-Extract from PDF
+                </button>
+              )}
+              <button
+                className="btn btn-secondary"
+                onClick={() => navigate('/schemes/manage', { state: { selectedSubject, selectedClass } })}
+              >
+                <Plus size={16} /> Add Week Manually
+              </button>
+            </div>
           )}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {schemes.map((scheme) => {
-            const isExpanded = expandedWeeks[scheme.id];
-            const hasNotes = scheme.notesText || scheme.notesFile;
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+          {termOrder.map((tKey) => {
+            const termSchemes = groupedSchemes[tKey] || [];
+            if (termSchemes.length === 0) return null;
 
             return (
-              <div key={scheme.id} className="card" style={{ transition: 'all 0.2s', borderLeft: '4px solid var(--primary)' }}>
-                <div
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', cursor: hasNotes && !isRestricted ? 'pointer' : 'default' }}
-                  onClick={() => hasNotes && !isRestricted && toggleWeek(scheme.id)}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                      <span className="badge badge-primary">Week {scheme.week}</span>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Calendar size={12} /> Term {scheme.term}
-                      </span>
-                    </div>
-                    <h2 style={{ fontSize: '1.2rem', marginBottom: '6px', color: 'var(--text-primary)' }}>{scheme.topic}</h2>
-                    {scheme.objectives && (
-                      <p className="text-secondary" style={{ fontSize: '0.9rem' }}>
-                        <strong>Objectives:</strong> {scheme.objectives}
-                      </p>
-                    )}
-                  </div>
-
-                  {hasNotes && !isRestricted && (
-                    <button
-                      className="btn btn-secondary btn-icon"
-                      style={{ alignSelf: 'center' }}
-                      onClick={(e) => { e.stopPropagation(); toggleWeek(scheme.id); }}
-                    >
-                      {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </button>
-                  )}
+              <div key={tKey} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {/* Term Header */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  paddingBottom: '8px',
+                  borderBottom: '2px solid var(--border)',
+                  color: 'var(--primary-light)'
+                }}>
+                  <BookOpen size={20} />
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                    {termLabel[tKey]}
+                  </h2>
+                  <span className="badge badge-secondary" style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
+                    {termSchemes.length} {termSchemes.length === 1 ? 'Week' : 'Weeks'}
+                  </span>
                 </div>
 
-                {/* Notes and materials section */}
-                {isExpanded && !isRestricted && (
-                  <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-                    {scheme.notesText && (
-                      <div className="mb-4">
-                        <h4 className="text-primary mb-2" style={{ fontSize: '0.95rem' }}>Lecture Notes</h4>
+                {/* Weeks List under this Term */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {termSchemes.map((scheme) => {
+                    const isExpanded = expandedWeeks[scheme.id];
+                    const hasNotes = scheme.notesText || scheme.notesFile;
+
+                    return (
+                      <div
+                        key={scheme.id}
+                        className="card"
+                        style={{
+                          transition: 'all 0.2s',
+                          borderLeft: '4px solid var(--primary)'
+                        }}
+                      >
                         <div
                           style={{
-                            background: 'var(--bg-elevated)',
-                            padding: '16px',
-                            borderRadius: 'var(--radius-md)',
-                            fontSize: '0.9rem',
-                            whiteSpace: 'pre-line',
-                            color: 'var(--text-primary)'
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-start',
+                            cursor: hasNotes && !isRestricted ? 'pointer' : 'default'
                           }}
+                          onClick={() => hasNotes && !isRestricted && toggleWeek(scheme.id)}
                         >
-                          {scheme.notesText}
-                        </div>
-                      </div>
-                    )}
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                              <span className="badge badge-primary">Week {scheme.week}</span>
+                              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <Calendar size={12} /> {termLabel[scheme.term]}
+                              </span>
+                            </div>
+                            <h3 style={{ fontSize: '1.15rem', marginBottom: '6px', color: 'var(--text-primary)', fontWeight: 600 }}>
+                              {scheme.topic}
+                            </h3>
+                            {scheme.objectives && (
+                              <p className="text-secondary" style={{ fontSize: '0.88rem', margin: 0 }}>
+                                <strong>Objectives:</strong> {scheme.objectives}
+                              </p>
+                            )}
+                          </div>
 
-                    {scheme.notesFile && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(99,102,241,0.05)', border: '1px dashed rgba(99,102,241,0.3)', padding: '12px 16px', borderRadius: 'var(--radius-md)' }}>
-                        <div style={{ padding: '8px', background: 'rgba(99,102,241,0.1)', color: 'var(--primary-light)', borderRadius: '6px' }}>
-                          <FileText size={18} />
+                          {hasNotes && !isRestricted && (
+                            <button
+                              className="btn btn-secondary btn-icon"
+                              style={{ alignSelf: 'center' }}
+                              onClick={(e) => { e.stopPropagation(); toggleWeek(scheme.id); }}
+                            >
+                              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            </button>
+                          )}
                         </div>
-                        <div>
-                          <div className="font-semibold text-sm">Attachment Available</div>
-                          <div className="text-xs text-muted">Document uploaded by administrator</div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
 
-                {/* Restricted alert for students and parents */}
-                {isRestricted && (
-                  <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    <Lock size={12} />
-                    <span>Detailed notes are restricted to teachers and administrators. Contact your class teacher for study materials.</span>
-                  </div>
-                )}
+                        {/* Notes and materials section */}
+                        {isExpanded && !isRestricted && (
+                          <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+                            {scheme.notesText && (
+                              <div className="mb-4">
+                                <h4 className="text-primary mb-2" style={{ fontSize: '0.92rem' }}>Lecture Notes</h4>
+                                <div
+                                  style={{
+                                    background: 'var(--bg-elevated)',
+                                    padding: '16px',
+                                    borderRadius: 'var(--radius-md)',
+                                    fontSize: '0.88rem',
+                                    whiteSpace: 'pre-line',
+                                    color: 'var(--text-primary)'
+                                  }}
+                                >
+                                  {scheme.notesText}
+                                </div>
+                              </div>
+                            )}
+
+                            {scheme.notesFile && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(99,102,241,0.05)', border: '1px dashed rgba(99,102,241,0.3)', padding: '12px 16px', borderRadius: 'var(--radius-md)' }}>
+                                <div style={{ padding: '8px', background: 'rgba(99,102,241,0.1)', color: 'var(--primary-light)', borderRadius: '6px' }}>
+                                  <FileText size={18} />
+                                </div>
+                                <div>
+                                  <div className="font-semibold text-sm">Attachment Available</div>
+                                  <div className="text-xs text-muted">Document uploaded by administrator</div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Restricted alert for students and parents */}
+                        {isRestricted && (
+                          <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                            <Lock size={12} />
+                            <span>Detailed notes are restricted to teachers and administrators. Contact your class teacher for study materials.</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}

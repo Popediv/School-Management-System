@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { feeService, classService } from '../../services';
 import { toast } from 'react-toastify';
-import { SESSIONS, CURRENT_SESSION } from '../../utils/constants';
+import { SESSIONS } from '../../utils/constants';
+import { useSettings } from '../../context/SettingsContext';
 import {
   CreditCard, Search, AlertCircle, CheckCircle,
   Clock, Settings, Zap, Trash2, Plus, Landmark, Printer,
@@ -15,6 +16,7 @@ const STATUS_BADGE = { UNPAID: 'badge-danger', PARTIAL: 'badge-warning', PAID: '
 
 export default function FeesPage() {
   const qc = useQueryClient();
+  const { currentSession, currentTerm } = useSettings();
   const [activeTab, setActiveTab] = useState('outstanding'); // 'outstanding' | 'templates' | 'bulk'
 
   // Search & Filters for Tab 1
@@ -23,13 +25,20 @@ export default function FeesPage() {
 
   // Form states for Tab 2 (Fee Structures)
   const [structForm, setStructForm] = useState({
-    classId: '', description: '', amount: '', term: 'FIRST', session: CURRENT_SESSION,
+    classId: '', description: '', amount: '', term: currentTerm, session: currentSession,
     category: 'TUITION', isOneTime: false, sortOrder: 0
   });
 
   // Form states for Tab 3 (Bulk Invoicing)
-  const [bulkForm, setBulkForm] = useState({ classId: '', term: 'FIRST', session: CURRENT_SESSION });
+  const [bulkForm, setBulkForm] = useState({ classId: '', term: currentTerm, session: currentSession });
   const [bulkResult, setBulkResult] = useState(null);
+
+  useEffect(() => {
+    if (currentSession || currentTerm) {
+      setStructForm(prev => ({ ...prev, session: currentSession, term: currentTerm }));
+      setBulkForm(prev => ({ ...prev, session: currentSession, term: currentTerm }));
+    }
+  }, [currentSession, currentTerm]);
 
   // Queries
   const { data: outstandingData = {}, isLoading: outstandingLoading } = useQuery({

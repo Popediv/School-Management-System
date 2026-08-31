@@ -3,8 +3,9 @@ import { useLocation, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import Sidebar from './Sidebar';
 import { useAuth } from '../../context/AuthContext';
+import { useSettings } from '../../context/SettingsContext';
 import { notificationService } from '../../services';
-import { Bell, Menu, X, AlertCircle } from 'lucide-react';
+import { Bell, Menu, X, Calendar } from 'lucide-react';
 
 function playBeep() {
   try {
@@ -23,30 +24,31 @@ function playBeep() {
 
 /* Map pathname → readable title */
 const TITLES = {
-  '/dashboard/admin':     'Admin Dashboard',
+  '/dashboard/admin': 'Admin Dashboard',
   '/dashboard/principal': 'Principal Dashboard',
-  '/dashboard/teacher':   'Teacher Dashboard',
-  '/dashboard/bursary':   'Bursary Dashboard',
-  '/dashboard/parent':    'Parent Portal',
-  '/dashboard/student':   'Student Portal',
-  '/students':            'Students',
-  '/students/register':   'Register Student',
-  '/teachers':            'Teachers',
-  '/teachers/register':   'Register Teacher',
-  '/classes':             'Classes',
-  '/classes/promotion':   'Class Promotion',
-  '/attendance/mark':     'Mark Attendance',
-  '/attendance/report':   'Attendance Reports',
-  '/results/upload':      'Upload Results',
-  '/fees':                'Fees & Bursary',
-  '/idcards':             'ID Card Generator',
-  '/notifications':       'Notifications',
+  '/dashboard/teacher': 'Teacher Dashboard',
+  '/dashboard/bursary': 'Bursary Dashboard',
+  '/dashboard/parent': 'Parent Portal',
+  '/dashboard/student': 'Student Portal',
+  '/students': 'Students',
+  '/students/register': 'Register Student',
+  '/teachers': 'Teachers',
+  '/teachers/register': 'Register Teacher',
+  '/classes': 'Classes',
+  '/classes/promotion': 'Class Promotion',
+  '/attendance/mark': 'Mark Attendance',
+  '/attendance/report': 'Attendance Reports',
+  '/results/upload': 'Upload Results',
+  '/fees': 'Fees & Bursary',
+  '/idcards': 'ID Card Generator',
+  '/notifications': 'Notifications',
 };
 
 export default function DashboardLayout({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showUrgentNotif, setShowUrgentNotif] = useState(false);
   const { user } = useAuth();
+  const { currentSession, currentTerm } = useSettings();
   const { pathname } = useLocation();
 
   const isAdmin = ['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL'].includes(user?.role);
@@ -72,10 +74,10 @@ export default function DashboardLayout({ children }) {
         setShowUrgentNotif(true);
         playBeep();
       }
-      
+
       // Also trigger a browser notification if permitted (for all)
       if ('Notification' in window && Notification.permission === 'granted') {
-        const newest = notifications.filter(n => !n.read).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+        const newest = notifications.filter(n => !n.read).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
         if (newest) new Notification(newest.title, { body: newest.message });
       }
     }
@@ -90,7 +92,7 @@ export default function DashboardLayout({ children }) {
   };
 
   const title = Object.entries(TITLES).find(([k]) => pathname.startsWith(k))?.[1] || 'Dashboard';
-  const initials = user?.name?.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase() || '?';
+  const initials = user?.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?';
 
   return (
     <div className="app-layout">
@@ -98,7 +100,7 @@ export default function DashboardLayout({ children }) {
       {mobileOpen && (
         <div
           onClick={() => setMobileOpen(false)}
-          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:90 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 90 }}
         />
       )}
 
@@ -110,7 +112,7 @@ export default function DashboardLayout({ children }) {
           <div className="flex items-center gap-3">
             <button
               className="btn btn-secondary btn-icon"
-              style={{ display:'none' }}
+              style={{ display: 'none' }}
               id="mobile-menu-btn"
               onClick={() => setMobileOpen(o => !o)}
             >
@@ -120,6 +122,25 @@ export default function DashboardLayout({ children }) {
           </div>
 
           <div className="topbar-right">
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'rgba(99,102,241,0.1)',
+                border: '1px solid rgba(99,102,241,0.25)',
+                padding: '4px 10px',
+                borderRadius: 20,
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                color: 'var(--primary-light)'
+              }}
+              title="Global Active Academic Session & Term"
+            >
+              <Calendar size={13} />
+              <span>{currentSession} · {currentTerm} TERM</span>
+            </div>
+
             <Link to="/notifications" className="btn btn-secondary btn-icon" title="Notifications" style={{ position: 'relative' }}>
               <Bell size={18} />
               {unreadCount > 0 && (

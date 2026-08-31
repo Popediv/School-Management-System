@@ -8,7 +8,7 @@ const getStoredSettings = () => {
     if (fs.existsSync(SETTINGS_FILE)) {
       return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
     }
-  } catch (e) {}
+  } catch (e) { }
   return {};
 };
 
@@ -20,7 +20,7 @@ const saveSettings = (data) => {
     if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
     fs.writeFileSync(SETTINGS_FILE, JSON.stringify(updated, null, 2));
     return updated;
-  } catch (e) {}
+  } catch (e) { }
 };
 
 const uploadLogo = async (req, res, next) => {
@@ -38,7 +38,7 @@ const uploadLogo = async (req, res, next) => {
       try {
         const targetPath = path.join(__dirname, '..', '..', '..', 'uploads', 'school_logo.png');
         fs.copyFileSync(req.file.path, targetPath);
-      } catch (e) {}
+      } catch (e) { }
     }
 
     saveSettings({ logoUrl });
@@ -55,9 +55,21 @@ const getSettings = async (req, res, next) => {
 
     res.json({
       schoolName: process.env.SCHOOL_NAME || 'Patimo College',
-      logoUrl
+      logoUrl,
+      admissionPrefix: stored.admissionPrefix || 'PCI-' + new Date().getFullYear() + '-',
+      admissionStartingSequence: stored.admissionStartingSequence || 1,
+      currentSession: stored.currentSession || '2025/2026',
+      currentTerm: stored.currentTerm || 'FIRST',
     });
   } catch (err) { next(err); }
 };
 
-module.exports = { uploadLogo, getSettings };
+const updateSettings = async (req, res, next) => {
+  try {
+    const data = req.body;
+    saveSettings(data);
+    res.json({ message: 'Settings updated successfully', settings: getStoredSettings() });
+  } catch (err) { next(err); }
+};
+
+module.exports = { uploadLogo, getSettings, updateSettings, getStoredSettings };

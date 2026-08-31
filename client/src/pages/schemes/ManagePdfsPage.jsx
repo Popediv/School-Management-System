@@ -3,8 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { subjectService, classService, subjectPdfService } from '../../services';
 import { toast } from 'react-toastify';
 import { SESSIONS, CURRENT_SESSION } from '../../utils/constants';
-import { 
-  ArrowLeft, Upload, Trash2, FileText, X, 
+import {
+  ArrowLeft, Upload, Trash2, FileText, X,
   RefreshCw, CheckCircle, BookMarked, AlertCircle
 } from 'lucide-react';
 import GroupedSubjectSelect from '../../components/GroupedSubjectSelect';
@@ -17,7 +17,6 @@ export default function ManagePdfsPage() {
     selectedSubject: '',
     selectedClass: '',
     selectedTerm: 'FIRST',
-    selectedSession: CURRENT_SESSION
   };
 
   const [subjects, setSubjects] = useState([]);
@@ -25,7 +24,6 @@ export default function ManagePdfsPage() {
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState(defaults.selectedClass);
   const [selectedTerm, setSelectedTerm] = useState(defaults.selectedTerm);
-  const [selectedSession, setSelectedSession] = useState(defaults.selectedSession);
 
   const [existingPdf, setExistingPdf] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -73,7 +71,7 @@ export default function ManagePdfsPage() {
     setFile(null);
     setLabel('');
     setApplyAllTerms(false);
-  }, [selectedSubject, selectedClass, selectedTerm, selectedSession]);
+  }, [selectedSubject, selectedClass, selectedTerm]);
 
   const handleUpload = async () => {
     if (!file) return toast.error('Please select a PDF file first');
@@ -170,7 +168,7 @@ export default function ManagePdfsPage() {
 
           <div className="form-group">
             <label className="form-label">Class</label>
-            <select 
+            <select
               className="form-select"
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
@@ -183,7 +181,7 @@ export default function ManagePdfsPage() {
 
           <div className="form-group">
             <label className="form-label">Term</label>
-            <select 
+            <select
               className="form-select"
               value={selectedTerm}
               onChange={(e) => setSelectedTerm(e.target.value)}
@@ -194,22 +192,11 @@ export default function ManagePdfsPage() {
             </select>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Session</label>
-            <select 
-              className="form-select"
-              value={selectedSession}
-              onChange={(e) => setSelectedSession(e.target.value)}
-            >
-              <option value="2025/2026">2025/2026</option>
-              <option value="2026/2027">2026/2027</option>
-            </select>
-          </div>
         </div>
       </div>
 
       <div className="grid-split">
-        
+
         {/* Upload Panel */}
         <div className="card">
           <h3 className="mb-4" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -218,10 +205,10 @@ export default function ManagePdfsPage() {
           </h3>
 
           {existingPdf && (
-            <div 
+            <div
               className="mb-4"
-              style={{ 
-                background: 'rgba(34,197,94,0.08)', 
+              style={{
+                background: 'rgba(34,197,94,0.08)',
                 border: '1px solid rgba(34,197,94,0.25)',
                 borderRadius: 'var(--radius-md)',
                 padding: '12px 14px',
@@ -356,9 +343,9 @@ export default function ManagePdfsPage() {
             <div>
               {/* Subject / Class Info */}
               <div style={{ marginBottom: '20px' }}>
-                <div style={{ 
-                  background: 'var(--bg-elevated)', 
-                  borderRadius: 'var(--radius-md)', 
+                <div style={{
+                  background: 'var(--bg-elevated)',
+                  borderRadius: 'var(--radius-md)',
                   padding: '16px',
                   border: '1px solid var(--border)'
                 }}>
@@ -371,11 +358,11 @@ export default function ManagePdfsPage() {
                         {existingPdf.label || `${selectedSubjectName} — ${termLabel[selectedTerm]} Notes`}
                       </div>
                       <div className="text-muted" style={{ fontSize: '0.8rem', marginBottom: '4px' }}>
-                        {selectedClassName} · {termLabel[selectedTerm]} · {selectedSession}
+                        {selectedClassName} · {termLabel[selectedTerm]}
                       </div>
-                      <div style={{ 
-                        display: 'inline-flex', 
-                        alignItems: 'center', 
+                      <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
                         gap: '4px',
                         background: 'rgba(34,197,94,0.1)',
                         color: '#22c55e',
@@ -391,8 +378,8 @@ export default function ManagePdfsPage() {
                 </div>
               </div>
 
-              <div style={{ 
-                background: 'rgba(239,68,68,0.05)', 
+              <div style={{
+                background: 'rgba(239,68,68,0.05)',
                 border: '1px solid rgba(239,68,68,0.15)',
                 borderRadius: 'var(--radius-md)',
                 padding: '12px 14px',
@@ -434,8 +421,8 @@ export default function ManagePdfsPage() {
               </button>
             </div>
           ) : (
-            <div style={{ 
-              textAlign: 'center', 
+            <div style={{
+              textAlign: 'center',
               padding: '40px 20px',
               color: 'var(--text-muted)',
               display: 'flex',

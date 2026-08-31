@@ -14,6 +14,98 @@ const getStudentFees = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+const getLedger = async (req, res, next) => {
+  try {
+    const { studentId } = req.params;
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+      include: { currentClass: true, user: true }
+    });
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+
+    // Ensure we capture all known transactions for this student
+    const invoices = await prisma.payment.findMany({
+      where: { studentId },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const ledger = [];
+
+    invoices.forEach(inv => {
+      // 1. Debit entry (Invoice created)
+      ledger.push({
+        id: `INV-${inv.id}`,
+        date: inv.createdAt.toISOString(),
+        reference: inv.receiptNo,
+        description: `Invoice: ${inv.description} - ${inv.session} (${inv.term})`,
+        debit: inv.amount,
+        credit: 0,
+        status: inv.status,
+      });
+
+      // 2. Credit entry (Amount paid)
+      if (inv.amountPaid > 0) {
+        ledger.push({
+          id: `PAY-${inv.id}`,
+          date: inv.paidAt ? inv.paidAt.toISOString() : inv.createdAt.toISOString(),
+          reference: inv.reference || inv.receiptNo,
+          description: `Payment: ${inv.description}${inv.paymentMethod ? ' via ' + inv.paymentMethod : ''}`,
+          debit: 0,
+          credit: inv.amountPaid,
+          status: '—',
+        });
+      }
+    });
+
+    ledger.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    let runningBalance = 0;
+    ledger.forEach(entry => {
+      // Assuming a Debit means school is charging the student, so balance increases for the student in terms of "owe"
+      // Wait, standard accounting: Debit (Charge to A/R) increases amount owed. Credit (Payment to A/R) decreases amount owed.
+      runningBalance += entry.debit;
+      runningBalance -= entry.credit;
+      entry.balance = runningBalance;
+    });
+
+    res.json({ student, ledger, currentBalance: runningBalance });
+  } catch (err) { next(err); }
+};
+
+const getGlobalLedger = async (req, res, next) => {
+  try {
+    const { session, term } = req.query;
+    const where = { amountPaid: { gt: 0 } };
+    if (session) where.session = session;
+    if (term) where.term = term;
+
+    const payments = await prisma.payment.findMany({
+      where,
+      orderBy: { paidAt: 'desc' },
+      include: {
+        student: {
+          select: {
+            firstName: true,
+            lastName: true,
+            admissionNo: true,
+            currentClass: { select: { name: true } }
+          }
+        }
+      }
+    });
+
+    const stats = { totalCollected: 0, byCategory: {} };
+    payments.forEach(p => {
+      stats.totalCollected += (p.amountPaid || 0);
+      const cat = p.description || 'Other';
+      if (!stats.byCategory[cat]) stats.byCategory[cat] = 0;
+      stats.byCategory[cat] += (p.amountPaid || 0);
+    });
+
+    res.json({ payments, stats });
+  } catch (err) { next(err); }
+};
+
 const createInvoice = async (req, res, next) => {
   try {
     const { studentId, amount, description, session, term } = req.body;
@@ -318,6 +410,8 @@ const bulkInvoiceClass = async (req, res, next) => {
 
 module.exports = {
   getStudentFees,
+  getLedger,
+  getGlobalLedger,
   createInvoice,
   recordPayment,
   getReceipt,
