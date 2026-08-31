@@ -1,11 +1,65 @@
 const fs = require('fs');
-const pdfParse = require('pdf-parse');
 
 const termRegexes = {
   FIRST: [/first\s*term/i, /1st\s*term/i, /term\s*one/i, /term\s*1/i],
   SECOND: [/second\s*term/i, /2nd\s*term/i, /term\s*two/i, /term\s*2/i],
   THIRD: [/third\s*term/i, /3rd\s*term/i, /term\s*three/i, /term\s*3/i]
 };
+
+/**
+ * Universal PDF Text Reader supporting pdf-parse v1, v2, and raw buffer parsing fallback
+ */
+async function readPdfText(pdfPath) {
+  if (!fs.existsSync(pdfPath)) {
+    throw new Error('PDF file does not exist at path: ' + pdfPath);
+  }
+
+  const dataBuffer = fs.readFileSync(pdfPath);
+  let extractedText = '';
+
+  // 1. Try standard / v2 pdf-parse module
+  try {
+    const pdfParseModule = require('pdf-parse');
+    if (typeof pdfParseModule === 'function') {
+      const data = await pdfParseModule(dataBuffer);
+      if (data && data.text) {
+        extractedText = data.text;
+      }
+    } else if (pdfParseModule.PDFParse) {
+      const parser = new pdfParseModule.PDFParse({ data: new Uint8Array(dataBuffer) });
+      if (typeof parser.getText === 'function') {
+        const res = await parser.getText();
+        extractedText = typeof res === 'string' ? res : (res?.text || '');
+      }
+    }
+  } catch (err) {
+    console.error('PDF Library text parsing notice:', err.message);
+  }
+
+  // 2. Fallback: Raw binary text stream reader (for unencrypted PDF text streams)
+  if (!extractedText || !extractedText.trim()) {
+    try {
+      const rawString = dataBuffer.toString('binary');
+      const textBlocks = [];
+      // Match PDF text operators like (Text) Tj or (Text) TJ
+      const tjRegex = /\(([^)]+)\)\s*T[jJ]/g;
+      let match;
+      while ((match = tjRegex.exec(rawString)) !== null) {
+        const text = match[1].replace(/\\([()\\])/g, '$1').trim();
+        if (text && text.length > 1) {
+          textBlocks.push(text);
+        }
+      }
+      if (textBlocks.length > 5) {
+        extractedText = textBlocks.join('\n');
+      }
+    } catch (rawErr) {
+      console.error('Raw binary reader notice:', rawErr.message);
+    }
+  }
+
+  return extractedText || '';
+}
 
 /**
  * Multi-Strategy Parser for extracting weekly topics from text chunks.
@@ -15,7 +69,7 @@ function parseWeeksFromText(termText) {
 
   const schemes = [];
 
-  // Strategy 1: Explicit "Week X", "Wk X", "Lesson X", "Module X", "Unit X"
+  // Strategy A: Explicit "Week X", "Wk X", "Lesson X", "Module X", "Unit X"
   const weekRegex = /(?:week|wk|lesson|module|unit)\s*(\d+)/gi;
   const matches = [];
   let match;
@@ -67,7 +121,7 @@ function parseWeeksFromText(termText) {
     }
   }
 
-  // Strategy 2: Numbered lists like "1. Topic", "2) Topic", "1 - Topic" (if Strategy 1 found no results)
+  // Strategy B: Numbered lists like "1. Topic", "2) Topic", "1 - Topic"
   if (schemes.length === 0) {
     const numRegex = /(?:^|\n)\s*(\d{1,2})[\.\)\-]\s*(.+)/g;
     let nMatch;
@@ -112,13 +166,11 @@ function parseWeeksFromText(termText) {
     }
   }
 
-  // Strategy 3: Table cell layout ("1 | Topic Name | ...")
+  // Strategy C: Table cell layout ("1 | Topic Name | ...")
   if (schemes.length === 0) {
     const lines = termText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    let weekCounter = 1;
 
     for (const line of lines) {
-      // Check if line starts with a number 1-15 followed by separator or tab
       const tableMatch = line.match(/^(\d{1,2})\s*[\|\t\:]\s*(.+)/);
       if (tableMatch) {
         const wkNum = parseInt(tableMatch[1]);
@@ -135,14 +187,14 @@ function parseWeeksFromText(termText) {
     }
   }
 
-  // Strategy 4: Line-by-line fallback (if document has plain paragraph lines)
+  // Strategy D: Paragraph lines fallback (Smart NLP split)
   if (schemes.length === 0) {
     const rawLines = termText
       .split('\n')
       .map(l => l.trim())
       .filter(l => {
         if (!l || l.length < 4) return false;
-        if (/scheme\s*of\s*work|lesson\s*notes|curriculum|subject|class|term/i.test(l) && l.length < 40) return false;
+        if (/scheme\s*of\s*work|lesson\s*notes|curriculum|subject|class|term|table\s*of\s*content/i.test(l) && l.length < 45) return false;
         return true;
       });
 
@@ -182,13 +234,11 @@ function parseWeeksFromText(termText) {
  */
 async function extractAllSchemesFromPdf(pdfPath) {
   try {
-    if (!fs.existsSync(pdfPath)) {
-      throw new Error('PDF file does not exist at path: ' + pdfPath);
+    const text = await readPdfText(pdfPath);
+    if (!text || !text.trim()) {
+      console.warn('PDF text extraction produced empty result for path:', pdfPath);
+      return { FIRST: [], SECOND: [], THIRD: [] };
     }
-
-    const dataBuffer = fs.readFileSync(pdfPath);
-    const data = await pdfParse(dataBuffer);
-    const text = data.text || '';
 
     const pos = { FIRST: -1, SECOND: -1, THIRD: -1 };
     for (const term of ['FIRST', 'SECOND', 'THIRD']) {
@@ -219,8 +269,15 @@ async function extractAllSchemesFromPdf(pdfPath) {
         results[current.term] = parseWeeksFromText(termChunk);
       }
     } else {
-      // Fallback: parse entire document as FIRST term or distribute across terms if long
-      results.FIRST = parseWeeksFromText(text);
+      // Fallback: Parse entire document text sequentially and divide topics across terms if large
+      const allWeeks = parseWeeksFromText(text);
+      if (allWeeks.length > 15) {
+        results.FIRST = allWeeks.slice(0, 12).map((w, idx) => ({ ...w, week: idx + 1 }));
+        results.SECOND = allWeeks.slice(12, 24).map((w, idx) => ({ ...w, week: idx + 1 }));
+        results.THIRD = allWeeks.slice(24).map((w, idx) => ({ ...w, week: idx + 1 }));
+      } else {
+        results.FIRST = allWeeks;
+      }
     }
 
     return results;
@@ -238,4 +295,4 @@ async function extractSchemeFromPdf(pdfPath, targetTerm) {
   return allResults.FIRST.length > 0 ? allResults.FIRST : (allResults.SECOND.length > 0 ? allResults.SECOND : allResults.THIRD);
 }
 
-module.exports = { extractSchemeFromPdf, extractAllSchemesFromPdf };
+module.exports = { extractSchemeFromPdf, extractAllSchemesFromPdf, readPdfText };

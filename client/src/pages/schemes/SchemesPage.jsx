@@ -28,6 +28,7 @@ export default function SchemesPage() {
   const [showPdfViewer, setShowPdfViewer] = useState(false);
   const [pdfUrl, setPdfUrl] = useState('');
   const [pdfPageParam, setPdfPageParam] = useState('');
+  const [targetPageInput, setTargetPageInput] = useState('');
   const [extracting, setExtracting] = useState(false);
 
   const isAdmin = ['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL'].includes(user?.role);
@@ -109,7 +110,8 @@ export default function SchemesPage() {
       ? subjectPdf.pdfFile
       : subjectPdfService.getViewUrl(subjectPdf.id);
     setPdfUrl(url);
-    setPdfPageParam('');
+    setPdfPageParam('#page=1');
+    setTargetPageInput('1');
     setShowPdfViewer(true);
   };
 
@@ -117,6 +119,7 @@ export default function SchemesPage() {
     setShowPdfViewer(false);
     setPdfUrl('');
     setPdfPageParam('');
+    setTargetPageInput('');
   };
 
   const handleDownloadPdf = () => {
@@ -138,12 +141,17 @@ export default function SchemesPage() {
     }
   };
 
+  const jumpToPage = (pageNum) => {
+    const page = Math.max(1, parseInt(pageNum) || 1);
+    setTargetPageInput(page.toString());
+    setPdfPageParam(`#page=${page}&reload=${Date.now()}`);
+  };
+
   const jumpToTermPage = (termName) => {
-    // Standard PDF fragments for term jumps: First Term (page 1), Second Term (estimated/bookmark), Third Term
     let pageNum = 1;
-    if (termName === 'SECOND') pageNum = 12;
-    if (termName === 'THIRD') pageNum = 24;
-    setPdfPageParam(`#page=${pageNum}`);
+    if (termName === 'SECOND') pageNum = 10;
+    if (termName === 'THIRD') pageNum = 20;
+    jumpToPage(pageNum);
   };
 
   const handleAutoExtractAll = async () => {
@@ -220,8 +228,8 @@ export default function SchemesPage() {
               </div>
             </div>
 
-            {/* Term Navigation Jump Controls */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            {/* Term Navigation & Custom Page Jump Controls */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span className="text-xs text-muted font-medium mr-1" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                 <Layers size={12} /> Jump to:
               </span>
@@ -246,6 +254,40 @@ export default function SchemesPage() {
               >
                 3rd Term
               </button>
+
+              {/* Direct Page Number Input */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  jumpToPage(targetPageInput);
+                }}
+                style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '6px' }}
+              >
+                <span className="text-xs text-muted">Page:</span>
+                <input
+                  type="number"
+                  min="1"
+                  value={targetPageInput}
+                  onChange={(e) => setTargetPageInput(e.target.value)}
+                  style={{
+                    width: '52px',
+                    padding: '3px 6px',
+                    fontSize: '0.8rem',
+                    borderRadius: '4px',
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg-elevated)',
+                    color: 'var(--text-primary)',
+                    textAlign: 'center'
+                  }}
+                />
+                <button
+                  type="submit"
+                  className="btn btn-primary btn-sm"
+                  style={{ padding: '3px 10px', fontSize: '0.75rem' }}
+                >
+                  Go
+                </button>
+              </form>
             </div>
 
             {/* Download, Print & Close Actions */}
@@ -300,6 +342,7 @@ export default function SchemesPage() {
             background: '#1a1d24'
           }}>
             <iframe
+              key={pdfPageParam || 'pdf-viewport'}
               src={pdfUrl + pdfPageParam}
               title="Class Notes PDF"
               style={{
