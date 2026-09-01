@@ -1,8 +1,9 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { useReactToPrint } from 'react-to-print';
 import { billLetterService, feeService, classService, studentService } from '../../services';
+import { useSettings } from '../../context/SettingsContext';
 import { SESSIONS, CURRENT_SESSION } from '../../utils/constants';
 import {
     FileText, Printer, Users, Plus, Trash2,
