@@ -11,21 +11,121 @@ import {
 } from 'lucide-react';
 
 // ─── Per-class default fee schedule (from school fee sheet) ──────────────────
+// ─── Per-class default fee schedule (from school fee sheet) ──────────────────
+const JSS_DEFAULTS = [
+    { feeLabel: 'Application Form', category: 'APPLICATION', originalAmount: 2500 },
+    { feeLabel: 'Uniform', category: 'UNIFORM', originalAmount: 7000 },
+    { feeLabel: 'ID Card', category: 'IDCARD', originalAmount: 2500 },
+    { feeLabel: 'Tuition', category: 'TUITION', originalAmount: 15000 },
+    { feeLabel: 'Lesson Fee', category: 'LESSON', originalAmount: 8000 },
+    { feeLabel: 'Sportwear', category: 'UNIFORM', originalAmount: 5000 },
+    { feeLabel: 'Friday Wear', category: 'UNIFORM', originalAmount: 2500 },
+];
+
+const PRIMARY_DEFAULTS = [
+    { feeLabel: 'Application Form', category: 'APPLICATION', originalAmount: 2000 },
+    { feeLabel: 'Uniform', category: 'UNIFORM', originalAmount: 6000 },
+    { feeLabel: 'ID Card', category: 'IDCARD', originalAmount: 2000 },
+    { feeLabel: 'Tuition', category: 'TUITION', originalAmount: 12000 },
+    { feeLabel: 'Lesson Fee', category: 'LESSON', originalAmount: 5000 },
+    { feeLabel: 'Sportwear', category: 'UNIFORM', originalAmount: 4000 },
+    { feeLabel: 'Friday Wear', category: 'UNIFORM', originalAmount: 2000 },
+];
+
+const NURSERY_DEFAULTS = [
+    { feeLabel: 'Application Form', category: 'APPLICATION', originalAmount: 2000 },
+    { feeLabel: 'Uniform', category: 'UNIFORM', originalAmount: 5000 },
+    { feeLabel: 'ID Card', category: 'IDCARD', originalAmount: 2000 },
+    { feeLabel: 'Tuition', category: 'TUITION', originalAmount: 10000 },
+    { feeLabel: 'Lesson Fee', category: 'LESSON', originalAmount: 4000 },
+    { feeLabel: 'Sportwear', category: 'UNIFORM', originalAmount: 4000 },
+    { feeLabel: 'Friday Wear', category: 'UNIFORM', originalAmount: 2000 },
+];
+
 const DEFAULT_FEES = {
-    JSS1: [{ feeLabel: 'Application Form', category: 'APPLICATION', originalAmount: 2500 }, { feeLabel: 'Uniform', category: 'UNIFORM', originalAmount: 7000 }, { feeLabel: 'ID Card', category: 'IDCARD', originalAmount: 2500 }, { feeLabel: 'Tuition', category: 'TUITION', originalAmount: 15000 }, { feeLabel: 'Lesson Fee', category: 'LESSON', originalAmount: 8000 }, { feeLabel: 'Sportwear', category: 'UNIFORM', originalAmount: 5000 }, { feeLabel: 'Friday Wear', category: 'UNIFORM', originalAmount: 2500 }],
-    JSS2: [{ feeLabel: 'Application Form', category: 'APPLICATION', originalAmount: 2500 }, { feeLabel: 'Uniform', category: 'UNIFORM', originalAmount: 7000 }, { feeLabel: 'ID Card', category: 'IDCARD', originalAmount: 2500 }, { feeLabel: 'Tuition', category: 'TUITION', originalAmount: 15000 }, { feeLabel: 'Lesson Fee', category: 'LESSON', originalAmount: 8000 }, { feeLabel: 'Sportwear', category: 'UNIFORM', originalAmount: 5000 }, { feeLabel: 'Friday Wear', category: 'UNIFORM', originalAmount: 2500 }],
-    JSS3: [{ feeLabel: 'Application Form', category: 'APPLICATION', originalAmount: 2500 }, { feeLabel: 'Uniform', category: 'UNIFORM', originalAmount: 7000 }, { feeLabel: 'ID Card', category: 'IDCARD', originalAmount: 2500 }, { feeLabel: 'Tuition', category: 'TUITION', originalAmount: 18000 }, { feeLabel: 'Lesson Fee', category: 'LESSON', originalAmount: 8000 }, { feeLabel: 'Sportwear', category: 'UNIFORM', originalAmount: 5000 }, { feeLabel: 'Friday Wear', category: 'UNIFORM', originalAmount: 2500 }],
-    SS1: [{ feeLabel: 'Application Form', category: 'APPLICATION', originalAmount: 2500 }, { feeLabel: 'Uniform', category: 'UNIFORM', originalAmount: 8000 }, { feeLabel: 'ID Card', category: 'IDCARD', originalAmount: 2500 }, { feeLabel: 'Tuition', category: 'TUITION', originalAmount: 20000 }, { feeLabel: 'Lesson Fee', category: 'LESSON', originalAmount: 10000 }, { feeLabel: 'Sportwear', category: 'UNIFORM', originalAmount: 6000 }, { feeLabel: 'Friday Wear', category: 'UNIFORM', originalAmount: 2500 }],
-    SS2: [{ feeLabel: 'Application Form', category: 'APPLICATION', originalAmount: 2500 }, { feeLabel: 'Uniform', category: 'UNIFORM', originalAmount: 8000 }, { feeLabel: 'ID Card', category: 'IDCARD', originalAmount: 2500 }, { feeLabel: 'Tuition', category: 'TUITION', originalAmount: 22500 }, { feeLabel: 'Lesson Fee', category: 'LESSON', originalAmount: 10000 }, { feeLabel: 'Sportwear', category: 'UNIFORM', originalAmount: 6000 }, { feeLabel: 'Friday Wear', category: 'UNIFORM', originalAmount: 2500 }],
-    SS3: [{ feeLabel: 'Application Form', category: 'APPLICATION', originalAmount: 2500 }, { feeLabel: 'Uniform', category: 'UNIFORM', originalAmount: 8000 }, { feeLabel: 'ID Card', category: 'IDCARD', originalAmount: 2500 }, { feeLabel: 'Tuition', category: 'TUITION', originalAmount: 25000 }, { feeLabel: 'Lesson Fee', category: 'LESSON', originalAmount: 10000 }, { feeLabel: 'Sportwear', category: 'UNIFORM', originalAmount: 6000 }, { feeLabel: 'Friday Wear', category: 'UNIFORM', originalAmount: 2500 }],
+    JSS1: JSS_DEFAULTS,
+    JSS2: JSS_DEFAULTS,
+    JSS3: [
+        { feeLabel: 'Application Form', category: 'APPLICATION', originalAmount: 2500 },
+        { feeLabel: 'Uniform', category: 'UNIFORM', originalAmount: 8050 },
+        { feeLabel: 'ID Card', category: 'IDCARD', originalAmount: 2500 },
+        { feeLabel: 'Tuition', category: 'TUITION', originalAmount: 18000 },
+        { feeLabel: 'Lesson Fee', category: 'LESSON', originalAmount: 10000 },
+        { feeLabel: 'Sportwear', category: 'UNIFORM', originalAmount: 6000 },
+        { feeLabel: 'Friday Wear', category: 'UNIFORM', originalAmount: 2500 },
+    ],
+    SS1: [
+        { feeLabel: 'Application Form', category: 'APPLICATION', originalAmount: 2500 },
+        { feeLabel: 'Uniform', category: 'UNIFORM', originalAmount: 8000 },
+        { feeLabel: 'ID Card', category: 'IDCARD', originalAmount: 2500 },
+        { feeLabel: 'Tuition', category: 'TUITION', originalAmount: 20000 },
+        { feeLabel: 'Lesson Fee', category: 'LESSON', originalAmount: 10000 },
+        { feeLabel: 'Sportwear', category: 'UNIFORM', originalAmount: 6000 },
+        { feeLabel: 'Friday Wear', category: 'UNIFORM', originalAmount: 2500 },
+    ],
+    SS2: [
+        { feeLabel: 'Application Form', category: 'APPLICATION', originalAmount: 2500 },
+        { feeLabel: 'Uniform', category: 'UNIFORM', originalAmount: 8000 },
+        { feeLabel: 'ID Card', category: 'IDCARD', originalAmount: 2500 },
+        { feeLabel: 'Tuition', category: 'TUITION', originalAmount: 22500 },
+        { feeLabel: 'Lesson Fee', category: 'LESSON', originalAmount: 10000 },
+        { feeLabel: 'Sportwear', category: 'UNIFORM', originalAmount: 6000 },
+        { feeLabel: 'Friday Wear', category: 'UNIFORM', originalAmount: 2500 },
+    ],
+    SS3: [
+        { feeLabel: 'Application Form', category: 'APPLICATION', originalAmount: 2500 },
+        { feeLabel: 'Uniform', category: 'UNIFORM', originalAmount: 8000 },
+        { feeLabel: 'ID Card', category: 'IDCARD', originalAmount: 2500 },
+        { feeLabel: 'Tuition', category: 'TUITION', originalAmount: 25000 },
+        { feeLabel: 'Lesson Fee', category: 'LESSON', originalAmount: 10000 },
+        { feeLabel: 'Sportwear', category: 'UNIFORM', originalAmount: 6000 },
+        { feeLabel: 'Friday Wear', category: 'UNIFORM', originalAmount: 2500 },
+    ],
+    SSS1: [
+        { feeLabel: 'Application Form', category: 'APPLICATION', originalAmount: 2500 },
+        { feeLabel: 'Uniform', category: 'UNIFORM', originalAmount: 8000 },
+        { feeLabel: 'ID Card', category: 'IDCARD', originalAmount: 2500 },
+        { feeLabel: 'Tuition', category: 'TUITION', originalAmount: 20000 },
+        { feeLabel: 'Lesson Fee', category: 'LESSON', originalAmount: 10000 },
+        { feeLabel: 'Sportwear', category: 'UNIFORM', originalAmount: 6000 },
+        { feeLabel: 'Friday Wear', category: 'UNIFORM', originalAmount: 2500 },
+    ],
+    SSS2: [
+        { feeLabel: 'Application Form', category: 'APPLICATION', originalAmount: 2500 },
+        { feeLabel: 'Uniform', category: 'UNIFORM', originalAmount: 8000 },
+        { feeLabel: 'ID Card', category: 'IDCARD', originalAmount: 2500 },
+        { feeLabel: 'Tuition', category: 'TUITION', originalAmount: 22500 },
+        { feeLabel: 'Lesson Fee', category: 'LESSON', originalAmount: 10000 },
+        { feeLabel: 'Sportwear', category: 'UNIFORM', originalAmount: 6000 },
+        { feeLabel: 'Friday Wear', category: 'UNIFORM', originalAmount: 2500 },
+    ],
+    SSS3: [
+        { feeLabel: 'Application Form', category: 'APPLICATION', originalAmount: 2500 },
+        { feeLabel: 'Uniform', category: 'UNIFORM', originalAmount: 8000 },
+        { feeLabel: 'ID Card', category: 'IDCARD', originalAmount: 2500 },
+        { feeLabel: 'Tuition', category: 'TUITION', originalAmount: 25000 },
+        { feeLabel: 'Lesson Fee', category: 'LESSON', originalAmount: 10000 },
+        { feeLabel: 'Sportwear', category: 'UNIFORM', originalAmount: 6000 },
+        { feeLabel: 'Friday Wear', category: 'UNIFORM', originalAmount: 2500 },
+    ],
+    PRY: PRIMARY_DEFAULTS,
+    PRIMARY: PRIMARY_DEFAULTS,
+    BASIC: PRIMARY_DEFAULTS,
+    NURSERY: NURSERY_DEFAULTS,
+    KG: NURSERY_DEFAULTS,
+    CRECHE: NURSERY_DEFAULTS,
 };
 
 function getDefaultsForClass(className) {
-    if (!className) return [];
+    if (!className) return JSS_DEFAULTS.map((d, idx) => ({ ...d, discountPercent: 0, isScholarship: false, isIncluded: true, sortOrder: idx }));
     const upper = className.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    // Try direct match first, then partial key match
-    const key = Object.keys(DEFAULT_FEES).find(k => upper.includes(k.replace(/[^A-Z0-9]/g, '')));
-    const defaults = key ? DEFAULT_FEES[key] : [];
+    const keys = Object.keys(DEFAULT_FEES);
+    let key = keys.find(k => upper.includes(k));
+    if (!key && upper.includes('SSS')) {
+        const alt = upper.replace('SSS', 'SS');
+        key = keys.find(k => alt.includes(k));
+    }
+    const defaults = key ? DEFAULT_FEES[key] : JSS_DEFAULTS;
     return defaults.map((d, idx) => ({
         ...d,
         discountPercent: 0,
@@ -351,7 +451,7 @@ export default function BillLetterPage() {
         // Try to load DB fee structures, fall back to built-in defaults
         try {
             const res = await feeService.getStructures({ classId });
-            const structs = res.data || [];
+            const structs = (res.data || []).filter(s => !classId || s.classId === classId);
             if (structs.length > 0) {
                 const loaded = structs.map((s, idx) => ({
                     feeLabel: s.description,

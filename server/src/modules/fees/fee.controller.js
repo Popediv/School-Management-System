@@ -204,7 +204,14 @@ const getOutstanding = async (req, res, next) => {
 
 const getFeeStructures = async (req, res, next) => {
   try {
+    const { classId, session, term } = req.query;
+    const where = {};
+    if (classId) where.classId = classId;
+    if (session) where.session = session;
+    if (term) where.term = term;
+
     const structures = await prisma.feeStructure.findMany({
+      where,
       include: { class: { select: { name: true } } },
       orderBy: [{ session: 'desc' }, { term: 'asc' }],
     });
