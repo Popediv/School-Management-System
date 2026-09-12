@@ -23,6 +23,13 @@ export default function AdmissionLetterPage() {
   if (isLoading) return <div className="p-8 text-center text-muted">Loading admission letter...</div>;
   if (!student) return <div className="p-8 text-center text-muted">Student not found.</div>;
 
+  const photoUrl = student.photo
+    ? (student.photo.startsWith('http') ? student.photo : `/uploads/${student.photo}`)
+    : null;
+  const initials = `${student.firstName?.[0] || ''}${student.lastName?.[0] || ''}`.toUpperCase();
+  const moodleUsername = student.moodleUsername || (student.admissionNo ? student.admissionNo.replace(/-/g, '').toLowerCase() : '');
+  const moodlePassword = student.moodlePassword || (student.lastName ? student.lastName.trim().toLowerCase() : '');
+
   return (
     <div>
       {/* Hide controls when printing */}
@@ -35,14 +42,14 @@ export default function AdmissionLetterPage() {
         </button>
       </div>
 
-      <div 
-        className="print-document card mx-auto" 
-        style={{ 
-          width: '210mm', 
-          height: '297mm', 
+      <div
+        className="print-document card mx-auto"
+        style={{
+          width: '210mm',
+          height: '297mm',
           boxSizing: 'border-box',
-          backgroundColor: 'white', 
-          color: '#0F172A', 
+          backgroundColor: 'white',
+          color: '#0F172A',
           padding: '24px 36px',
           fontFamily: "'Times New Roman', Times, serif",
           position: 'relative',
@@ -88,7 +95,7 @@ export default function AdmissionLetterPage() {
                 Excellence, Integrity, and Knowledge
               </p>
               <p style={{ margin: '4px 0 0', fontSize: '10.5px', color: '#64748B', fontFamily: "'Inter', sans-serif", lineHeight: '1.4' }}>
-                Plot 13$14, Maito Bakery Street, Adesola, Ibadan &nbsp;·&nbsp; ✉ info@patimocollege.edu.ng<br/>
+                Plot 13$14, Maito Bakery Street, Adesola, Ibadan &nbsp;·&nbsp; ✉ info@patimocollege.edu.ng<br />
                 Proprietor: 08034556007 &nbsp;·&nbsp; Principal: 08034877814 &nbsp;·&nbsp; General Manager: 08138070528
               </p>
             </div>
@@ -114,10 +121,10 @@ export default function AdmissionLetterPage() {
             <h2 style={{ textAlign: 'center', fontSize: '17px', fontWeight: '800', color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 14px 0', textDecoration: 'underline' }}>
               Official Letter of Provisional Admission
             </h2>
-            
+
             <p style={{ marginBottom: '12px' }}>
-              We are pleased to inform you that following a successful application and screening process, 
-              <strong> {student.firstName} {student.lastName} {student.otherNames || ''}</strong> has been offered provisional admission 
+              We are pleased to inform you that following a successful application and screening process,
+              <strong> {student.firstName} {student.lastName} {student.otherNames || ''}</strong> has been offered provisional admission
               into <strong>{student.currentClass?.name || 'our institution'}</strong> for the <strong>{student.session}</strong> academic session.
             </p>
 
@@ -126,46 +133,99 @@ export default function AdmissionLetterPage() {
             </p>
           </div>
 
-          {/* Details Box - Beautiful border and shaded background */}
-          <div style={{ position: 'relative', zIndex: 1, backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', padding: '14px 18px', borderRadius: '6px', marginBottom: '16px' }}>
-            <h3 style={{ fontSize: '14px', borderBottom: '1px solid #CBD5E1', paddingBottom: '6px', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#0F172A', fontWeight: 'bold' }}>
-              Student Profile & Login Credentials
-            </h3>
-            <table style={{ width: '100%', fontSize: '13px', borderCollapse: 'collapse' }}>
-              <tbody>
-                <tr>
-                  <td style={{ padding: '3px 0', width: '35%', fontWeight: 'bold', color: '#475569' }}>Full Name:</td>
-                  <td style={{ padding: '3px 0', fontWeight: '700' }}>{student.lastName.toUpperCase()}, {student.firstName} {student.otherNames || ''}</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '3px 0', fontWeight: 'bold', color: '#475569' }}>Admission Number:</td>
-                  <td style={{ padding: '3px 0', fontWeight: '700' }}>{student.admissionNo}</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '3px 0', fontWeight: 'bold', color: '#475569' }}>Class Admitted:</td>
-                  <td style={{ padding: '3px 0', fontWeight: '700' }}>{student.currentClass?.name}</td>
-                </tr>
-                <tr><td colSpan="2" style={{ padding: '6px 0' }}><hr style={{ margin: 0, borderColor: '#E2E8F0' }}/></td></tr>
-                <tr>
-                  <td style={{ padding: '3px 0', fontWeight: 'bold', color: '#0F172A' }}>Portal Username / Email:</td>
-                  <td style={{ padding: '3px 0', fontFamily: 'monospace', fontSize: '14px', fontWeight: 'bold', color: '#EAB308' }}>{student.user?.email || `${student.moodleUsername}@patimo.edu`}</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '3px 0', fontWeight: 'bold', color: '#0F172A' }}>Default Password:</td>
-                  <td style={{ padding: '3px 0', fontFamily: 'monospace', fontSize: '14px', fontWeight: 'bold', color: '#0F172A' }}>{student.moodlePassword || 'Not recorded in plain text'}</td>
-                </tr>
-              </tbody>
-            </table>
+          {/* Details Box - Beautiful border, passport photo & moodle login credentials */}
+          <div style={{ position: 'relative', zIndex: 1, backgroundColor: '#F8FAFC', border: '1px solid #CBD5E1', padding: '14px 18px', borderRadius: '6px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #CBD5E1', paddingBottom: '6px', marginBottom: '10px' }}>
+              <h3 style={{ fontSize: '13.5px', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#0F172A', fontWeight: 'bold' }}>
+                Student Profile & E-Learning (Moodle) Credentials
+              </h3>
+              <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, letterSpacing: '0.5px' }}>CONFIDENTIAL</span>
+            </div>
+
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+              {/* Profile & Login Details Table */}
+              <div style={{ flex: 1 }}>
+                <table style={{ width: '100%', fontSize: '12.5px', borderCollapse: 'collapse' }}>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: '3px 0', width: '38%', fontWeight: 'bold', color: '#475569' }}>Full Name:</td>
+                      <td style={{ padding: '3px 0', fontWeight: '700', color: '#0F172A' }}>{student.lastName.toUpperCase()}, {student.firstName} {student.otherNames || ''}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '3px 0', fontWeight: 'bold', color: '#475569' }}>Admission Number:</td>
+                      <td style={{ padding: '3px 0', fontWeight: '700', color: '#0F172A' }}>{student.admissionNo}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '3px 0', fontWeight: 'bold', color: '#475569' }}>Class Admitted:</td>
+                      <td style={{ padding: '3px 0', fontWeight: '700', color: '#0F172A' }}>{student.currentClass?.name || '—'}</td>
+                    </tr>
+                    <tr><td colSpan="2" style={{ padding: '4px 0' }}><hr style={{ margin: 0, borderColor: '#E2E8F0' }} /></td></tr>
+                    <tr>
+                      <td style={{ padding: '3px 0', fontWeight: 'bold', color: '#0F172A' }}>Moodle Portal URL:</td>
+                      <td style={{ padding: '3px 0', fontFamily: 'monospace', fontSize: '12.5px', fontWeight: '600', color: '#2563EB' }}>
+                        https://moodle.patimocollege.edu.ng
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '3px 0', fontWeight: 'bold', color: '#0F172A' }}>Moodle Username:</td>
+                      <td style={{ padding: '3px 0', fontFamily: 'monospace', fontSize: '13.5px', fontWeight: 'bold', color: '#D97706' }}>
+                        {moodleUsername}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '3px 0', fontWeight: 'bold', color: '#0F172A' }}>Moodle Default Password:</td>
+                      <td style={{ padding: '3px 0', fontFamily: 'monospace', fontSize: '13.5px', fontWeight: 'bold', color: '#0F172A' }}>
+                        {moodlePassword}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '3px 0', fontWeight: 'bold', color: '#0F172A' }}>School Portal Email:</td>
+                      <td style={{ padding: '3px 0', fontFamily: 'monospace', fontSize: '12.5px', fontWeight: '600', color: '#475569' }}>
+                        {student.user?.email || `${moodleUsername}@patimo.edu`}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Student Passport Photograph */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                <div style={{
+                  width: '95px',
+                  height: '115px',
+                  border: '2px solid #0F172A',
+                  borderRadius: '4px',
+                  backgroundColor: '#FFFFFF',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justify: 'center'
+                }}>
+                  {photoUrl ? (
+                    <img src={photoUrl} alt={`${student.firstName} ${student.lastName}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', backgroundColor: '#F1F5F9', color: '#334155', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                      <span style={{ fontSize: '24px' }}>{initials}</span>
+                      <span style={{ fontSize: '8.5px', textTransform: 'uppercase', color: '#94A3B8', marginTop: '2px', letterSpacing: '0.5px' }}>Passport</span>
+                    </div>
+                  )}
+                </div>
+                <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#475569', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                  Passport Photo
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Sign Off & Footer (Docked neatly at the bottom) */}
         <div style={{ position: 'relative', zIndex: 1, fontSize: '14.5px' }}>
           <p style={{ margin: '0 0 35px 0' }}>Congratulations once again, and welcome to the PATIMO COLLEGE family!</p>
-          
+
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
             <div style={{ borderTop: '1px solid #475569', paddingTop: '6px', width: '220px' }}>
-              <strong style={{ fontSize: '13.5px', color: '#0F172A' }}>The Principal</strong><br/>
+              <strong style={{ fontSize: '13.5px', color: '#0F172A' }}>The Principal</strong><br />
               <span style={{ fontSize: '11px', color: '#64748B' }}>PATIMO COLLEGE</span>
             </div>
             {/* Elegant Official Seal Placeholder */}
