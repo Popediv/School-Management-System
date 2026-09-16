@@ -79,6 +79,7 @@
     dateOfBirth    DateTime
     gender         String
     photo          String?                        // relative path in /uploads
+    fingerprintTemplate String?                  // Base64 minutiae template for hardware scanners
     stateOfOrigin  String?
     lga            String?
     religion       String?

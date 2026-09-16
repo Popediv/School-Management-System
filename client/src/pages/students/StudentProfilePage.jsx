@@ -1,9 +1,9 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { useState } from 'react';
 import { studentService, feeService } from '../../services';
-import { ArrowLeft, Edit, BookMarked, ClipboardCheck, CreditCard, Printer, Lock, Key, Plus, FileText, X, Activity } from 'lucide-react';
+import { ArrowLeft, Edit, BookMarked, ClipboardCheck, CreditCard, Printer, Lock, Key, Plus, FileText, X, Activity, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { SESSIONS, CURRENT_SESSION } from '../../utils/constants';
@@ -22,6 +22,7 @@ function InfoRow({ label, value }) {
 
 export default function StudentProfilePage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const qc = useQueryClient();
   const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'PRINCIPAL';
@@ -54,6 +55,22 @@ export default function StudentProfilePage() {
     },
     onError: (err) => toast.error(err.response?.data?.message || 'Failed to update status')
   });
+
+  const { mutate: deleteStudent, isPending: deletingStudent } = useMutation({
+    mutationFn: () => studentService.delete(id),
+    onSuccess: (res) => {
+      toast.success(res.data?.message || 'Student record deleted permanently');
+      qc.invalidateQueries({ queryKey: ['students'] });
+      navigate('/students');
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to delete student')
+  });
+
+  const handleDeleteStudent = () => {
+    if (window.confirm(`Are you sure you want to PERMANENTLY delete ${student?.firstName || ''} ${student?.lastName || ''}? This action cannot be undone and will erase all associated records.`)) {
+      deleteStudent();
+    }
+  };
 
   const { data: student, isLoading } = useQuery({
     queryKey: ['student', id],
@@ -131,6 +148,11 @@ export default function StudentProfilePage() {
                     <button onClick={() => { setStatusForm(student.status); setShowStatusModal(true); }} className="btn btn-secondary btn-sm" style={{ border: '1px solid var(--border)' }}>
                       <Activity size={14} /> Update Status
                     </button>
+                    {(student.status === 'WITHDRAWN' || student.status === 'SUSPENDED') && (
+                      <button onClick={handleDeleteStudent} disabled={deletingStudent} className="btn btn-danger btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <Trash2 size={14} /> Delete Student
+                      </button>
+                    )}
                     <Link to={`/students/${id}/admission-letter`} className="btn btn-primary btn-sm">
                       <Printer size={14} /> Admission Letter
                     </Link>

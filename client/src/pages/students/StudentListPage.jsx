@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { UserPlus, Search, Filter, Download } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link, useNavigate } from 'react-router-dom';
+import { UserPlus, Search, Filter, Download, Trash2, Printer, CheckSquare, Square } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { studentService } from '../../services';
 import api from '../../services/api';
@@ -9,9 +9,12 @@ import api from '../../services/api';
 const STATUS_COLORS = { ACTIVE: 'success', SUSPENDED: 'warning', GRADUATED: 'info', WITHDRAWN: 'danger' };
 
 export default function StudentListPage() {
+  const navigate = useNavigate();
+  const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [classFilter, setClass] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['students', search, status, classFilter],
@@ -26,6 +29,60 @@ export default function StudentListPage() {
   });
 
   const students = data?.students || [];
+
+  const { mutate: deleteStudent } = useMutation({
+    mutationFn: (id) => studentService.delete(id),
+    onSuccess: (res) => {
+      toast.success(res.data?.message || 'Student record deleted permanently');
+      qc.invalidateQueries({ queryKey: ['students'] });
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to delete student')
+  });
+
+  const handleDelete = (s) => {
+    if (window.confirm(`Are you sure you want to PERMANENTLY delete ${s.firstName} ${s.lastName}? This action cannot be undone.`)) {
+      deleteStudent(s.id);
+    }
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(students.map(s => s.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const { mutate: bulkDeleteStudents } = useMutation({
+    mutationFn: (ids) => studentService.bulkDelete(ids),
+    onSuccess: (res) => {
+      toast.success(res.data?.message || 'Selected students deleted successfully');
+      setSelectedIds([]);
+      qc.invalidateQueries({ queryKey: ['students'] });
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to delete selected students')
+  });
+
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    if (window.confirm(`Are you sure you want to PERMANENTLY delete the ${selectedIds.length} selected student(s)?\n\nNote: Active and Graduated student records are protected and will be automatically skipped for safety.`)) {
+      bulkDeleteStudents(selectedIds);
+    }
+  };
+
+  const handleBulkPrintLetters = () => {
+    if (selectedIds.length === 0) {
+      toast.info('Please select at least one student or select all to generate bulk admission letters.');
+      return;
+    }
+    navigate(`/students/admission-letters/bulk?ids=${selectedIds.join(',')}`);
+  };
 
   const handleExportMoodle = async () => {
     try {
@@ -72,6 +129,8 @@ export default function StudentListPage() {
     }
   };
 
+  const allSelected = students.length > 0 && selectedIds.length === students.length;
+
   return (
     <div>
       <div className="page-header">
@@ -80,6 +139,16 @@ export default function StudentListPage() {
           <p className="page-header-subtitle">{data?.total ?? 0} students enrolled</p>
         </div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {selectedIds.length > 0 && (
+            <>
+              <button onClick={handleBulkPrintLetters} className="btn btn-primary" style={{ backgroundColor: '#0284C7', borderColor: '#0284C7' }}>
+                <Printer size={16} /> Bulk Admission Letters ({selectedIds.length})
+              </button>
+              <button onClick={handleBulkDelete} className="btn btn-danger" style={{ backgroundColor: '#DC2626', borderColor: '#DC2626' }}>
+                <Trash2 size={16} /> Delete Selected ({selectedIds.length})
+              </button>
+            </>
+          )}
           <button onClick={handleExportMoodle} className="btn btn-secondary">
             <Download size={16} /> Default CSV
           </button>
@@ -103,19 +172,31 @@ export default function StudentListPage() {
             <input className="form-input" placeholder="Search by name or admission no…"
               value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-          <select className="form-select" style={{ width: 160 }} value={status} onChange={e => setStatus(e.target.value)}>
+          <select className="form-select" style={{ width: 160 }} value={status} onChange={e => { setStatus(e.target.value); setSelectedIds([]); }}>
             <option value="">All Statuses</option>
             <option value="ACTIVE">Active</option>
             <option value="SUSPENDED">Suspended</option>
-            <option value="GRADUATED">Graduated</option>
+            <option value="GRADUATED">Graduated (Alumni)</option>
             <option value="WITHDRAWN">Withdrawn</option>
           </select>
-          <select className="form-select" style={{ width: 140 }} value={classFilter} onChange={e => setClass(e.target.value)}>
+          <select className="form-select" style={{ width: 140 }} value={classFilter} onChange={e => { setClass(e.target.value); setSelectedIds([]); }}>
             <option value="">All Classes</option>
             {['JSS1A', 'JSS1B', 'JSS2A', 'JSS2B', 'JSS3A', 'JSS3B', 'SS1A', 'SS1B', 'SS2A', 'SS2B', 'SS3A', 'SS3B'].map(c =>
               <option key={c} value={c}>{c}</option>
             )}
           </select>
+          {students.length > 0 && (
+            <button
+              onClick={() => {
+                if (allSelected) setSelectedIds([]);
+                else setSelectedIds(students.map(s => s.id));
+              }}
+              className="btn btn-secondary btn-sm"
+              title="Select or deselect all visible students"
+            >
+              {allSelected ? 'Deselect All' : `Select All (${students.length})`}
+            </button>
+          )}
         </div>
       </div>
 
@@ -124,30 +205,62 @@ export default function StudentListPage() {
         <div className="table-wrapper">
           <table>
             <thead><tr>
+              <th style={{ width: 40 }}>
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={handleSelectAll}
+                  style={{ cursor: 'pointer', width: 16, height: 16 }}
+                />
+              </th>
               <th>#</th><th>Name</th><th>Admission No.</th>
               <th>Class</th><th>Status</th><th>Action</th>
             </tr></thead>
             <tbody>
               {isLoading
                 ? Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i}>{Array.from({ length: 6 }).map((_, j) =>
+                  <tr key={i}>{Array.from({ length: 7 }).map((_, j) =>
                     <td key={j}><div className="skeleton" style={{ height: 16, width: '80%' }} /></td>)}</tr>
                 ))
-                : students.map((s, i) => (
-                  <tr key={s.id}>
-                    <td className="text-muted">{i + 1}</td>
-                    <td><strong>{s.lastName} {s.firstName}</strong></td>
-                    <td><code style={{ fontSize: '0.8rem', color: 'var(--primary-light)' }}>{s.admissionNo}</code></td>
-                    <td>{s.currentClass?.name ?? '—'}</td>
-                    <td><span className={`badge badge-${STATUS_COLORS[s.status] ?? 'muted'}`}>{s.status}</span></td>
-                    <td>
-                      <Link to={`/students/${s.id}`} className="btn btn-secondary btn-sm">View Profile</Link>
-                    </td>
-                  </tr>
-                ))
+                : students.map((s, i) => {
+                  const isChecked = selectedIds.includes(s.id);
+                  const isDeletable = s.status === 'WITHDRAWN' || s.status === 'SUSPENDED';
+                  return (
+                    <tr key={s.id} style={{ backgroundColor: isChecked ? 'rgba(79, 70, 229, 0.04)' : undefined }}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleSelectOne(s.id)}
+                          style={{ cursor: 'pointer', width: 16, height: 16 }}
+                        />
+                      </td>
+                      <td className="text-muted">{i + 1}</td>
+                      <td><strong>{s.lastName} {s.firstName}</strong></td>
+                      <td><code style={{ fontSize: '0.8rem', color: 'var(--primary-light)' }}>{s.admissionNo}</code></td>
+                      <td>{s.currentClass?.name ?? '—'}</td>
+                      <td><span className={`badge badge-${STATUS_COLORS[s.status] ?? 'muted'}`}>{s.status}</span></td>
+                      <td>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <Link to={`/students/${s.id}`} className="btn btn-secondary btn-sm">View Profile</Link>
+                          {isDeletable && (
+                            <button
+                              onClick={() => handleDelete(s)}
+                              className="btn btn-danger btn-sm"
+                              style={{ padding: '4px 8px' }}
+                              title="Permanently delete non-active student record"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               }
               {!isLoading && students.length === 0 && (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
                   No students found. Try adjusting your filters.
                 </td></tr>
               )}
@@ -158,3 +271,4 @@ export default function StudentListPage() {
     </div>
   );
 }
+

@@ -11,6 +11,7 @@ export default function PromotionPage() {
   const { currentSession } = useSettings();
   const [fromClass, setFromClass] = useState('');
   const [toClass, setToClass] = useState('');
+  const [fromSession, setFromSession] = useState('');
   const [session, setSession] = useState(currentSession);
   const [confirmed, setConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -45,7 +46,7 @@ export default function PromotionPage() {
 
     setLoading(true);
     try {
-      const res = await api.post('/students/bulk-promote', { fromClassId: fromClass, toClassId: toClass, session });
+      const res = await api.post('/students/bulk-promote', { fromClassId: fromClass, toClassId: toClass, session, fromSession });
       setResult({ count: res.data.count || fromInfo?._count?.students || '?', toClass: toInfo?.name });
       toast.success('Students promoted successfully!');
     } catch (err) {
@@ -72,7 +73,7 @@ export default function PromotionPage() {
           <p className="text-muted" style={{ marginBottom: 24 }}>
             <strong className="text-primary">{result.count}</strong> students have been successfully moved to <strong className="text-primary">{result.toClass}</strong> for the <strong>{session}</strong> session.
           </p>
-          <button className="btn btn-secondary" onClick={() => { setResult(null); setConfirmed(false); setFromClass(''); setToClass(''); }}>
+          <button className="btn btn-secondary" onClick={() => { setResult(null); setConfirmed(false); setFromClass(''); setToClass(''); setFromSession(''); }}>
             Promote Another Class
           </button>
         </div>
@@ -95,7 +96,17 @@ export default function PromotionPage() {
           <h3 style={{ marginBottom: 20 }}>Promotion Settings</h3>
           <form onSubmit={handlePromote} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div className="form-group">
-              <label className="form-label">Academic Session <span className="required">*</span></label>
+              <label className="form-label">Current Student Batch / Session (Optional Filter)</label>
+              <select className="form-select" value={fromSession} onChange={e => setFromSession(e.target.value)}>
+                <option value="">All Current Sessions</option>
+                {SESSIONS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <span className="text-xs text-muted" style={{ marginTop: 4, display: 'block' }}>
+                Filter to only promote students registered under a specific academic session (e.g. 2024/2025).
+              </span>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Promote To New Academic Session <span className="required">*</span></label>
               <select className="form-select" value={session} onChange={e => setSession(e.target.value)}>
                 {SESSIONS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
@@ -104,7 +115,7 @@ export default function PromotionPage() {
               <label className="form-label">From Class <span className="required">*</span></label>
               <select className="form-select" value={fromClass} onChange={e => setFromClass(e.target.value)}>
                 <option value="">Select current class…</option>
-                {classes.map(c => <option key={c.id} value={c.id}>{c.name} ({c._count?.students || 0} students)</option>)}
+                {classes.map(c => <option key={c.id} value={c.id}>{c.name} ({c._count?.students || 0} total enrolled)</option>)}
               </select>
             </div>
             <div style={{ display: 'flex', justifyContent: 'center' }}>

@@ -12,7 +12,7 @@ const getAll = async (req, res, next) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const where = {
-      ...(status && { status }),
+      ...(status && status.trim() !== '' && { status: status.trim().toUpperCase() }),
       ...(classFilter && { currentClass: { name: classFilter } }),
       ...(classId && { currentClassId: classId }),
       ...(search && {
@@ -83,8 +83,14 @@ const create = async (req, res, next) => {
     const admissionNo = await generateAdmissionNo(prisma);
     const moodleUsername = generateMoodleUsername(admissionNo);
     const moodlePassword = generateMoodlePassword(lastName);
-    const defaultEmail = `${admissionNo.toLowerCase()}@gmail.com`;
-    const defaultPassword = await bcrypt.hash(moodlePassword, 12);
+
+    // Class-based email format (e.g. jss1a@gmail.com)
+    const targetClass = await prisma.class.findUnique({ where: { id: classId } });
+    const classSlug = targetClass ? targetClass.name.toLowerCase().replace(/[^a-z0-9]/g, '') : 'student';
+    // Pre-compute password hashes outside transaction to prevent transaction timeout
+    const defaultEmail = `${classSlug}@gmail.com`;
+    const defaultPassword = await bcrypt.hash(moodlePassword, 10);
+    const defaultParentPwd = await bcrypt.hash('Parent@123', 10);
 
     // Photo path (handles both local filename and Cloudinary URL)
     const photo = req.file ? (req.file.path.startsWith('http') ? req.file.path : req.file.filename) : null;
@@ -101,9 +107,8 @@ const create = async (req, res, next) => {
         let parentUser = await tx.user.findFirst({ where: { name: parentName, role: 'PARENT' } });
         if (!parentUser) {
           const parentEmail2 = parentEmail || `parent.${Date.now()}@patimo.edu`;
-          const parentPwd = await bcrypt.hash('Parent@123', 12);
           parentUser = await tx.user.create({
-            data: { name: parentName, email: parentEmail2, password: parentPwd, role: 'PARENT' },
+            data: { name: parentName, email: parentEmail2, password: defaultParentPwd, role: 'PARENT' },
           });
         }
 
@@ -138,7 +143,7 @@ const create = async (req, res, next) => {
       });
 
       return student;
-    });
+    }, { maxWait: 10000, timeout: 15000 });
 
     res.status(201).json({
       message: `Student registered successfully`,
@@ -173,11 +178,37 @@ const update = async (req, res, next) => {
 // DELETE /api/students/:id
 const remove = async (req, res, next) => {
   try {
-    await prisma.student.update({
+    const student = await prisma.student.findUnique({
       where: { id: req.params.id },
-      data: { status: 'WITHDRAWN', user: { update: { isActive: false } } },
+      select: { id: true, status: true, userId: true }
     });
-    res.json({ message: 'Student withdrawn successfully' });
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+
+    if (student.status === 'ACTIVE') {
+      return res.status(400).json({
+        message: 'Active students cannot be permanently deleted. Change student status to Withdrawn or Suspended first.'
+      });
+    }
+
+    if (student.status === 'GRADUATED') {
+      return res.status(400).json({
+        message: 'Graduated student records cannot be deleted as they are preserved for alumni & academic reference.'
+      });
+    }
+
+    // Permanently delete student and all linked records
+    await prisma.$transaction(async (tx) => {
+      await tx.attendance.deleteMany({ where: { studentId: student.id } });
+      await tx.result.deleteMany({ where: { studentId: student.id } });
+      await tx.payment.deleteMany({ where: { studentId: student.id } });
+      await tx.enrollment.deleteMany({ where: { studentId: student.id } });
+      await tx.student.delete({ where: { id: student.id } });
+      if (student.userId) {
+        await tx.user.delete({ where: { id: student.userId } });
+      }
+    });
+
+    res.json({ message: 'Student record permanently deleted successfully' });
   } catch (err) { next(err); }
 };
 
@@ -189,11 +220,19 @@ const promote = async (req, res, next) => {
     if (!newClassId || !session)
       return res.status(400).json({ message: 'newClassId and session are required' });
 
+    const targetClass = await prisma.class.findUnique({ where: { id: newClassId } });
+    const classSlug = targetClass ? targetClass.name.toLowerCase().replace(/[^a-z0-9]/g, '') : 'student';
+    const newEmail = `${classSlug}@gmail.com`;
+
     const student = await prisma.$transaction(async (tx) => {
-      // Update current class — admission number NEVER changes
+      // Update current class and update student user email to match new class
       const updated = await tx.student.update({
         where: { id },
-        data: { currentClassId: newClassId, session },
+        data: {
+          currentClassId: newClassId,
+          session,
+          user: { update: { email: newEmail } }
+        },
       });
 
       // Add enrollment record for history
@@ -204,7 +243,7 @@ const promote = async (req, res, next) => {
       });
 
       return updated;
-    });
+    }, { maxWait: 10000, timeout: 15000 });
 
     res.json({ message: 'Student promoted successfully', student });
   } catch (err) { next(err); }
@@ -213,26 +252,51 @@ const promote = async (req, res, next) => {
 // POST /api/students/bulk-promote
 const bulkPromote = async (req, res, next) => {
   try {
-    const { fromClassId, toClassId, session } = req.body;
+    const { fromClassId, toClassId, session, fromSession } = req.body;
     if (!fromClassId || !toClassId || !session)
       return res.status(400).json({ message: 'fromClassId, toClassId, and session are required' });
 
-    const students = await prisma.student.findMany({ where: { currentClassId: fromClassId, status: 'ACTIVE' } });
-    if (students.length === 0) return res.status(400).json({ message: 'No active students found in the selected class' });
+    const studentWhere = {
+      currentClassId: fromClassId,
+      status: 'ACTIVE',
+      ...(fromSession && { session: fromSession })
+    };
+
+    const students = await prisma.student.findMany({ where: studentWhere });
+    if (students.length === 0) return res.status(400).json({ message: 'No active students found matching the selected class and session filter' });
 
     await prisma.$transaction(async (tx) => {
       if (toClassId === 'GRADUATE') {
         // Graduate students: remove currentClassId and set status
         await tx.student.updateMany({
-          where: { currentClassId: fromClassId, status: 'ACTIVE' },
+          where: studentWhere,
           data: { currentClassId: null, status: 'GRADUATED', session }
         });
+        const userIds = students.map(s => s.userId).filter(Boolean);
+        if (userIds.length > 0) {
+          await tx.user.updateMany({
+            where: { id: { in: userIds } },
+            data: { email: 'graduated@gmail.com' }
+          });
+        }
       } else {
         // Normal promotion
+        const targetClass = await tx.class.findUnique({ where: { id: toClassId } });
+        const classSlug = targetClass ? targetClass.name.toLowerCase().replace(/[^a-z0-9]/g, '') : 'student';
+        const newEmail = `${classSlug}@gmail.com`;
+
         await tx.student.updateMany({
-          where: { currentClassId: fromClassId, status: 'ACTIVE' },
+          where: studentWhere,
           data: { currentClassId: toClassId, session }
         });
+
+        const userIds = students.map(s => s.userId).filter(Boolean);
+        if (userIds.length > 0) {
+          await tx.user.updateMany({
+            where: { id: { in: userIds } },
+            data: { email: newEmail }
+          });
+        }
 
         // Add enrollment records
         const enrollments = students.map(s => ({
@@ -240,14 +304,12 @@ const bulkPromote = async (req, res, next) => {
           classId: toClassId,
           session
         }));
-        // Note: createMany might fail if (studentId, session) is duplicated.
-        // For safe bulk upsert in Prisma, loop or do createManySkipDuplicates
         await tx.enrollment.createMany({
           data: enrollments,
           skipDuplicates: true
         });
       }
-    });
+    }, { maxWait: 10000, timeout: 15000 });
 
     res.json({ message: toClassId === 'GRADUATE' ? 'Students graduated successfully' : 'Students promoted successfully', count: students.length });
   } catch (err) { next(err); }
@@ -269,11 +331,13 @@ const exportMoodle = async (req, res, next) => {
     const rows = students.map(s => {
       // Escape fields that might contain commas
       const escape = (str) => `"${(str || '').replace(/"/g, '""')}"`;
+      const classSlug = s.currentClass?.name ? s.currentClass.name.toLowerCase().replace(/[^a-z0-9]/g, '') : 'student';
+      const email = `${classSlug}@gmail.com`;
       return [
         escape(s.moodleUsername),
         escape(s.firstName),
         escape(s.lastName),
-        escape(s.user?.email),
+        escape(email),
         escape(s.moodlePassword || ''),
         escape(s.currentClass?.name || '')
       ].join(',');
@@ -294,6 +358,7 @@ const exportCustomMoodle = async (req, res, next) => {
       where: { status: 'ACTIVE' },
       include: {
         user: { select: { email: true } },
+        currentClass: { select: { name: true } }
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -302,12 +367,13 @@ const exportCustomMoodle = async (req, res, next) => {
     const rows = students.map(s => {
       // Escape fields that might contain commas
       const escape = (str) => `"${(str || '').replace(/"/g, '""')}"`;
+      const classSlug = s.currentClass?.name ? s.currentClass.name.toLowerCase().replace(/[^a-z0-9]/g, '') : 'student';
+      const email = `${classSlug}@gmail.com`;
       return [
         escape(s.moodleUsername),
         escape(s.firstName),
         escape(s.lastName),
-        // Use default format if no email exists on user
-        escape(s.user?.email || `${s.admissionNo.toLowerCase()}@gmail.com`),
+        escape(email),
         escape(s.moodlePassword || s.lastName.trim().toLowerCase()),
       ].join(',');
     });
@@ -353,4 +419,54 @@ const exportPicturesZip = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { getAll, getById, create, update, remove, promote, bulkPromote, exportMoodle, exportCustomMoodle, exportPicturesZip };
+// POST /api/students/bulk-delete
+const bulkDelete = async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: 'No student IDs provided for bulk deletion' });
+    }
+
+    const students = await prisma.student.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, status: true, firstName: true, lastName: true, userId: true }
+    });
+
+    if (students.length === 0) {
+      return res.status(404).json({ message: 'No matching student records found' });
+    }
+
+    // Safety filter: Only WITHDRAWN and SUSPENDED students are deletable
+    const deletable = students.filter(s => s.status === 'WITHDRAWN' || s.status === 'SUSPENDED');
+    const blocked = students.filter(s => s.status === 'ACTIVE' || s.status === 'GRADUATED');
+
+    if (deletable.length === 0) {
+      return res.status(400).json({
+        message: 'None of the selected students can be deleted. Active and Graduated student records are protected.'
+      });
+    }
+
+    const deletableIds = deletable.map(s => s.id);
+    const deletableUserIds = deletable.map(s => s.userId).filter(Boolean);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.attendance.deleteMany({ where: { studentId: { in: deletableIds } } });
+      await tx.result.deleteMany({ where: { studentId: { in: deletableIds } } });
+      await tx.payment.deleteMany({ where: { studentId: { in: deletableIds } } });
+      await tx.enrollment.deleteMany({ where: { studentId: { in: deletableIds } } });
+      await tx.student.deleteMany({ where: { id: { in: deletableIds } } });
+      if (deletableUserIds.length > 0) {
+        await tx.user.deleteMany({ where: { id: { in: deletableUserIds } } });
+      }
+    }, { maxWait: 10000, timeout: 15000 });
+
+    let message = `Successfully deleted ${deletable.length} non-active student record(s).`;
+    if (blocked.length > 0) {
+      message += ` (${blocked.length} Active/Graduated student(s) were skipped as protected records).`;
+    }
+
+    res.json({ message, deletedCount: deletable.length, skippedCount: blocked.length });
+  } catch (err) { next(err); }
+};
+
+module.exports = { getAll, getById, create, update, remove, promote, bulkPromote, bulkDelete, exportMoodle, exportCustomMoodle, exportPicturesZip };

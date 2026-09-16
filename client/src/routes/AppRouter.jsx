@@ -28,6 +28,7 @@ import StudentRegisterPage from '../pages/students/StudentRegisterPage';
 import StudentProfilePage from '../pages/students/StudentProfilePage';
 import StudentEditPage from '../pages/students/StudentEditPage';
 import AdmissionLetterPage from '../pages/students/AdmissionLetterPage';
+import BulkAdmissionLettersPage from '../pages/students/BulkAdmissionLettersPage';
 
 // Teachers
 import TeacherListPage from '../pages/teachers/TeacherListPage';
@@ -114,6 +115,11 @@ export default function AppRouter() {
               <Route path="/students/register" element={
                 <ProtectedRoute roles={[ROLES.SUPER_ADMIN]}>
                   <DashboardLayout><StudentRegisterPage /></DashboardLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/students/admission-letters/bulk" element={
+                <ProtectedRoute roles={[...ADMIN_ROLES]}>
+                  <DashboardLayout><BulkAdmissionLettersPage /></DashboardLayout>
                 </ProtectedRoute>
               } />
               <Route path="/students/:id/admission-letter" element={

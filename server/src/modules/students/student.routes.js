@@ -16,6 +16,7 @@ router.get('/pictures-zip', allowRoles('SUPER_ADMIN', 'PRINCIPAL'), ctrl.exportP
 router.get('/:id', allowRoles(...ADMIN, 'TEACHER', 'BURSARY', 'PARENT', 'STUDENT'), ctrl.getById);
 router.put('/:id', allowRoles('SUPER_ADMIN'), upload.single('photo'), ctrl.update);
 router.delete('/:id', allowRoles('SUPER_ADMIN'), ctrl.remove);
+router.post('/bulk-delete', allowRoles('SUPER_ADMIN'), ctrl.bulkDelete);
 router.post('/bulk-promote', allowRoles('SUPER_ADMIN', 'PRINCIPAL'), ctrl.bulkPromote);
 router.post('/:id/promote', allowRoles('SUPER_ADMIN', 'PRINCIPAL'), ctrl.promote);
 
