@@ -1,14 +1,17 @@
 const express = require('express');
-const router  = express.Router();
-const ctrl    = require('./attendance.controller');
+const router = express.Router();
+const ctrl = require('./attendance.controller');
 const { authenticate, allowRoles } = require('../../middleware/auth');
 
 const ADMIN = ['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL'];
 
 router.use(authenticate);
-router.post('/',                 allowRoles(...ADMIN, 'TEACHER'), ctrl.mark);
-router.get('/class/:classId',    allowRoles(...ADMIN, 'TEACHER'), ctrl.getByClass);
-router.get('/student/:studentId',allowRoles(...ADMIN, 'TEACHER', 'PARENT', 'STUDENT'), ctrl.getByStudent);
-router.get('/report',            allowRoles(...ADMIN, 'TEACHER'), ctrl.getReport);
+router.post('/', allowRoles(...ADMIN, 'TEACHER'), ctrl.mark);
+router.post('/kiosk-scan', allowRoles(...ADMIN, 'TEACHER'), ctrl.kioskScan);
+router.post('/auto-mark-absent', allowRoles(...ADMIN, 'TEACHER'), ctrl.autoMarkAbsent);
+router.post('/save-fingerprint', allowRoles(...ADMIN, 'TEACHER'), ctrl.saveFingerprint);
+router.get('/class/:classId', allowRoles(...ADMIN, 'TEACHER'), ctrl.getByClass);
+router.get('/student/:studentId', allowRoles(...ADMIN, 'TEACHER', 'PARENT', 'STUDENT'), ctrl.getByStudent);
+router.get('/report', allowRoles(...ADMIN, 'TEACHER'), ctrl.getReport);
 
 module.exports = router;

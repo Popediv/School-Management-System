@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { classService, subjectService, resultService } from '../../services';
 import { useSettings } from '../../context/SettingsContext';
+import { useAuth } from '../../context/AuthContext';
 import { Upload, Save } from 'lucide-react';
 import api from '../../services/api';
 
@@ -11,6 +12,7 @@ const TERMS = ['First Term', 'Second Term', 'Third Term'];
 export default function UploadResultsPage() {
   const qc = useQueryClient();
   const { currentSession, currentTerm } = useSettings();
+  const { user } = useAuth();
   const [classId, setClassId] = useState('');
   const [subjectId, setSubjectId] = useState('');
   const [term, setTerm] = useState(currentTerm === 'SECOND' ? 'Second Term' : currentTerm === 'THIRD' ? 'Third Term' : 'First Term');
@@ -103,6 +105,48 @@ export default function UploadResultsPage() {
     upload({ records });
   };
 
+  const handleTeacherExcelUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!classId || !subjectId || !session) return toast.warning('Class, Subject, and Session required before uploading EXCEL');
+
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('classId', classId);
+    fd.append('subjectId', subjectId);
+    fd.append('term', term);
+    fd.append('session', session);
+
+    const loader = toast.loading('Uploading and processing teacher excel...');
+    try {
+      const res = await resultService.uploadTeacherExcel(fd);
+      toast.update(loader, { render: res.data.message, type: 'success', isLoading: false, autoClose: 3000 });
+      qc.invalidateQueries({ queryKey: ['results'] });
+    } catch (err) {
+      toast.update(loader, { render: err.response?.data?.message || 'Upload failed', type: 'error', isLoading: false, autoClose: 4000 });
+    }
+  };
+
+  const handleSuperadminExcelUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!session) return toast.warning('Session required before uploading SUPERADMIN EXCEL');
+
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('term', term);
+    fd.append('session', session);
+
+    const loader = toast.loading('Uploading and processing superadmin excel...');
+    try {
+      const res = await resultService.uploadSuperadminExcel(fd);
+      toast.update(loader, { render: res.data.message, type: 'success', isLoading: false, autoClose: 3000 });
+      qc.invalidateQueries({ queryKey: ['results'] });
+    } catch (err) {
+      toast.update(loader, { render: err.response?.data?.message || 'Upload failed', type: 'error', isLoading: false, autoClose: 4000 });
+    }
+  };
+
   const total = (id) => {
     const ca = parseFloat(scores[id]?.ca || 0);
     const exam = parseFloat(scores[id]?.exam || 0);
@@ -119,14 +163,28 @@ export default function UploadResultsPage() {
           <h1 className="page-header-title">Upload Results</h1>
           <p className="page-header-subtitle">Enter CA (max 40) and Exam (max 60) scores per student</p>
         </div>
-        {students.length > 0 && (
-          <button className="btn btn-primary" onClick={handleSubmit} disabled={isPending}>
-            {isPending
-              ? <span className="animate-spin" style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block' }} />
-              : <><Save size={16} /> Save Results</>
-            }
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          {classId && subjectId && session && (
+            <label className="btn btn-secondary">
+              <Upload size={16} /> Teacher Sheet
+              <input type="file" accept=".xlsx, .xls" style={{ display: 'none' }} onChange={handleTeacherExcelUpload} />
+            </label>
+          )}
+          {user?.role === 'SUPER_ADMIN' && session && (
+            <label className="btn btn-warning">
+              <Upload size={16} /> Complex Sheet (SuperAdmin)
+              <input type="file" accept=".xlsx, .xls" style={{ display: 'none' }} onChange={handleSuperadminExcelUpload} />
+            </label>
+          )}
+          {students.length > 0 && (
+            <button className="btn btn-primary" onClick={handleSubmit} disabled={isPending}>
+              {isPending
+                ? <span className="animate-spin" style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block' }} />
+                : <><Save size={16} /> Save Results</>
+              }
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Controls */}

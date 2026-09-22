@@ -4,9 +4,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import Webcam from 'react-webcam';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { studentService } from '../../services';
+import { studentService, attendanceService, digitalPersonaService } from '../../services';
 import api from '../../services/api';
-import { Upload, Save, Camera, X, ArrowLeft } from 'lucide-react';
+import { Upload, Save, Camera, X, ArrowLeft, Fingerprint, CheckCircle, Loader } from 'lucide-react';
 
 export default function StudentEditPage() {
   const { id } = useParams();
@@ -16,7 +16,9 @@ export default function StudentEditPage() {
   const [photoFile, setPhotoFile] = useState(null);
   const [showCamera, setShowCamera] = useState(false);
   const [loading, setLoading] = useState(false);
-  
+  const [fingerprintStatus, setFingerprintStatus] = useState(null); // null | 'scanning' | 'enrolled' | 'error'
+  const [fingerprintEnrolled, setFingerprintEnrolled] = useState(false);
+
   const webcamRef = useRef(null);
   const { register, handleSubmit, formState: { errors }, reset } = useForm();
 
@@ -63,6 +65,9 @@ export default function StudentEditPage() {
       });
       if (student.photo) {
         setPhotoPreview(student.photo.startsWith('http') ? student.photo : `/uploads/${student.photo}`);
+      }
+      if (student.fingerprintTemplate) {
+        setFingerprintEnrolled(true);
       }
     }
   }, [student, reset]);
@@ -115,16 +120,16 @@ export default function StudentEditPage() {
     }
   };
 
-  const Field = ({ label, name, type='text', required=false, options, placeholder }) => (
+  const Field = ({ label, name, type = 'text', required = false, options, placeholder }) => (
     <div className="form-group">
       <label className="form-label">{label}{required && <span className="required"> *</span>}</label>
       {options
-        ? <select className={`form-select${errors[name] ? ' error':''}`} {...register(name, required ? { required:`${label} is required` } : {})}>
-            <option value="">Select {label}</option>
-            {options.map(o => <option key={o.value ?? o} value={o.value ?? o}>{o.label ?? o}</option>)}
-          </select>
-        : <input type={type} placeholder={placeholder || label} className={`form-input${errors[name] ? ' error':''}`}
-            {...register(name, required ? { required:`${label} is required` } : {})} />
+        ? <select className={`form-select${errors[name] ? ' error' : ''}`} {...register(name, required ? { required: `${label} is required` } : {})}>
+          <option value="">Select {label}</option>
+          {options.map(o => <option key={o.value ?? o} value={o.value ?? o}>{o.label ?? o}</option>)}
+        </select>
+        : <input type={type} placeholder={placeholder || label} className={`form-input${errors[name] ? ' error' : ''}`}
+          {...register(name, required ? { required: `${label} is required` } : {})} />
       }
       {errors[name] && <span className="form-error">{errors[name].message}</span>}
     </div>
@@ -151,75 +156,136 @@ export default function StudentEditPage() {
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="grid-2">
           {/* Left Column */}
-          <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {/* Passport Photo */}
             <div className="card">
               <h3 className="mb-4">Passport Photograph</h3>
-              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16 }}>
-                
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+
                 {showCamera ? (
-                  <div style={{ position:'relative', width:200, height:200, borderRadius:'var(--radius-md)', overflow:'hidden', background:'black' }}>
+                  <div style={{ position: 'relative', width: 200, height: 200, borderRadius: 'var(--radius-md)', overflow: 'hidden', background: 'black' }}>
                     <Webcam
                       audio={false}
                       ref={webcamRef}
                       screenshotFormat="image/jpeg"
                       videoConstraints={{ facingMode: "user", aspectRatio: 1 }}
-                      style={{ width:'100%', height:'100%', objectFit:'cover' }}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => setShowCamera(false)}
-                      style={{ position:'absolute', top:8, right:8, background:'rgba(0,0,0,0.5)', color:'white', border:'none', borderRadius:'50%', padding:4, cursor:'pointer' }}
+                      style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', padding: 4, cursor: 'pointer' }}
                     >
-                      <X size={16}/>
+                      <X size={16} />
                     </button>
-                    <button 
+                    <button
                       type="button"
                       onClick={capture}
                       className="btn btn-primary btn-sm"
-                      style={{ position:'absolute', bottom:12, left:'50%', transform:'translateX(-50%)', boxShadow:'0 4px 12px rgba(0,0,0,0.3)' }}
+                      style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
                     >
-                      <Camera size={14}/> Capture
+                      <Camera size={14} /> Capture
                     </button>
                   </div>
                 ) : (
                   <div style={{
-                    width:120, height:140, borderRadius:'var(--radius-md)',
-                    background:'var(--bg-elevated)', border:'2px dashed var(--border)',
-                    display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden',
-                    position:'relative'
+                    width: 120, height: 140, borderRadius: 'var(--radius-md)',
+                    background: 'var(--bg-elevated)', border: '2px dashed var(--border)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+                    position: 'relative'
                   }}>
                     {photoPreview
-                      ? <img src={photoPreview} alt="Preview" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                      : <Upload size={32} style={{ color:'var(--text-muted)' }} />
+                      ? <img src={photoPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : <Upload size={32} style={{ color: 'var(--text-muted)' }} />
                     }
                     {photoFile && (
-                      <button 
+                      <button
                         type="button"
                         onClick={() => { setPhotoPreview(student?.photo ? (student.photo.startsWith('http') ? student.photo : `/uploads/${student.photo}`) : null); setPhotoFile(null); }}
-                        style={{ position:'absolute', top:4, right:4, background:'rgba(0,0,0,0.5)', color:'white', border:'none', borderRadius:'50%', padding:4, cursor:'pointer' }}
+                        style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', padding: 4, cursor: 'pointer' }}
                       >
-                        <X size={12}/>
+                        <X size={12} />
                       </button>
                     )}
                   </div>
                 )}
 
                 {!showCamera && (
-                  <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'center' }}>
-                    <label className="btn btn-secondary btn-sm" style={{ cursor:'pointer' }}>
-                      <Upload size={14}/> Change Photo
-                      <input id="student-photo" type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhoto} />
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer' }}>
+                      <Upload size={14} /> Change Photo
+                      <input id="student-photo" type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhoto} />
                     </label>
                     <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowCamera(true)}>
-                      <Camera size={14}/> Take Photo
+                      <Camera size={14} /> Take Photo
                     </button>
                   </div>
                 )}
-                
+
                 <p className="text-xs text-muted">JPG, PNG. Max 2MB. Passport style.</p>
               </div>
             </div>
+
+            {/* Fingerprint Enrollment (Hibernated) */}
+            {false && (
+              <div className="card" style={{ borderColor: fingerprintEnrolled ? 'var(--success)' : 'var(--border)' }}>
+                <h3 className="mb-2" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Fingerprint size={20} style={{ color: fingerprintEnrolled ? 'var(--success)' : 'var(--primary)' }} />
+                  Fingerprint Enrollment
+                  {fingerprintEnrolled && <span className="badge badge-success" style={{ marginLeft: 'auto', fontSize: '0.7rem' }}>Enrolled ✓</span>}
+                </h3>
+                <p className="text-xs text-muted" style={{ marginBottom: 14 }}>
+                  {fingerprintEnrolled
+                    ? `Fingerprint already enrolled for ${student?.firstName}. You can re-enroll to update it.`
+                    : `Enroll ${student?.firstName}'s fingerprint using the connected DigitalPersona or Futronic USB scanner.`
+                  }
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <button
+                    type="button"
+                    className={`btn ${fingerprintStatus === 'scanning' ? 'btn-secondary' : 'btn-primary'} btn-sm`}
+                    disabled={fingerprintStatus === 'scanning'}
+                    onClick={async () => {
+                      setFingerprintStatus('scanning');
+                      try {
+                        let template = null;
+                        const dpRes = await digitalPersonaService.captureFingerprint();
+                        if (dpRes.success && dpRes.template) template = dpRes.template;
+
+                        if (template) {
+                          await attendanceService.saveFingerprint({ studentId: id, fingerprintTemplate: template.trim() });
+                          setFingerprintEnrolled(true);
+                          setFingerprintStatus('enrolled');
+                          toast.success('Fingerprint enrolled successfully from DigitalPersona reader!');
+                        } else {
+                          setFingerprintStatus('offline');
+                          toast.warning('DigitalPersona reader not detected on USB / driver port.');
+                        }
+                      } catch (err) {
+                        console.error(err);
+                        setFingerprintStatus('offline');
+                        toast.error('Could not connect to fingerprint scanner service.');
+                      }
+                    }}
+                  >
+                    {fingerprintStatus === 'scanning'
+                      ? <><Loader size={14} className="animate-spin" /> Waiting for scanner...</>
+                      : <><Fingerprint size={14} /> {fingerprintEnrolled ? 'Re-Enroll Fingerprint' : 'Enroll Fingerprint'}</>
+                    }
+                  </button>
+
+                  {fingerprintStatus === 'enrolled' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--success)', fontSize: '0.85rem' }}>
+                      <CheckCircle size={16} /> Fingerprint saved to student profile.
+                    </div>
+                  )}
+                  {fingerprintStatus === 'error' && (
+                    <div style={{ color: 'var(--danger)', fontSize: '0.85rem' }}>Enrollment failed. Please try again.</div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Static Parent/Class info read-only warning */}
             <div className="card" style={{ borderColor: 'var(--border)' }}>
@@ -245,27 +311,27 @@ export default function StudentEditPage() {
           </div>
 
           {/* Right Column */}
-          <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {/* Bio Data */}
             <div className="card">
               <h3 className="mb-4">Student Bio Data</h3>
-              <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div className="grid-2">
-                  <Field label="First Name"  name="firstName"  required />
-                  <Field label="Last Name"   name="lastName"   required />
+                  <Field label="First Name" name="firstName" required />
+                  <Field label="Last Name" name="lastName" required />
                 </div>
-                <Field label="Other Names"  name="otherNames" />
+                <Field label="Other Names" name="otherNames" />
                 <div className="grid-2">
                   <Field label="Date of Birth" name="dateOfBirth" type="date" required />
                   <Field label="Gender" name="gender" required
-                    options={[{value:'Male',label:'Male'},{value:'Female',label:'Female'}]} />
+                    options={[{ value: 'Male', label: 'Male' }, { value: 'Female', label: 'Female' }]} />
                 </div>
                 <Field label="State of Origin" name="stateOfOrigin" />
                 <Field label="LGA" name="lga" placeholder="Local Government Area" />
                 <Field label="Religion" name="religion"
-                  options={['Christianity','Islam','Others']} />
+                  options={['Christianity', 'Islam', 'Others']} />
                 <Field label="Blood Group" name="bloodGroup"
-                  options={['A+','A-','B+','B-','AB+','AB-','O+','O-']} />
+                  options={['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']} />
                 <Field label="Previous School" name="previousSchool" />
                 <Field label="Student Status" name="status" required
                   options={[
@@ -281,12 +347,12 @@ export default function StudentEditPage() {
         </div>
 
         {/* Submit Buttons */}
-        <div style={{ display:'flex', justifyContent:'flex-end', gap:12, marginTop:24 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
           <button type="button" className="btn btn-secondary" onClick={() => navigate(`/students/${id}`)}>Cancel</button>
           <button type="submit" className="btn btn-primary btn-lg" disabled={loading}>
             {loading
-              ? <span className="animate-spin" style={{ width:18, height:18, border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'white', borderRadius:'50%', display:'inline-block' }}/>
-              : <><Save size={18}/> Save Updates</>
+              ? <span className="animate-spin" style={{ width: 18, height: 18, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block' }} />
+              : <><Save size={18} /> Save Updates</>
             }
           </button>
         </div>

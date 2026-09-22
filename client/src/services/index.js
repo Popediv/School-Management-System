@@ -38,6 +38,9 @@ export const classService = {
 
 export const attendanceService = {
   mark: (data) => api.post('/attendance', data),
+  kioskScan: (data) => api.post('/attendance/kiosk-scan', data),
+  autoMarkAbsent: (data) => api.post('/attendance/auto-mark-absent', data),
+  saveFingerprint: (data) => api.post('/attendance/save-fingerprint', data),
   getByClass: (id, p) => api.get(`/attendance/class/${id}`, { params: p }),
   getStudent: (id, p) => api.get(`/attendance/student/${id}`, { params: p }),
   getReport: (params) => api.get('/attendance/report', { params }),
@@ -45,6 +48,8 @@ export const attendanceService = {
 
 export const resultService = {
   upload: (data) => api.post('/results', data),
+  uploadTeacherExcel: (data) => api.post('/results/upload-teacher-excel', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  uploadSuperadminExcel: (data) => api.post('/results/upload-superadmin-excel', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
   getStudent: (id, p) => api.get(`/results/student/${id}`, { params: p }),
   getReportCard: (id, p) => api.get(`/results/report-card/${id}`, { params: p }),
   calculate: (data) => api.post('/results/calculate', data),
@@ -120,4 +125,6 @@ export const settingService = {
   updateSettings: (data) => api.post('/settings', data),
   uploadLogo: (data) => api.post('/settings/logo', data, { headers: { 'Content-Type': 'multipart/form-data' } })
 };
+
+export * from './digitalPersonaService';
 

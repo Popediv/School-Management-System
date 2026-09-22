@@ -72,7 +72,7 @@ const create = async (req, res, next) => {
     const {
       firstName, lastName, otherNames, dateOfBirth, gender,
       stateOfOrigin, lga, religion, bloodGroup, previousSchool,
-      session, classId, status,
+      session, classId, status, fingerprintTemplate,
       parentName, parentPhone, parentEmail, address, relationship,
     } = req.body;
 
@@ -87,8 +87,10 @@ const create = async (req, res, next) => {
     // Class-based email format (e.g. jss1a@gmail.com)
     const targetClass = await prisma.class.findUnique({ where: { id: classId } });
     const classSlug = targetClass ? targetClass.name.toLowerCase().replace(/[^a-z0-9]/g, '') : 'student';
+    // Unique email per student: classSlug + admissionNo (e.g. jss1pci20260001@gmail.com)
+    const admissionSlug = admissionNo.toLowerCase().replace(/-/g, '');
+    const defaultEmail = `${classSlug}${admissionSlug}@gmail.com`;
     // Pre-compute password hashes outside transaction to prevent transaction timeout
-    const defaultEmail = `${classSlug}@gmail.com`;
     const defaultPassword = await bcrypt.hash(moodlePassword, 10);
     const defaultParentPwd = await bcrypt.hash('Parent@123', 10);
 
@@ -101,24 +103,20 @@ const create = async (req, res, next) => {
         data: { name: `${firstName} ${lastName}`, email: defaultEmail, password: defaultPassword, role: 'STUDENT' },
       });
 
-      // 2. Handle parent — find existing or create
+      // 2. Handle parent — find existing by phone, or create new
       let parentId = null;
       if (parentPhone) {
-        let parentUser = await tx.user.findFirst({ where: { name: parentName, role: 'PARENT' } });
-        if (!parentUser) {
+        let parentRecord = await tx.parent.findFirst({ where: { phone: parentPhone } });
+        if (!parentRecord) {
           const parentEmail2 = parentEmail || `parent.${Date.now()}@patimo.edu`;
-          parentUser = await tx.user.create({
+          const parentUser = await tx.user.create({
             data: { name: parentName, email: parentEmail2, password: defaultParentPwd, role: 'PARENT' },
           });
-        }
-
-        let parent = await tx.parent.findUnique({ where: { userId: parentUser.id } });
-        if (!parent) {
-          parent = await tx.parent.create({
+          parentRecord = await tx.parent.create({
             data: { name: parentName, phone: parentPhone, email: parentEmail, address, relationship, userId: parentUser.id },
           });
         }
-        parentId = parent.id;
+        parentId = parentRecord.id;
       }
 
       // 3. Create student record
@@ -129,6 +127,7 @@ const create = async (req, res, next) => {
           dateOfBirth: new Date(dateOfBirth),
           gender, photo, stateOfOrigin, lga, religion, bloodGroup,
           previousSchool, session,
+          fingerprintTemplate: fingerprintTemplate || null,
           status: status || 'ACTIVE',
           userId: studentUser.id,
           parentId,
@@ -143,7 +142,7 @@ const create = async (req, res, next) => {
       });
 
       return student;
-    }, { maxWait: 10000, timeout: 15000 });
+    }, { maxWait: 15000, timeout: 30000 });
 
     res.status(201).json({
       message: `Student registered successfully`,
@@ -163,6 +162,7 @@ const update = async (req, res, next) => {
     const allowed = [
       'firstName', 'lastName', 'otherNames', 'dateOfBirth', 'gender',
       'stateOfOrigin', 'lga', 'religion', 'bloodGroup', 'status', 'previousSchool',
+      'fingerprintTemplate',
     ];
     const data = {};
     allowed.forEach(k => { if (req.body[k] !== undefined) data[k] = req.body[k]; });
@@ -220,11 +220,12 @@ const promote = async (req, res, next) => {
     if (!newClassId || !session)
       return res.status(400).json({ message: 'newClassId and session are required' });
 
-    const targetClass = await prisma.class.findUnique({ where: { id: newClassId } });
-    const classSlug = targetClass ? targetClass.name.toLowerCase().replace(/[^a-z0-9]/g, '') : 'student';
-    const newEmail = `${classSlug}@gmail.com`;
-
     const student = await prisma.$transaction(async (tx) => {
+      const existingStudent = await tx.student.findUnique({ where: { id }, select: { admissionNo: true } });
+      const targetClass = await tx.class.findUnique({ where: { id: newClassId } });
+      const classSlug = targetClass ? targetClass.name.toLowerCase().replace(/[^a-z0-9]/g, '') : 'student';
+      const admissionSlug = existingStudent.admissionNo.toLowerCase().replace(/-/g, '');
+      const newEmail = `${classSlug}${admissionSlug}@gmail.com`;
       // Update current class and update student user email to match new class
       const updated = await tx.student.update({
         where: { id },
@@ -283,19 +284,22 @@ const bulkPromote = async (req, res, next) => {
         // Normal promotion
         const targetClass = await tx.class.findUnique({ where: { id: toClassId } });
         const classSlug = targetClass ? targetClass.name.toLowerCase().replace(/[^a-z0-9]/g, '') : 'student';
-        const newEmail = `${classSlug}@gmail.com`;
 
         await tx.student.updateMany({
           where: studentWhere,
           data: { currentClassId: toClassId, session }
         });
 
-        const userIds = students.map(s => s.userId).filter(Boolean);
-        if (userIds.length > 0) {
-          await tx.user.updateMany({
-            where: { id: { in: userIds } },
-            data: { email: newEmail }
-          });
+        // Update each student's email individually (unique per student)
+        for (const s of students) {
+          if (s.userId) {
+            const admissionSlug = s.admissionNo.toLowerCase().replace(/-/g, '');
+            const newEmail = `${classSlug}${admissionSlug}@gmail.com`;
+            await tx.user.update({
+              where: { id: s.userId },
+              data: { email: newEmail }
+            });
+          }
         }
 
         // Add enrollment records

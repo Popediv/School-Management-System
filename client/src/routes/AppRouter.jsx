@@ -41,6 +41,7 @@ import PromotionPage from '../pages/classes/PromotionPage';
 // Attendance
 import MarkAttendancePage from '../pages/attendance/MarkAttendancePage';
 import AttendanceReportPage from '../pages/attendance/AttendanceReportPage';
+import KioskAttendancePage from '../pages/attendance/KioskAttendancePage';
 
 // Results
 import UploadResultsPage from '../pages/results/UploadResultsPage';
@@ -173,6 +174,11 @@ export default function AppRouter() {
               <Route path="/attendance/mark" element={
                 <ProtectedRoute roles={[ROLES.TEACHER, ...ADMIN_ROLES]}>
                   <DashboardLayout><MarkAttendancePage /></DashboardLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/attendance/kiosk" element={
+                <ProtectedRoute roles={[...ADMIN_ROLES, ROLES.TEACHER]}>
+                  <DashboardLayout><KioskAttendancePage /></DashboardLayout>
                 </ProtectedRoute>
               } />
               <Route path="/attendance/report" element={

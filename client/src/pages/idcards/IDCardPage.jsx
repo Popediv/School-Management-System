@@ -120,7 +120,7 @@ function CardFront({ student, signature, logo, settings }) {
           <div style={{ width: 80, borderTop: '1px solid rgba(255,255,255,0.25)', marginTop: 2 }} />
           <div style={{ fontSize: '0.42rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 2 }}>Principal's Signature</div>
         </div>
-        <QRCodeSVG value={`${student.admissionNo}|${firstName} ${lastName}`} size={40} level="M" fgColor="#EAB308" bgColor="transparent" />
+        <QRCodeSVG value={student.admissionNo || ''} size={40} level="M" fgColor="#EAB308" bgColor="transparent" />
       </div>
 
     </div>
