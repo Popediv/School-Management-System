@@ -79,17 +79,13 @@ const create = async (req, res, next) => {
     if (!firstName || !lastName || !dateOfBirth || !gender || !session || !classId)
       return res.status(400).json({ message: 'Missing required student fields' });
 
-    // Generate permanent identifiers
-    const admissionNo = await generateAdmissionNo(prisma);
-    const moodleUsername = generateMoodleUsername(admissionNo);
+    // Permanent identifiers that don't depend on transaction
     const moodlePassword = generateMoodlePassword(lastName);
 
-    // Class-based email format (e.g. jss1a@gmail.com)
+    // Class-based email portion
     const targetClass = await prisma.class.findUnique({ where: { id: classId } });
     const classSlug = targetClass ? targetClass.name.toLowerCase().replace(/[^a-z0-9]/g, '') : 'student';
-    // Unique email per student: classSlug + admissionNo (e.g. jss1pci20260001@gmail.com)
-    const admissionSlug = admissionNo.toLowerCase().replace(/-/g, '');
-    const defaultEmail = `${classSlug}${admissionSlug}@gmail.com`;
+
     // Pre-compute password hashes outside transaction to prevent transaction timeout
     const defaultPassword = await bcrypt.hash(moodlePassword, 10);
     const defaultParentPwd = await bcrypt.hash('Parent@123', 10);
@@ -97,52 +93,76 @@ const create = async (req, res, next) => {
     // Photo path (handles both local filename and Cloudinary URL)
     const photo = req.file ? (req.file.path.startsWith('http') ? req.file.path : req.file.filename) : null;
 
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. Create user account for student
-      const studentUser = await tx.user.create({
-        data: { name: `${firstName} ${lastName}`, email: defaultEmail, password: defaultPassword, role: 'STUDENT' },
-      });
+    // Retry loop for admission number collision safety
+    let result = null;
+    let attempts = 0;
+    while (attempts < 3) {
+      try {
+        result = await prisma.$transaction(async (tx) => {
+          // Generate identifiers INSIDE transaction to prevent race conditions
+          const admissionNo = await generateAdmissionNo(tx);
+          const moodleUsername = generateMoodleUsername(admissionNo);
 
-      // 2. Handle parent — find existing by phone, or create new
-      let parentId = null;
-      if (parentPhone) {
-        let parentRecord = await tx.parent.findFirst({ where: { phone: parentPhone } });
-        if (!parentRecord) {
-          const parentEmail2 = parentEmail || `parent.${Date.now()}@patimo.edu`;
-          const parentUser = await tx.user.create({
-            data: { name: parentName, email: parentEmail2, password: defaultParentPwd, role: 'PARENT' },
+          // Unique email per student: classSlug + admissionNo (e.g. jss1pci20260001@gmail.com)
+          const admissionSlug = admissionNo.toLowerCase().replace(/-/g, '');
+          const defaultEmail = `${classSlug}${admissionSlug}@gmail.com`;
+
+          // 1. Create user account for student
+          const studentUser = await tx.user.create({
+            data: { name: `${firstName} ${lastName}`, email: defaultEmail, password: defaultPassword, role: 'STUDENT' },
           });
-          parentRecord = await tx.parent.create({
-            data: { name: parentName, phone: parentPhone, email: parentEmail, address, relationship, userId: parentUser.id },
+
+          // 2. Handle parent — find existing by phone, or create new
+          let parentId = null;
+          if (parentPhone) {
+            let parentRecord = await tx.parent.findFirst({ where: { phone: parentPhone } });
+            if (!parentRecord) {
+              const parentEmail2 = parentEmail || `parent.${Date.now()}@patimo.edu`;
+              const parentUser = await tx.user.create({
+                data: { name: parentName, email: parentEmail2, password: defaultParentPwd, role: 'PARENT' },
+              });
+              parentRecord = await tx.parent.create({
+                data: { name: parentName, phone: parentPhone, email: parentEmail, address, relationship, userId: parentUser.id },
+              });
+            }
+            parentId = parentRecord.id;
+          }
+
+          // 3. Create student record
+          const student = await tx.student.create({
+            data: {
+              admissionNo, moodleUsername, moodlePassword,
+              firstName, lastName, otherNames,
+              dateOfBirth: new Date(dateOfBirth),
+              gender, photo, stateOfOrigin, lga, religion, bloodGroup,
+              previousSchool, session,
+              fingerprintTemplate: fingerprintTemplate || null,
+              status: status || 'ACTIVE',
+              userId: studentUser.id,
+              parentId,
+              currentClassId: classId,
+            },
+            include: { currentClass: true, parent: true },
           });
+
+          // 4. Create enrollment record (class history)
+          await tx.enrollment.create({
+            data: { studentId: student.id, classId, session },
+          });
+
+          return student;
+        }, { maxWait: 15000, timeout: 30000 });
+
+        // If we get here, transaction succeeded
+        break;
+      } catch (innerErr) {
+        if (innerErr.code === 'P2002' && attempts < 2) {
+          attempts++;
+          continue; // Retry
         }
-        parentId = parentRecord.id;
+        throw innerErr; // Re-throw if out of attempts or not a unique violation
       }
-
-      // 3. Create student record
-      const student = await tx.student.create({
-        data: {
-          admissionNo, moodleUsername, moodlePassword,
-          firstName, lastName, otherNames,
-          dateOfBirth: new Date(dateOfBirth),
-          gender, photo, stateOfOrigin, lga, religion, bloodGroup,
-          previousSchool, session,
-          fingerprintTemplate: fingerprintTemplate || null,
-          status: status || 'ACTIVE',
-          userId: studentUser.id,
-          parentId,
-          currentClassId: classId,
-        },
-        include: { currentClass: true, parent: true },
-      });
-
-      // 4. Create enrollment record (class history)
-      await tx.enrollment.create({
-        data: { studentId: student.id, classId, session },
-      });
-
-      return student;
-    }, { maxWait: 15000, timeout: 30000 });
+    }
 
     res.status(201).json({
       message: `Student registered successfully`,
