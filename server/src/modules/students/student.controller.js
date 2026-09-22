@@ -100,7 +100,8 @@ const create = async (req, res, next) => {
       try {
         result = await prisma.$transaction(async (tx) => {
           // Generate identifiers INSIDE transaction to prevent race conditions
-          const admissionNo = await generateAdmissionNo(tx);
+          // Pass the 'attempts' offset to skip over any stubbornly corrupted legacy records
+          const admissionNo = await generateAdmissionNo(tx, attempts);
           const moodleUsername = generateMoodleUsername(admissionNo);
 
           // Unique email per student: classSlug + admissionNo (e.g. jss1pci20260001@gmail.com)

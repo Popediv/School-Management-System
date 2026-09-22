@@ -5,10 +5,11 @@ const { getStoredSettings } = require('../modules/settings/settings.controller')
  * with the current prefix and finding the true numeric maximum.
  *
  * MUST be called inside a Prisma transaction (tx) to avoid race conditions.
+ * Supports an optional 'offset' parameter for retry loops to skip over broken records.
  *
  * Example output: PCI-2026-0001, PCI-2026-0002, ...
  */
-async function generateAdmissionNo(tx) {
+async function generateAdmissionNo(tx, offset = 0) {
   const settings = getStoredSettings();
   const year = new Date().getFullYear();
   const prefix = settings.admissionPrefix || `${process.env.SCHOOL_CODE || 'PCI'}-${year}-`;
@@ -29,7 +30,7 @@ async function generateAdmissionNo(tx) {
     }
   }
 
-  return `${prefix}${String(maxNum + 1).padStart(4, '0')}`;
+  return `${prefix}${String(maxNum + 1 + offset).padStart(4, '0')}`;
 }
 
 /**
