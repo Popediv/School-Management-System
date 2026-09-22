@@ -340,6 +340,93 @@ const bulkPromote = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// POST /api/students/transfer-class
+const transferClass = async (req, res, next) => {
+  try {
+    const { studentIds, newClassId, session } = req.body;
+    if (!Array.isArray(studentIds) || studentIds.length === 0 || !newClassId || !session) {
+      return res.status(400).json({ message: 'studentIds, newClassId, and session are required' });
+    }
+
+    const students = await prisma.student.findMany({
+      where: { id: { in: studentIds } },
+      select: { id: true, userId: true, admissionNo: true, currentClassId: true }
+    });
+
+    if (students.length === 0) {
+      return res.status(404).json({ message: 'No valid students found' });
+    }
+
+    const targetClass = await prisma.class.findUnique({ where: { id: newClassId } });
+    if (!targetClass) {
+      return res.status(404).json({ message: 'Target class not found' });
+    }
+    const classSlug = targetClass.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    await prisma.$transaction(async (tx) => {
+      for (const student of students) {
+        // 1. Update Student's currentClassId
+        await tx.student.update({
+          where: { id: student.id },
+          data: {
+            currentClassId: newClassId,
+            session // ensure session matches their transfer context
+          }
+        });
+
+        // 2. Sync User Email
+        if (student.userId) {
+          const admissionSlug = student.admissionNo.toLowerCase().replace(/-/g, '');
+          const newEmail = `${classSlug}${admissionSlug}@gmail.com`;
+          await tx.user.update({
+            where: { id: student.userId },
+            data: { email: newEmail }
+          });
+        }
+
+        // 3. Sync Enrollment (Upsert the enrollment for the specific session)
+        await tx.enrollment.upsert({
+          where: { studentId_session: { studentId: student.id, session } },
+          update: { classId: newClassId },
+          create: { studentId: student.id, classId: newClassId, session }
+        });
+
+        // 4. Sync old attendance (transfer records in the same session if they exist)
+        // If a student had attendance in their old class, we update those records to the new class.
+        // We only update if the old class is known. To avoid P2002 if duplicate dates exist, we must drop duplicates.
+        if (student.currentClassId) {
+          const oldAttendances = await tx.attendance.findMany({
+            where: { studentId: student.id, classId: student.currentClassId }
+          });
+
+          for (const att of oldAttendances) {
+            // Check if there's already an attendance record for the student on this exact same date in the new class
+            const existingConflict = await tx.attendance.findUnique({
+              where: { studentId_classId_date: { studentId: student.id, classId: newClassId, date: att.date } }
+            });
+
+            if (existingConflict) {
+              // Delete the old one to resolve the ghost mismatch
+              await tx.attendance.delete({ where: { id: att.id } });
+            } else {
+              // Safely migrate it to the new class
+              await tx.attendance.update({
+                where: { id: att.id },
+                data: { classId: newClassId }
+              });
+            }
+          }
+        }
+      }
+    }, { maxWait: 15000, timeout: 30000 });
+
+    res.json({ message: `Successfully transferred ${students.length} student(s) to ${targetClass.name}. Attendance synchronized.`, count: students.length });
+  } catch (err) {
+    console.error('[transferClass] Error:', err);
+    next(err);
+  }
+};
+
 // GET /api/students/moodle-export
 const exportMoodle = async (req, res, next) => {
   try {
@@ -494,4 +581,4 @@ const bulkDelete = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { getAll, getById, create, update, remove, promote, bulkPromote, bulkDelete, exportMoodle, exportCustomMoodle, exportPicturesZip };
+module.exports = { getAll, getById, create, update, remove, promote, bulkPromote, bulkDelete, exportMoodle, exportCustomMoodle, exportPicturesZip, transferClass };

@@ -1,11 +1,11 @@
 const { getStoredSettings } = require('../modules/settings/settings.controller');
 
 /**
- * Generates the next admission number by scanning ALL existing records
- * with the current prefix and finding the true numeric maximum.
+ * Generates the next admission number by scanning existing records.
+ * Uses a collision-checker loop to definitively ensure neither the admissionNo 
+ * nor the moodleUsername will conflict, bypassing any manual or legacy corrupted records.
  *
  * MUST be called inside a Prisma transaction (tx) to avoid race conditions.
- * Supports an optional 'offset' parameter for retry loops to skip over broken records.
  *
  * Example output: PCI-2026-0001, PCI-2026-0002, ...
  */
@@ -15,14 +15,14 @@ async function generateAdmissionNo(tx, offset = 0) {
   const prefix = settings.admissionPrefix || `${process.env.SCHOOL_CODE || 'PCI'}-${year}-`;
   const startingSeq = parseInt(settings.admissionStartingSequence, 10) || 1;
 
-  // Fetch ALL admission numbers with this prefix and find the true numeric max
-  const existing = await tx.student.findMany({
+  // 1. Find the highest numeric value currently in use for this prefix
+  const existingRecords = await tx.student.findMany({
     where: { admissionNo: { startsWith: prefix } },
     select: { admissionNo: true },
   });
 
   let maxNum = startingSeq - 1;
-  for (const row of existing) {
+  for (const row of existingRecords) {
     const numStr = row.admissionNo.replace(prefix, '');
     const num = parseInt(numStr, 10);
     if (!isNaN(num) && num > maxNum) {
@@ -30,7 +30,30 @@ async function generateAdmissionNo(tx, offset = 0) {
     }
   }
 
-  return `${prefix}${String(maxNum + 1 + offset).padStart(4, '0')}`;
+  // 2. Loop until we find a combination that has absolutely ZERO collisions on ANY field
+  let currentNum = maxNum + 1 + offset;
+
+  while (true) {
+    const trialAdmissionNo = `${prefix}${String(currentNum).padStart(4, '0')}`;
+    const trialMoodle = trialAdmissionNo.replace(/-/g, '').toLowerCase();
+
+    // Check if either field happens to be taken by an orphaned/manual record
+    const conflict = await tx.student.findFirst({
+      where: {
+        OR: [
+          { admissionNo: trialAdmissionNo },
+          { moodleUsername: trialMoodle }
+        ]
+      }
+    });
+
+    if (!conflict) {
+      return trialAdmissionNo;
+    }
+
+    // If conflict exists silently bump the number and check the next one
+    currentNum++;
+  }
 }
 
 /**

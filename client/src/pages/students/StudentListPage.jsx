@@ -3,8 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserPlus, Search, Filter, Download, Trash2, Printer, CheckSquare, Square } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { studentService } from '../../services';
+import { studentService, classService } from '../../services';
 import api from '../../services/api';
+import { SESSIONS, CURRENT_SESSION } from '../../utils/constants';
 
 const STATUS_COLORS = { ACTIVE: 'success', SUSPENDED: 'warning', GRADUATED: 'info', WITHDRAWN: 'danger' };
 
@@ -15,6 +16,14 @@ export default function StudentListPage() {
   const [status, setStatus] = useState('');
   const [classFilter, setClass] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferClassId, setTransferClassId] = useState('');
+  const [transferSession, setTransferSession] = useState(CURRENT_SESSION);
+
+  const { data: classesList = [] } = useQuery({
+    queryKey: ['classes'],
+    queryFn: () => classService.getAll().then(r => r.data.classes || r.data || [])
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ['students', search, status, classFilter],
@@ -84,6 +93,25 @@ export default function StudentListPage() {
     navigate(`/students/admission-letters/bulk?ids=${selectedIds.join(',')}`);
   };
 
+  const { mutate: transferStudents, isPending: isTransferring } = useMutation({
+    mutationFn: (data) => studentService.transferClass(data),
+    onSuccess: (res) => {
+      toast.success(res.data?.message || 'Students transferred successfully');
+      setShowTransferModal(false);
+      setSelectedIds([]);
+      qc.invalidateQueries({ queryKey: ['students'] });
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to transfer students')
+  });
+
+  const submitTransfer = () => {
+    if (!transferClassId || !transferSession) {
+      toast.error('Please select both a target class and academic session');
+      return;
+    }
+    transferStudents({ studentIds: selectedIds, newClassId: transferClassId, session: transferSession });
+  };
+
   const handleExportMoodle = async () => {
     try {
       const res = await api.get('/students/moodle-export', { responseType: 'blob' });
@@ -141,6 +169,9 @@ export default function StudentListPage() {
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           {selectedIds.length > 0 && (
             <>
+              <button onClick={() => setShowTransferModal(true)} className="btn btn-primary" style={{ backgroundColor: '#4F46E5', borderColor: '#4F46E5' }}>
+                Transfer Class ({selectedIds.length})
+              </button>
               <button onClick={handleBulkPrintLetters} className="btn btn-primary" style={{ backgroundColor: '#0284C7', borderColor: '#0284C7' }}>
                 <Printer size={16} /> Bulk Admission Letters ({selectedIds.length})
               </button>
@@ -268,6 +299,37 @@ export default function StudentListPage() {
           </table>
         </div>
       </div>
+
+      {showTransferModal && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: 400, padding: 24 }}>
+            <h2 style={{ marginBottom: 8 }}>Transfer Class ({selectedIds.length} selected)</h2>
+            <p className="text-muted text-sm mb-4">This will migrate the student to a new class and seamlessly move their past attendance records.</p>
+
+            <div className="form-group">
+              <label className="form-label">Target Class</label>
+              <select className="form-select" value={transferClassId} onChange={e => setTransferClassId(e.target.value)}>
+                <option value="">Select Target Class</option>
+                {classesList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+
+            <div className="form-group mt-3">
+              <label className="form-label">Academic Session</label>
+              <select className="form-select" value={transferSession} onChange={e => setTransferSession(e.target.value)}>
+                {SESSIONS?.map(s => <option key={s.value ?? s} value={s.value ?? s}>{s.label ?? s}</option>)}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 24 }}>
+              <button onClick={() => setShowTransferModal(false)} className="btn btn-secondary">Cancel</button>
+              <button onClick={submitTransfer} disabled={isTransferring} className="btn btn-primary" style={{ backgroundColor: '#4F46E5' }}>
+                {isTransferring ? 'Transferring...' : 'Confirm Transfer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

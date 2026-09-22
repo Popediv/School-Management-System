@@ -15,6 +15,7 @@ export const studentService = {
   create: (data) => api.post('/students', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
   update: (id, d) => api.put(`/students/${id}`, d, { headers: { 'Content-Type': 'multipart/form-data' } }),
   promote: (id, d) => api.post(`/students/${id}/promote`, d),
+  transferClass: (d) => api.post(`/students/transfer-class`, d),
   delete: (id) => api.delete(`/students/${id}`),
   bulkDelete: (ids) => api.post('/students/bulk-delete', { ids }),
 };
