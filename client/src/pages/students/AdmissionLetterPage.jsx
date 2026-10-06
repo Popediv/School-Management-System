@@ -84,7 +84,7 @@ export function AdmissionLetterContent({ student, settings, isBulk = false }) {
               PATIMO SCHOOLS INTERNATIONAL
             </h1>
             <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#B45309', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: "'Outfit', sans-serif" }}>
-              Excellence, Integrity, and Knowledge
+              From Grace to Glory
             </p>
             <p style={{ margin: '3px 0 0', fontSize: '10px', color: '#0F172A', fontFamily: "'Inter', sans-serif", lineHeight: '1.35', fontWeight: '600' }}>
               Plot 13&14, Maito Bakery Street, Adesola, Ibadan &nbsp;·&nbsp; ✉ info@patimocollege.edu.ng<br />

@@ -7,7 +7,7 @@ const generate = async (req, res, next) => {
       where: { id: req.params.studentId },
       include: { currentClass: { select: { name: true } } },
       select: {
-        id: true, firstName: true, lastName: true,
+        id: true, firstName: true, lastName: true, otherNames: true,
         admissionNo: true, photo: true, session: true,
         currentClass: true,
       },
@@ -27,7 +27,7 @@ const bulkGenerate = async (req, res, next) => {
       where,
       include: { currentClass: { select: { name: true } } },
       select: {
-        id: true, firstName: true, lastName: true,
+        id: true, firstName: true, lastName: true, otherNames: true,
         admissionNo: true, photo: true, session: true,
         currentClass: true,
       },

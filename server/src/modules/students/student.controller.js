@@ -1,9 +1,21 @@
 const bcrypt = require('bcryptjs');
 const prisma = require('../../config/db');
 const { generateAdmissionNo, generateMoodleUsername, generateMoodlePassword } = require('../../utils/generators');
-const archiver = require('archiver');
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
+const http = require('http');
+
+const fetchBuffer = (url) => new Promise((resolve) => {
+  const client = url.startsWith('https') ? https : http;
+  client.get(url, (res) => {
+    if (res.statusCode !== 200) return resolve(null);
+    const chunks = [];
+    res.on('data', chunk => chunks.push(chunk));
+    res.on('end', () => resolve(Buffer.concat(chunks)));
+    res.on('error', () => resolve(null));
+  }).on('error', () => resolve(null));
+});
 
 // GET /api/students
 const getAll = async (req, res, next) => {
@@ -19,6 +31,7 @@ const getAll = async (req, res, next) => {
         OR: [
           { firstName: { contains: search, mode: 'insensitive' } },
           { lastName: { contains: search, mode: 'insensitive' } },
+          { otherNames: { contains: search, mode: 'insensitive' } },
           { admissionNo: { contains: search, mode: 'insensitive' } },
           { currentClass: { name: { contains: search, mode: 'insensitive' } } },
         ],
@@ -501,6 +514,7 @@ const exportCustomMoodle = async (req, res, next) => {
 // GET /api/students/pictures-zip
 const exportPicturesZip = async (req, res, next) => {
   try {
+    const { ZipArchive } = await import('archiver');
     const students = await prisma.student.findMany({
       where: { status: 'ACTIVE', photo: { not: null } }
     });
@@ -508,17 +522,30 @@ const exportPicturesZip = async (req, res, next) => {
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', 'attachment; filename="student_pictures.zip"');
 
-    const archive = archiver('zip', { zlib: { level: 9 } });
+    const archive = new ZipArchive({ zlib: { level: 9 } });
     archive.pipe(res);
 
     archive.on('error', (err) => {
-      throw err;
+      console.error('[exportPicturesZip] Archiver error:', err);
     });
 
     for (const student of students) {
-      if (!student.photo.startsWith('http')) {
+      if (!student.photo) continue;
+      if (student.photo.startsWith('http')) {
+        try {
+          const buffer = await fetchBuffer(student.photo);
+          if (buffer) {
+            const urlPath = student.photo.split('?')[0];
+            const ext = path.extname(urlPath) || '.jpg';
+            const filename = `${student.admissionNo}${ext}`;
+            archive.append(buffer, { name: filename });
+          }
+        } catch (e) {
+          console.error(`[exportPicturesZip] Error fetching remote photo for ${student.admissionNo}:`, e);
+        }
+      } else {
         const photoFilename = path.basename(student.photo);
-        const photoPath = path.join(__dirname, '..', '..', '..', '..', 'uploads', photoFilename);
+        const photoPath = path.join(__dirname, '..', '..', '..', 'uploads', photoFilename);
         if (fs.existsSync(photoPath)) {
           const ext = path.extname(photoFilename) || '.jpg';
           const filename = `${student.admissionNo}${ext}`;
@@ -527,7 +554,7 @@ const exportPicturesZip = async (req, res, next) => {
       }
     }
 
-    archive.finalize();
+    await archive.finalize();
   } catch (err) { next(err); }
 };
 
