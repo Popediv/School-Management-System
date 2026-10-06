@@ -2,18 +2,21 @@ import { useState, useRef, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
+import { toast } from 'react-toastify';
+import { Download } from 'lucide-react';
 import { classService } from '../../services';
 import api from '../../services/api';
 import { CURRENT_SESSION } from '../../utils/constants';
 import { useSettings } from '../../context/SettingsContext';
+import { exportCardImage } from './cardExport'; // adjust the path to wherever you saved cardExport.js
 
 // ── Palette: cream & green (matches the school uniform) ──
-const C = {
+export const C = {
   forest: '#14432A', green: '#1F6B3F', leaf: '#3E9A5E', sage: '#DCEBDD', mint: '#EEF5EC',
   cream: '#FBF6E9', sand: '#F1E8CE', ink: '#16251C', muted: '#6B7A6F', line: '#E6DDC2', gold: '#C8A24A',
 };
-const SERIF = "'Playfair Display', Georgia, serif";
-const SANS = "'Inter', system-ui, sans-serif";
+export const SERIF = "'Playfair Display', Georgia, serif";
+export const SANS = "'Inter', system-ui, sans-serif";
 
 const DEMO = [
   { id: 's1', firstName: 'Adaeze', otherNames: 'Chidinma', middleName: 'Chidinma', lastName: 'Okonkwo', admissionNo: 'PCI-2026-0001', gender: 'Female', dateOfBirth: '2010-03-14', bloodGroup: 'O+', currentClass: { name: 'JSS 1A' }, session: CURRENT_SESSION, photo: null, parentPhone: '+234 803 000 1111', address: '12 Okota Road, Onitsha' },
@@ -37,7 +40,7 @@ const Label = ({ children }) => (
   <div style={{ fontSize: '0.46rem', fontWeight: 700, color: C.muted, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{children}</div>
 );
 
-function CardFront({ student, signature, logo, settings }) {
+export function CardFront({ student, signature, logo, settings }) {
   const dob = student.dateOfBirth
     ? new Date(student.dateOfBirth).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
   const initials = `${student.firstName?.[0] || '?'}${student.lastName?.[0] || '?'}`.toUpperCase();
@@ -46,14 +49,16 @@ function CardFront({ student, signature, logo, settings }) {
   const otherNames = [student.firstName, student.otherNames || student.middleName].filter(Boolean).map(s => String(s).trim()).filter(Boolean).join(' ');
   const rest = [['Gender', student.gender || '—'], ['Date of Birth', dob]];
   const nameSize = (student.lastName || '').length > 14 ? '1.05rem' : '1.3rem';
+  const siteBase = import.meta.env.VITE_SITE_URL?.replace(/\/$/, '') || window.location.origin;
+  const verifyUrl = student?.id ? `${siteBase}/idcards/verify/${student.id}` : (student?.admissionNo || '');
   return (
     <div style={{ width: 320, height: 500, borderRadius: 20, overflow: 'hidden', position: 'relative', fontFamily: SANS, flexShrink: 0, background: C.cream, boxShadow: '0 18px 40px rgba(20,67,42,0.18), 0 0 0 1px rgba(20,67,42,0.08)' }}>
       {/* Watermark */}
-      <div style={{ position: 'absolute', top: 250, left: '50%', transform: 'translateX(-50%)', opacity: 0.05, pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', top: 250, left: 0, right: 0, display: 'flex', justifyContent: 'center', opacity: 0.05, pointerEvents: 'none', zIndex: 0 }}>
         {finalLogo ? <img src={finalLogo} alt="" style={{ width: 190, height: 190, objectFit: 'contain', filter: 'grayscale(100%)' }} /> : <Crest size={190} />}
       </div>
       {/* Header */}
-      <div style={{ height: 150, background: `linear-gradient(160deg, ${C.green} 0%, ${C.forest} 100%)`, position: 'relative' }}>
+      <div style={{ height: 150, background: `linear-gradient(160deg, ${C.green} 0%, ${C.forest} 100%)`, position: 'relative', zIndex: 1 }}>
         <div style={{ position: 'absolute', top: -50, right: -40, width: 170, height: 170, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
         <div style={{ position: 'absolute', top: 40, left: -50, width: 110, height: 110, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, padding: '22px 18px 0' }}>
@@ -71,9 +76,9 @@ function CardFront({ student, signature, logo, settings }) {
       </div>
 
       {/* Photo (portrait passport frame) */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginTop: -64, position: 'relative', zIndex: 2 }}>
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: -64, position: 'relative', zIndex: 10, transform: 'translateZ(10px)' }}>
         <div style={{ width: 106, height: 130, borderRadius: 24, padding: 4, background: C.cream, boxShadow: `0 0 0 2.5px ${C.leaf}, 0 12px 24px rgba(20,67,42,0.22)` }}>
-          <div style={{ width: '100%', height: '100%', borderRadius: 20, overflow: 'hidden', background: C.sage, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: SERIF, fontSize: '1.9rem', fontWeight: 700, color: C.green }}>
+          <div style={{ width: '100%', height: '100%', borderRadius: 20, overflow: 'hidden', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: SERIF, fontSize: '1.9rem', fontWeight: 700, color: C.green }}>
             {student.photo ? <img src={student.photo.startsWith('http') ? student.photo : `/uploads/${student.photo}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%' }} /> : initials}
           </div>
         </div>
@@ -88,15 +93,15 @@ function CardFront({ student, signature, logo, settings }) {
         </div>
       </div>
 
-      {/* Details */}
-      <div style={{ margin: '12px 18px 0', display: 'flex', flexDirection: 'column', gap: 7 }}>
-        <div style={{ background: C.forest, borderRadius: 12, padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* Details (semi-transparent so the watermark shows through) */}
+      <div style={{ margin: '12px 18px 0', display: 'flex', flexDirection: 'column', gap: 7, position: 'relative', zIndex: 1 }}>
+        <div style={{ background: 'rgba(20,67,42,0.93)', borderRadius: 12, padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: '0.46rem', fontWeight: 700, color: 'rgba(251,246,233,0.65)', letterSpacing: '0.14em', textTransform: 'uppercase' }}>Admission No</span>
           <span style={{ fontSize: '0.8rem', fontWeight: 800, color: C.cream, letterSpacing: '0.08em' }}>{student.admissionNo}</span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${rest.length || 1}, 1fr)`, gap: 7 }}>
           {rest.map(([label, value]) => (
-            <div key={label} style={{ background: C.mint, border: `1px solid ${C.sage}`, borderRadius: 12, padding: '6px 10px' }}>
+            <div key={label} style={{ background: 'rgba(238,245,236,0.55)', border: `1px solid ${C.sage}`, borderRadius: 12, padding: '6px 10px' }}>
               <Label>{label}</Label>
               <div style={{ fontSize: '0.68rem', fontWeight: 700, color: C.ink, marginTop: 2, whiteSpace: 'nowrap' }}>{value}</div>
             </div>
@@ -105,7 +110,7 @@ function CardFront({ student, signature, logo, settings }) {
       </div>
 
       {/* Footer */}
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 70, background: C.sand, borderTop: `1px solid ${C.line}`, padding: '0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 76, background: C.sand, borderTop: `1px solid ${C.line}`, padding: '0 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ height: 24, display: 'flex', alignItems: 'flex-end' }}>
             {signature && <img src={signature} alt="signature" style={{ height: 22, maxWidth: 90, objectFit: 'contain' }} />}
@@ -113,10 +118,17 @@ function CardFront({ student, signature, logo, settings }) {
           <div style={{ width: 92, borderTop: `1px solid ${C.forest}`, marginTop: 2 }} />
           <div style={{ fontSize: '0.42rem', fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: 3 }}>Principal's Signature</div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ fontSize: '0.4rem', fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.12em', textAlign: 'right', lineHeight: 1.5 }}>Scan to<br />verify</div>
-          <div style={{ background: C.cream, padding: 4, borderRadius: 8, border: `1px solid ${C.line}` }}>
-            <QRCodeSVG value={student.admissionNo || ''} size={42} level="M" fgColor={C.forest} bgColor="transparent" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ fontSize: '0.38rem', fontWeight: 800, color: C.forest, textTransform: 'uppercase', letterSpacing: '0.1em', textAlign: 'right', lineHeight: 1.4 }}>Scan to<br />verify</div>
+          <div style={{ background: '#FFFFFF', padding: 2, borderRadius: 8, border: `1px solid ${C.line}`, boxShadow: '0 2px 6px rgba(0,0,0,0.08)' }}>
+            <QRCodeSVG
+              value={verifyUrl}
+              size={56}
+              level="L"
+              fgColor="#082015"
+              bgColor="#FFFFFF"
+              includeMargin={true}
+            />
           </div>
         </div>
       </div>
@@ -125,7 +137,7 @@ function CardFront({ student, signature, logo, settings }) {
   );
 }
 
-function CardBack({ student, settings }) {
+export function CardBack({ student, settings }) {
   const finalLogo = settings?.logoUrl;
   const schoolName = settings?.schoolName || 'PATIMO COLLEGE';
   const rules = [
@@ -138,7 +150,9 @@ function CardBack({ student, settings }) {
   return (
     <div style={{ width: 320, height: 500, borderRadius: 20, overflow: 'hidden', position: 'relative', fontFamily: SANS, flexShrink: 0, background: C.cream, boxShadow: '0 18px 40px rgba(20,67,42,0.18), 0 0 0 1px rgba(20,67,42,0.08)' }}>
       <div style={{ height: 74, background: `linear-gradient(160deg, ${C.green}, ${C.forest})`, position: 'relative' }}>
-        <div style={{ position: 'absolute', top: 9, left: '50%', transform: 'translateX(-50%)', width: 46, height: 8, borderRadius: 4, background: 'rgba(0,0,0,0.28)' }} />
+        <div style={{ position: 'absolute', top: 9, left: 0, right: 0, display: 'flex', justifyContent: 'center' }}>
+          <div style={{ width: 46, height: 8, borderRadius: 4, background: 'rgba(0,0,0,0.28)' }} />
+        </div>
         <div style={{ position: 'absolute', top: 30, left: 0, right: 0, textAlign: 'center', color: C.cream, fontFamily: SERIF, fontSize: '0.9rem', fontWeight: 700, letterSpacing: '0.04em' }}>{schoolName}</div>
         <svg viewBox="0 0 320 24" preserveAspectRatio="none" style={{ position: 'absolute', bottom: -1, left: 0, width: '100%', height: 24 }}>
           <path d="M0 24V10C80 -2 160 -2 240 8c40 5 60 4 80 0v16z" fill={C.cream} />
@@ -189,6 +203,7 @@ function CardBack({ student, settings }) {
 const fieldLabel = { color: C.muted, fontSize: '0.62rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', display: 'block', marginBottom: 6 };
 const inputStyle = { width: '100%', background: '#fff', border: `1px solid ${C.line}`, borderRadius: 10, padding: '10px 12px', color: C.ink, fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' };
 const uploadBtn = (on) => ({ background: on ? C.sage : '#fff', color: on ? C.green : C.forest, border: `1px solid ${on ? C.leaf : C.line}`, borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 });
+const exportBtn = (bg, color, extra = {}) => ({ background: bg, color, border: 'none', padding: '6px 12px', borderRadius: 16, fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, ...extra });
 
 export default function IDCardPage() {
   const { currentSession } = useSettings();
@@ -202,9 +217,9 @@ export default function IDCardPage() {
   const [signature, setSignature] = useState(null);
   const [logo, setLogo] = useState(null);
   const [flipped, setFlipped] = useState({});
+  const [exportFormat, setExportFormat] = useState('png');
   const sigRef = useRef();
   const logoRef = useRef();
-  const printRef = useRef();
 
   const { data: classes = [] } = useQuery({
     queryKey: ['classes'],
@@ -250,16 +265,49 @@ export default function IDCardPage() {
   };
 
   const handlePrint = () => {
-    const w = window.open('', '_blank');
-    w.document.write(`<html><head><title>ID Cards</title><style>*{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;font-family:'Inter',sans-serif}.grid{display:flex;flex-wrap:wrap;gap:24px;padding:24px;justify-content:center}.pair{display:flex;gap:16px;page-break-inside:avoid;margin-bottom:24px}@media print{@page{size:A4;margin:10mm}}</style></head><body><div class="grid">${printRef.current.innerHTML}</div></body></html>`);
-    w.document.close(); w.focus(); setTimeout(() => { w.print(); w.close(); }, 600);
+    window.print();
   };
 
-  return (
-    <div style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', background: C.cream, fontFamily: SANS }}>
-      <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(circle at 8% 10%, rgba(62,154,94,0.16) 0%, transparent 45%), radial-gradient(circle at 95% 90%, rgba(200,162,74,0.14) 0%, transparent 45%)`, pointerEvents: 'none' }} />
+  const exportStudentImage = async (studentId, studentName, type = 'front') => {
+    const label = type === 'front' ? 'Front' : type === 'back' ? 'Back' : 'Front & Back';
+    try {
+      toast.info(`Generating ${label} for ${studentName}…`);
+      await exportCardImage(
+        `export-${type}-${studentId}`,
+        `${studentName.replace(/[^a-zA-Z0-9_-]/g, '_')}_IDCard_${type.toUpperCase()}`,
+        exportFormat
+      );
+      toast.success(`${label} exported!`);
+    } catch (err) {
+      console.error('Failed to export image:', err);
+      toast.error('Could not generate image');
+    }
+  };
 
-      <div style={{ position: 'relative', zIndex: 10, padding: '40px 28px' }}>
+  const fmt = exportFormat.toUpperCase();
+
+  return (
+    <div className="id-card-generator-wrapper" style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', background: C.cream, fontFamily: SANS }}>
+      <style>{`
+        /* Global flatten rule for export */
+        .id-cards-export-view, .id-cards-export-view * { transform-style: flat !important; }
+
+        @media print {
+          @page { size: A4 portrait; margin: 8mm; }
+          body, html { background: #FFFFFF !important; margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .topbar, .sidebar, .id-cards-screen-view, button, input, select { display: none !important; }
+          .id-cards-print-view, .id-cards-print-view * { transform-style: flat !important; }
+          .id-cards-print-view { display: flex !important; flex-wrap: wrap !important; gap: 20px !important; justify-content: center !important; padding: 10px !important; }
+          .id-card-pair { display: flex !important; gap: 16px !important; page-break-inside: avoid !important; break-inside: avoid !important; margin-bottom: 24px !important; }
+        }
+        @media screen {
+          .id-cards-print-view { display: none !important; }
+        }
+      `}</style>
+
+      <div className="id-cards-screen-view" style={{ position: 'relative', zIndex: 10, padding: '40px 28px' }}>
+        <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(circle at 8% 10%, rgba(62,154,94,0.16) 0%, transparent 45%), radial-gradient(circle at 95% 90%, rgba(200,162,74,0.14) 0%, transparent 45%)`, pointerEvents: 'none' }} />
+
         <div style={{ marginBottom: 28, textAlign: 'center' }}>
           <h1 style={{ color: C.forest, fontFamily: SERIF, fontSize: '2rem', fontWeight: 700, margin: 0 }}>ID Card Generator</h1>
           <p style={{ color: C.muted, fontSize: '0.88rem', marginTop: 6 }}>Generate, preview &amp; print student ID cards</p>
@@ -291,6 +339,13 @@ export default function IDCardPage() {
             <button onClick={() => sigRef.current.click()} style={uploadBtn(signature)}>{signature ? '✓ Signature set' : 'Upload signature'}</button>
             <input ref={sigRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => loadFile(e, setSignature)} />
           </div>
+          <div>
+            <label style={fieldLabel}>Export format</label>
+            <select value={exportFormat} onChange={e => setExportFormat(e.target.value)} style={{ ...inputStyle, width: 90 }}>
+              <option value="png">PNG</option>
+              <option value="jpg">JPG</option>
+            </select>
+          </div>
           {students.length > 0 && (
             <button onClick={handlePrint} style={{ background: `linear-gradient(135deg, ${C.green}, ${C.forest})`, color: C.cream, border: 'none', borderRadius: 10, padding: '11px 22px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 700, letterSpacing: '0.04em', boxShadow: '0 6px 16px rgba(20,67,42,0.25)' }}>
               🖨 Print {students.length} Cards
@@ -321,25 +376,75 @@ export default function IDCardPage() {
         {!loading && students.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 40, justifyContent: 'center' }}>
             {students.map(s => (
-              <div key={s.id} onClick={() => setFlipped(f => ({ ...f, [s.id]: !f[s.id] }))} style={{ cursor: 'pointer', perspective: 1200 }}>
-                <div style={{ transition: 'transform 0.7s cubic-bezier(0.4,0,0.2,1)', transformStyle: 'preserve-3d', transform: flipped[s.id] ? 'rotateY(180deg)' : 'rotateY(0)', position: 'relative', width: 320, height: 500 }}>
-                  <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden' }}><CardFront student={s} signature={signature} logo={logo} settings={settings} /></div>
-                  <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}><CardBack student={s} settings={settings} /></div>
+              <div key={s.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div
+                  onClick={() => setFlipped(f => ({ ...f, [s.id]: !f[s.id] }))}
+                  style={{ cursor: 'pointer', perspective: 1200, padding: 8, background: C.cream, borderRadius: 24 }}
+                >
+                  <div style={{ transition: 'transform 0.7s cubic-bezier(0.4,0,0.2,1)', transformStyle: 'preserve-3d', transform: flipped[s.id] ? 'rotateY(180deg)' : 'rotateY(0)', position: 'relative', width: 320, height: 500 }}>
+                    <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden' }}><CardFront student={s} signature={signature} logo={logo} settings={settings} /></div>
+                    <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}><CardBack student={s} settings={settings} /></div>
+                  </div>
                 </div>
-                <p style={{ color: C.muted, fontSize: '0.64rem', textAlign: 'center', marginTop: 12, letterSpacing: '0.06em' }}>{flipped[s.id] ? 'Back' : 'Front'} · tap to flip</p>
+
+                <p style={{ color: C.muted, fontSize: '0.64rem', marginTop: 8, marginBottom: 10, letterSpacing: '0.06em' }}>{flipped[s.id] ? 'Back View' : 'Front View'} · tap card to flip</p>
+
+                {/* Export buttons */}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); exportStudentImage(s.id, `${s.lastName}_${s.firstName}`, 'front'); }}
+                    style={exportBtn(C.forest, C.cream, { boxShadow: '0 2px 6px rgba(0,0,0,0.1)' })}
+                  >
+                    <Download size={11} /> Front {fmt}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); exportStudentImage(s.id, `${s.lastName}_${s.firstName}`, 'back'); }}
+                    style={exportBtn(C.green, C.cream, { boxShadow: '0 2px 6px rgba(0,0,0,0.1)' })}
+                  >
+                    <Download size={11} /> Back {fmt}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); exportStudentImage(s.id, `${s.lastName}_${s.firstName}`, 'pair'); }}
+                    style={exportBtn(C.mint, C.forest, { border: `1px solid ${C.sage}` })}
+                  >
+                    <Download size={11} /> Both (Pair)
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         )}
+      </div>
 
-        <div ref={printRef} style={{ display: 'none' }}>
-          {students.map(s => (
-            <div key={s.id} className="pair">
+      {/* Offscreen flat export containers (captured by html-to-image) */}
+      <div className="id-cards-export-view" style={{ position: 'fixed', top: -99999, left: -99999, pointerEvents: 'none' }}>
+        {students.map(s => (
+          <div key={`export-group-${s.id}`}>
+            <div id={`export-front-${s.id}`} style={{ display: 'inline-block' }}>
+              <CardFront student={s} signature={signature} logo={logo} settings={settings} />
+            </div>
+            <div id={`export-back-${s.id}`} style={{ display: 'inline-block' }}>
+              <CardBack student={s} settings={settings} />
+            </div>
+            <div id={`export-pair-${s.id}`} style={{ display: 'inline-flex', gap: 16, padding: 16, background: C.cream, borderRadius: 20 }}>
               <CardFront student={s} signature={signature} logo={logo} settings={settings} />
               <CardBack student={s} settings={settings} />
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Dedicated print view */}
+      <div className="id-cards-print-view">
+        {students.map(s => (
+          <div key={s.id} className="id-card-pair">
+            <CardFront student={s} signature={signature} logo={logo} settings={settings} />
+            <CardBack student={s} settings={settings} />
+          </div>
+        ))}
       </div>
     </div>
   );

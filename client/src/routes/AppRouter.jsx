@@ -56,6 +56,7 @@ import LedgerPage from '../pages/fees/LedgerPage';
 
 // ID Cards
 import IDCardPage from '../pages/idcards/IDCardPage';
+import IDCardVerifyPage from '../pages/idcards/IDCardVerifyPage';
 
 // Notifications
 import NotificationsPage from '../pages/notifications/NotificationsPage';
@@ -83,6 +84,7 @@ export default function AppRouter() {
             <Routes>
               {/* Public */}
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/idcards/verify/:studentId" element={<IDCardVerifyPage />} />
               <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/change-password" element={
                 <ProtectedRoute roles={Object.values(ROLES)}>

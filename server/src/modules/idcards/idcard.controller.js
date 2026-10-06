@@ -36,4 +36,41 @@ const bulkGenerate = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { generate, bulkGenerate };
+// Public Verification: returns student data and school settings for public QR code scanning
+const verify = async (req, res, next) => {
+  try {
+    const student = await prisma.student.findUnique({
+      where: { id: req.params.studentId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        otherNames: true,
+        admissionNo: true,
+        photo: true,
+        session: true,
+        status: true,
+        parentPhone: true,
+        currentClass: { select: { name: true } },
+      },
+    });
+
+    if (!student) return res.status(404).json({ message: 'Student verification record not found' });
+
+    const settings = await prisma.setting.findFirst() || {};
+
+    res.json({
+      verified: true,
+      student,
+      settings: {
+        schoolName: settings.schoolName || 'PATIMO SCHOOLS INTERNATIONAL',
+        logoUrl: settings.logoUrl || null,
+        address: settings.address || 'Plot 13&14, Maito Bakery Street, Adesola, Ibadan',
+        phone: settings.phone || '+234 803 455 6007',
+        email: settings.email || 'info@patimocollege.edu.ng',
+      }
+    });
+  } catch (err) { next(err); }
+};
+
+module.exports = { generate, bulkGenerate, verify };
