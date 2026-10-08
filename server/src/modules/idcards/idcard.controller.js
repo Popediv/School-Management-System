@@ -50,18 +50,24 @@ const verify = async (req, res, next) => {
         photo: true,
         session: true,
         status: true,
-        parentPhone: true,
+        gender: true,
+        dateOfBirth: true,
+        parent: { select: { phone: true } },
         currentClass: { select: { name: true } },
       },
     });
 
     if (!student) return res.status(404).json({ message: 'Student verification record not found' });
 
+    // Flatten parent phone for frontend compatibility
+    const studentData = { ...student, parentPhone: student.parent?.phone || null };
+    delete studentData.parent;
+
     const settings = await prisma.setting.findFirst() || {};
 
     res.json({
       verified: true,
-      student,
+      student: studentData,
       settings: {
         schoolName: settings.schoolName || 'PATIMO SCHOOLS INTERNATIONAL',
         logoUrl: settings.logoUrl || null,
