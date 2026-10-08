@@ -8,8 +8,8 @@ const generate = async (req, res, next) => {
       include: { currentClass: { select: { name: true } } },
       select: {
         id: true, firstName: true, lastName: true, otherNames: true,
-        admissionNo: true, photo: true, session: true,
-        currentClass: true,
+        admissionNo: true, moodleUsername: true, photo: true, session: true,
+        gender: true, currentClass: true,
       },
     });
     if (!student) return res.status(404).json({ message: 'Student not found' });
@@ -28,8 +28,8 @@ const bulkGenerate = async (req, res, next) => {
       include: { currentClass: { select: { name: true } } },
       select: {
         id: true, firstName: true, lastName: true, otherNames: true,
-        admissionNo: true, photo: true, session: true,
-        currentClass: true,
+        admissionNo: true, moodleUsername: true, photo: true, session: true,
+        gender: true, currentClass: true,
       },
     });
     res.json({ students, count: students.length });
@@ -51,7 +51,7 @@ const verify = async (req, res, next) => {
         session: true,
         status: true,
         gender: true,
-        dateOfBirth: true,
+        moodleUsername: true,
         parent: { select: { phone: true } },
         currentClass: { select: { name: true } },
       },

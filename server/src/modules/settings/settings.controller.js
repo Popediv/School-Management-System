@@ -47,15 +47,41 @@ const uploadLogo = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+const uploadSignature = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No signature file uploaded' });
+    }
+
+    const signatureUrl = req.file.path.startsWith('http')
+      ? req.file.path
+      : `/uploads/${req.file.filename}`;
+
+    if (!req.file.path.startsWith('http')) {
+      try {
+        const targetPath = path.join(__dirname, '..', '..', '..', 'uploads', 'principal_signature.png');
+        fs.copyFileSync(req.file.path, targetPath);
+      } catch (e) { }
+    }
+
+    saveSettings({ signatureUrl });
+
+    res.json({ message: 'Principal signature uploaded successfully', signatureUrl });
+  } catch (err) { next(err); }
+};
+
 const getSettings = async (req, res, next) => {
   try {
     const stored = getStoredSettings();
     const hasLocalLogo = fs.existsSync(path.join(__dirname, '..', '..', '..', 'uploads', 'school_logo.png'));
     const logoUrl = stored.logoUrl || (hasLocalLogo ? '/uploads/school_logo.png' : null);
+    const hasLocalSig = fs.existsSync(path.join(__dirname, '..', '..', '..', 'uploads', 'principal_signature.png'));
+    const signatureUrl = stored.signatureUrl || (hasLocalSig ? '/uploads/principal_signature.png' : null);
 
     res.json({
       schoolName: process.env.SCHOOL_NAME || 'Patimo College',
       logoUrl,
+      signatureUrl,
       admissionPrefix: stored.admissionPrefix || 'PCI-' + new Date().getFullYear() + '-',
       admissionStartingSequence: stored.admissionStartingSequence || 1,
       currentSession: stored.currentSession || '2025/2026',
@@ -72,4 +98,4 @@ const updateSettings = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { uploadLogo, getSettings, updateSettings, getStoredSettings };
+module.exports = { uploadLogo, uploadSignature, getSettings, updateSettings, getStoredSettings };

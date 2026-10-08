@@ -41,13 +41,11 @@ const Label = ({ children }) => (
 );
 
 export function CardFront({ student, signature, logo, settings }) {
-  const dob = student.dateOfBirth
-    ? new Date(student.dateOfBirth).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
   const initials = `${student.firstName?.[0] || '?'}${student.lastName?.[0] || '?'}`.toUpperCase();
   const finalLogo = logo || settings?.logoUrl;
   const schoolName = settings?.schoolName || 'PATIMO COLLEGE';
   const otherNames = [student.firstName, student.otherNames || student.middleName].filter(Boolean).map(s => String(s).trim()).filter(Boolean).join(' ');
-  const rest = [['Gender', student.gender || '—'], ['Date of Birth', dob]];
+  const rest = [['Gender', student.gender || '—'], ['E-Learning ID', student.moodleUsername || '—']];
   const nameSize = (student.lastName || '').length > 14 ? '1.05rem' : '1.3rem';
   const siteBase = import.meta.env.VITE_SITE_URL?.replace(/\/$/, '') || window.location.origin;
   const verifyUrl = student?.id ? `${siteBase}/idcards/verify/${student.id}` : (student?.admissionNo || '');
@@ -230,8 +228,15 @@ export default function IDCardPage() {
   const { data: settings } = useQuery({
     queryKey: ['school-settings'],
     queryFn: () => api.get('/settings').then(r => r.data),
-    placeholderData: { logoUrl: null, schoolName: 'PATIMO COLLEGE' },
+    placeholderData: { logoUrl: null, schoolName: 'PATIMO COLLEGE', signatureUrl: null },
   });
+
+  // Auto-load saved signature from settings when page first loads
+  useEffect(() => {
+    if (settings?.signatureUrl && !signature) {
+      setSignature(settings.signatureUrl);
+    }
+  }, [settings?.signatureUrl]);
 
   useEffect(() => {
     if (studentParamId) {
@@ -249,6 +254,25 @@ export default function IDCardPage() {
   const loadFile = (e, setter) => {
     const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader(); reader.onload = ev => setter(ev.target.result); reader.readAsDataURL(file);
+  };
+
+  const uploadSignatureFile = async (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    // Show immediately via DataURL
+    const reader = new FileReader();
+    reader.onload = ev => setSignature(ev.target.result);
+    reader.readAsDataURL(file);
+    // Save to server so it persists
+    try {
+      const form = new FormData();
+      form.append('signature', file);
+      const { data } = await api.post('/settings/signature', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+      // Replace DataURL with the stable server URL once uploaded
+      if (data.signatureUrl) setSignature(data.signatureUrl);
+      toast.success('Signature saved — will auto-load next time!');
+    } catch {
+      toast.error('Signature preview is set but could not be saved to server.');
+    }
   };
 
   const loadStudents = async (cid) => {
@@ -337,7 +361,7 @@ export default function IDCardPage() {
           <div>
             <label style={fieldLabel}>Authorized Signature</label>
             <button onClick={() => sigRef.current.click()} style={uploadBtn(signature)}>{signature ? '✓ Signature set' : 'Upload signature'}</button>
-            <input ref={sigRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => loadFile(e, setSignature)} />
+            <input ref={sigRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={uploadSignatureFile} />
           </div>
           <div>
             <label style={fieldLabel}>Export format</label>
