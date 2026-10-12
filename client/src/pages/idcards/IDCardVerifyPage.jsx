@@ -9,21 +9,23 @@ export default function IDCardVerifyPage() {
     const { studentId } = useParams();
     const [flipped, setFlipped] = useState(false);
 
-    const { data, isLoading, error } = useQuery({
+    const { data, isLoading, isFetching, error, refetch } = useQuery({
         queryKey: ['idcard-verify', studentId],
         queryFn: () => api.get(`/idcards/verify/${studentId}`).then(r => r.data),
-        retry: 1
+        retry: 2,
+        retryDelay: 1500,
     });
 
     const student = data?.student;
     const settings = data?.settings;
 
-    if (isLoading) {
+    if (isLoading || isFetching) {
         return (
             <div style={{ minHeight: '100vh', background: C.cream, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: SANS }}>
                 <div style={{ textAlign: 'center', padding: 40 }}>
                     <div style={{ width: 44, height: 44, border: `3px solid ${C.sage}`, borderTopColor: C.green, borderRadius: '50%', margin: '0 auto 16px', animation: 'spin 0.8s linear infinite' }} />
-                    <p style={{ color: C.forest, fontWeight: 700, fontSize: '0.9rem' }}>Verifying Student Identity…</p>
+                    <p style={{ color: C.forest, fontWeight: 700, fontSize: '0.95rem', marginBottom: 6 }}>Verifying Student Identity…</p>
+                    <p style={{ color: C.muted, fontSize: '0.78rem' }}>Connecting to school central register…</p>
                     <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
                 </div>
             </div>
@@ -33,14 +35,33 @@ export default function IDCardVerifyPage() {
     if (error || !student) {
         return (
             <div style={{ minHeight: '100vh', background: C.cream, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: SANS }}>
-                <div style={{ background: '#FFFFFF', borderRadius: 24, padding: '40px 32px', maxWidth: 440, width: '100%', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.08)', border: '1px solid #F1F5F9' }}>
+                <div style={{ background: '#FFFFFF', borderRadius: 24, padding: '40px 32px', maxWidth: 440, width: '100%', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.08)', border: '1.5px solid #F1F5F9' }}>
                     <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#FEE2E2', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
                         <AlertCircle size={32} />
                     </div>
                     <h2 style={{ color: '#0F172A', fontFamily: SERIF, fontSize: '1.4rem', fontWeight: 800, margin: '0 0 10px' }}>Verification Unsuccessful</h2>
-                    <p style={{ color: '#64748B', fontSize: '0.88rem', lineHeight: 1.6, margin: '0 0 24px' }}>
-                        The scanned QR code link is invalid or the student identity record could not be found in our official register.
+                    <p style={{ color: '#64748B', fontSize: '0.88rem', lineHeight: 1.6, margin: '0 0 20px' }}>
+                        The student identity record for <strong>{studentId}</strong> could not be verified in our official school register.
                     </p>
+                    <button
+                        onClick={() => refetch()}
+                        style={{
+                            background: C.green,
+                            color: '#FFFFFF',
+                            border: 'none',
+                            padding: '10px 22px',
+                            borderRadius: 12,
+                            fontSize: '0.85rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            boxShadow: '0 4px 12px rgba(22,101,52,0.2)'
+                        }}
+                    >
+                        <RefreshCw size={15} /> Try Verification Again
+                    </button>
                 </div>
             </div>
         );

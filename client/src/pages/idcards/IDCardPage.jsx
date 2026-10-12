@@ -62,7 +62,8 @@ export function CardFront({ student, signature, logo, settings }) {
   const rest = [['Gender', student.gender || '—'], ['E-Learning ID', student.moodleUsername || '—']];
   const nameSize = (student.lastName || '').length > 13 ? '1.15rem' : '1.32rem';
   const siteBase = import.meta.env.VITE_SITE_URL?.replace(/\/$/, '') || window.location.origin;
-  const verifyUrl = student?.id ? `${siteBase}/idcards/verify/${student.id}` : (student?.admissionNo || '');
+  const identifier = student?.admissionNo || student?.id || '';
+  const verifyUrl = identifier ? `${siteBase}/idcards/verify/${encodeURIComponent(identifier)}` : '';
 
   return (
     <div style={{ width: 320, height: 500, borderRadius: 20, overflow: 'hidden', position: 'relative', fontFamily: SANS, flexShrink: 0, background: C.cream, boxShadow: '0 18px 40px rgba(13,56,32,0.18), 0 0 0 1.5px rgba(13,56,32,0.14)' }}>
@@ -136,14 +137,14 @@ export function CardFront({ student, signature, logo, settings }) {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
           <div style={{ fontSize: '0.54rem', fontWeight: 800, color: '#0D3820', textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'right', lineHeight: 1.35 }}>Scan to<br />Verify</div>
-          <div style={{ background: '#FFFFFF', padding: 3, borderRadius: 8, border: '1.5px solid #C8DEC9', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
+          <div style={{ background: '#FFFFFF', padding: 2, borderRadius: 8, border: '1.5px solid #C8DEC9', boxShadow: '0 2px 6px rgba(0,0,0,0.08)' }}>
             <QRCodeSVG
-              value={verifyUrl}
-              size={52}
+              value={verifyUrl || 'VERIFY'}
+              size={56}
               level="M"
-              fgColor="#082015"
+              fgColor="#000000"
               bgColor="#FFFFFF"
-              includeMargin={false}
+              includeMargin={true}
             />
           </div>
         </div>

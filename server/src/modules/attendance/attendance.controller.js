@@ -179,7 +179,13 @@ const kioskScan = async (req, res, next) => {
 
     let student = null;
     if (code) {
-      const cleanCode = code.trim();
+      let cleanCode = code.trim();
+      // Extract student identifier if full QR URL was scanned (e.g. https://.../idcards/verify/PCI-260103)
+      const urlMatch = cleanCode.match(/\/idcards\/verify\/([^/?#]+)/i);
+      if (urlMatch) {
+        cleanCode = decodeURIComponent(urlMatch[1]).trim();
+      }
+
       student = await prisma.student.findFirst({
         where: {
           OR: [
