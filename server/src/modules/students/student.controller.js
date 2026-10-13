@@ -531,24 +531,25 @@ const exportPicturesZip = async (req, res, next) => {
 
     for (const student of students) {
       if (!student.photo) continue;
+      const photoName = student.moodleUsername || (student.admissionNo ? student.admissionNo.replace(/-/g, '').toLowerCase() : student.id);
       if (student.photo.startsWith('http')) {
         try {
           const buffer = await fetchBuffer(student.photo);
           if (buffer) {
             const urlPath = student.photo.split('?')[0];
             const ext = path.extname(urlPath) || '.jpg';
-            const filename = `${student.admissionNo}${ext}`;
+            const filename = `${photoName}${ext}`;
             archive.append(buffer, { name: filename });
           }
         } catch (e) {
-          console.error(`[exportPicturesZip] Error fetching remote photo for ${student.admissionNo}:`, e);
+          console.error(`[exportPicturesZip] Error fetching remote photo for ${photoName}:`, e);
         }
       } else {
         const photoFilename = path.basename(student.photo);
         const photoPath = path.join(__dirname, '..', '..', '..', 'uploads', photoFilename);
         if (fs.existsSync(photoPath)) {
           const ext = path.extname(photoFilename) || '.jpg';
-          const filename = `${student.admissionNo}${ext}`;
+          const filename = `${photoName}${ext}`;
           archive.append(fs.createReadStream(photoPath), { name: filename });
         }
       }

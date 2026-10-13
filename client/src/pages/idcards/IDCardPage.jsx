@@ -72,8 +72,8 @@ export function CardFront({ student, signature, logo, settings }) {
         {finalLogo ? <img src={finalLogo} alt="" style={{ width: 190, height: 190, objectFit: 'contain', filter: 'grayscale(100%)' }} /> : <Crest size={190} />}
       </div>
 
-      {/* Header with rich emerald & forest gradient plus gold divider */}
-      <div style={{ height: 148, background: 'linear-gradient(155deg, #166534 0%, #0D3820 100%)', position: 'relative', zIndex: 1, borderBottom: `2.5px solid ${C.gold}` }}>
+      {/* Header with rich emerald & forest gradient */}
+      <div style={{ height: 148, background: 'linear-gradient(155deg, #166534 0%, #0D3820 100%)', position: 'relative', zIndex: 1 }}>
         <div style={{ position: 'absolute', top: -50, right: -40, width: 170, height: 170, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
         <div style={{ position: 'absolute', top: 40, left: -50, width: 110, height: 110, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
         
@@ -127,20 +127,20 @@ export function CardFront({ student, signature, logo, settings }) {
       </div>
 
       {/* Footer */}
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 74, background: C.sand, borderTop: `1.5px solid ${C.line}`, padding: '0 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 86, background: C.sand, borderTop: `1.5px solid ${C.line}`, padding: '0 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <div style={{ height: 26, display: 'flex', alignItems: 'flex-end' }}>
-            {signature && <img src={signature} alt="signature" style={{ height: 24, maxWidth: 96, objectFit: 'contain' }} />}
+          <div style={{ height: 28, display: 'flex', alignItems: 'flex-end' }}>
+            {signature && <img src={signature} alt="signature" style={{ height: 26, maxWidth: 96, objectFit: 'contain' }} />}
           </div>
-          <div style={{ width: 100, borderTop: '1.5px solid #0D3820', marginTop: 2 }} />
-          <div style={{ fontSize: '0.58rem', fontWeight: 800, color: '#1B4D31', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 3 }}>Principal's Signature</div>
+          <div style={{ width: 96, borderTop: '1.5px solid #0D3820', marginTop: 3 }} />
+          <div style={{ fontSize: '0.56rem', fontWeight: 800, color: '#1B4D31', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 3 }}>Principal's Signature</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          <div style={{ fontSize: '0.54rem', fontWeight: 800, color: '#0D3820', textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'right', lineHeight: 1.35 }}>Scan to<br />Verify</div>
-          <div style={{ background: '#FFFFFF', padding: 2, borderRadius: 8, border: '1.5px solid #C8DEC9', boxShadow: '0 2px 6px rgba(0,0,0,0.08)' }}>
+          <div style={{ fontSize: '0.56rem', fontWeight: 800, color: '#0D3820', textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'right', lineHeight: 1.3 }}>Scan to<br />Verify</div>
+          <div style={{ background: '#FFFFFF', padding: 2.5, borderRadius: 8, border: '1.5px solid #C8DEC9', boxShadow: '0 2px 6px rgba(0,0,0,0.08)', display: 'flex' }}>
             <QRCodeSVG
               value={verifyUrl || 'VERIFY'}
-              size={56}
+              size={72}
               level="M"
               fgColor="#000000"
               bgColor="#FFFFFF"
@@ -166,8 +166,8 @@ export function CardBack({ student, settings }) {
 
   return (
     <div style={{ width: 320, height: 500, borderRadius: 20, overflow: 'hidden', position: 'relative', fontFamily: SANS, flexShrink: 0, background: C.cream, boxShadow: '0 18px 40px rgba(13,56,32,0.18), 0 0 0 1.5px rgba(13,56,32,0.14)' }}>
-      {/* Header bar with gold trim */}
-      <div style={{ height: 76, background: 'linear-gradient(155deg, #166534, #0D3820)', position: 'relative', borderBottom: `2.5px solid ${C.gold}` }}>
+      {/* Header bar */}
+      <div style={{ height: 76, background: 'linear-gradient(155deg, #166534, #0D3820)', position: 'relative' }}>
         <div style={{ position: 'absolute', top: 8, left: 0, right: 0, display: 'flex', justifyContent: 'center' }}>
           <div style={{ width: 48, height: 7, borderRadius: 4, background: 'rgba(0,0,0,0.3)' }} />
         </div>
