@@ -16,6 +16,10 @@ api.interceptors.request.use((config) => {
   if (config.data instanceof FormData) {
     config.timeout = 60000;
   }
+  // Give Moodle sync operations extended timeout (3 minutes)
+  if (config.url?.includes('moodle-sync/run')) {
+    config.timeout = 180000;
+  }
   return config;
 });
 

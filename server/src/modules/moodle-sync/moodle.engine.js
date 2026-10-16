@@ -12,7 +12,7 @@
 const https  = require('https');
 const http   = require('http');
 const prisma = require('../../config/db');
-const { calculateGrade, gradeRemark } = require('../../utils/grading');
+const { calculateGrade, gradeRemark, calculatePositions } = require('../../utils/grading');
 
 // ── Tiny HTTP helper (no axios dependency) ───────────────────────────────────
 
@@ -23,14 +23,21 @@ const { calculateGrade, gradeRemark } = require('../../utils/grading');
 function httpGet(url) {
   return new Promise((resolve, reject) => {
     const lib = url.startsWith('https') ? https : http;
-    lib.get(url, (res) => {
+    const req = lib.get(url, (res) => {
       let body = '';
       res.on('data', (chunk) => { body += chunk; });
       res.on('end', () => {
-        try { resolve(JSON.parse(body)); }
-        catch (e) { reject(new Error(`JSON parse error: ${body.substring(0, 200)}`)); }
+        try {
+          resolve(JSON.parse(body));
+        } catch (e) {
+          reject(new Error(`Moodle returned non-JSON response (HTTP ${res.statusCode}): ${body.substring(0, 150)}`));
+        }
       });
-    }).on('error', reject);
+    });
+    req.on('error', reject);
+    req.setTimeout(15000, () => {
+      req.destroy(new Error('Moodle API request timed out after 15 seconds'));
+    });
   });
 }
 
@@ -42,7 +49,10 @@ function httpGet(url) {
  * @param {Object} params     - additional query params
  */
 async function moodleCall(baseUrl, token, wsfunction, params = {}) {
-  const base = baseUrl.replace(/\/$/, '');
+  let base = (baseUrl || '').trim().replace(/\/$/, '');
+  if (!base.startsWith('http://') && !base.startsWith('https://')) {
+    base = `http://${base}`;
+  }
   const qs   = new URLSearchParams({
     wstoken:            token,
     moodlewsrestformat: 'json',
@@ -110,6 +120,13 @@ async function runSync(config, session, termRaw, onLog = () => {}) {
   onLog({ type: 'info', message: `Loaded ${smsStudents.length} students, ${smsSubjects.length} subjects` });
 
   // ── Collect grades per student across all courses ────────────────────────
+  // Pre-load all existing results for this session & term to preserve scores in memory
+  const existingResults = await prisma.result.findMany({
+    where: { session, term },
+    select: { studentId: true, subjectId: true, caScore: true, examScore: true },
+  });
+  const existingMap = new Map(existingResults.map(r => [`${r.studentId}_${r.subjectId}`, r]));
+
   // Structure: { admissionNo → { subjectCode → { ca, exam } } }
   const gradesByStudent = new Map();
 
@@ -129,7 +146,7 @@ async function runSync(config, session, termRaw, onLog = () => {}) {
       continue;
     }
 
-    onLog({ type: 'info', message: `Fetching enrolled users for course ${courseId} (${subjectCode})...` });
+    onLog({ type: 'info', message: `Syncing course ${courseId} (${subjectCode})...` });
 
     // Step 1: Get enrolled users for this course
     let enrolled;
@@ -147,59 +164,60 @@ async function runSync(config, session, termRaw, onLog = () => {}) {
       continue;
     }
 
-    onLog({ type: 'info', message: `Found ${enrolled.length} enrolled users in course ${courseId}` });
+    const moodleUserMap = new Map(enrolled.map(u => [u.id, u]));
 
-    // Step 2: For each enrolled user, fetch their grade items
-    for (const moodleUser of enrolled) {
-      const rawId  = String(moodleUser[idField] || '').trim().toLowerCase();
+    // Step 2: Fetch ALL grades for the entire course in 1 single bulk API call!
+    let gradeReport;
+    try {
+      gradeReport = await moodleCall(moodleUrl, moodleToken, 'gradereport_user_get_grade_items', { courseid: courseId });
+    } catch (e) {
+      const msg = `Could not fetch grades for course ${courseId}: ${e.message}`;
+      onLog({ type: 'warn', message: msg });
+      errors.push(msg);
+      continue;
+    }
+
+    const usergrades = gradeReport?.usergrades || [];
+    onLog({ type: 'info', message: `Found grades for ${usergrades.length} students in course ${courseId}` });
+
+    for (const ug of usergrades) {
+      const moodleUser = moodleUserMap.get(ug.userid);
+      if (!moodleUser) continue;
+
+      const rawId = String(moodleUser[idField] || '').trim().toLowerCase();
       if (!rawId) { skipped++; continue; }
 
-      // Match to SMS student
       const smsStudent = studentByAdmNo.get(rawId) || studentByMoodle.get(rawId);
       if (!smsStudent) {
-        onLog({ type: 'warn', message: `No SMS student found for Moodle identifier "${rawId}" — skipped` });
         skipped++;
         continue;
       }
 
-      // Fetch grade items for this user in this course
-      let gradeData;
-      try {
-        gradeData = await moodleCall(
-          moodleUrl, moodleToken,
-          'gradereport_user_get_grade_items',
-          { courseid: courseId, userid: moodleUser.id }
-        );
-      } catch (e) {
-        onLog({ type: 'warn', message: `Could not fetch grades for user ${rawId} in course ${courseId}: ${e.message}` });
-        skipped++;
-        continue;
-      }
-
-      // Parse grade items — Moodle returns: { usergrades: [{ gradeitems: [...] }] }
-      const gradeItems = gradeData?.usergrades?.[0]?.gradeitems || [];
-
+      const gradeItems = ug.gradeitems || [];
       let ca   = null;
       let exam = null;
 
       for (const item of gradeItems) {
         const itemName = (item.itemname || '').toUpperCase();
-        const grade    = parseFloat(item.graderaw) || 0;
-
-        if (itemName.includes(caGradeItemName.toUpperCase()))   ca   = grade;
-        if (itemName.includes(examGradeItemName.toUpperCase())) exam = grade;
-
-        // Also catch "Course total" as a fallback if no explicit split exists
-        if (ca === null && exam === null && item.itemtype === 'course') {
-          // Treat the full course total as exam score, CA = 0
-          exam = grade;
+        if (caGradeItemName && itemName.includes(caGradeItemName.toUpperCase())) {
+          ca = (item.graderaw !== null && item.graderaw !== undefined) ? parseFloat(item.graderaw) : 0;
+        }
+        if (examGradeItemName && itemName.includes(examGradeItemName.toUpperCase())) {
+          exam = (item.graderaw !== null && item.graderaw !== undefined) ? parseFloat(item.graderaw) : 0;
         }
       }
 
-      ca   = ca   ?? 0;
-      exam = exam ?? 0;
+      // If no explicit CA item was found by name, pick the quiz module or course total
+      if (ca === null) {
+        const modItem    = gradeItems.find(i => i.itemtype === 'mod');
+        const courseItem = gradeItems.find(i => i.itemtype === 'course');
+        if (modItem && modItem.graderaw !== null && modItem.graderaw !== undefined) {
+          ca = parseFloat(modItem.graderaw) || 0;
+        } else if (courseItem && courseItem.graderaw !== null && courseItem.graderaw !== undefined) {
+          ca = parseFloat(courseItem.graderaw) || 0;
+        }
+      }
 
-      // Store in collection
       if (!gradesByStudent.has(smsStudent.id)) {
         gradesByStudent.set(smsStudent.id, { smsStudent, subjects: new Map() });
       }
@@ -221,33 +239,20 @@ async function runSync(config, session, termRaw, onLog = () => {}) {
 
   for (const [studentId, { smsStudent, subjects }] of gradesByStudent) {
     for (const [, gradeEntry] of subjects) {
-      const { subjectId, ca, exam } = gradeEntry;
+      const { subjectId, ca: rawCa, exam: rawExam } = gradeEntry;
+
+      const existing = existingMap.get(`${studentId}_${subjectId}`);
+      const ca   = (rawCa !== null)   ? rawCa   : (existing?.caScore ?? 0);
+      const exam = (rawExam !== null) ? rawExam : (existing?.examScore ?? 0);
 
       let total      = ca + exam;
       let finalTotal = total;
       let remarkText = gradeRemark(calculateGrade(total));
 
-      // Third-term cumulative average (matches your existing uploadSuperadminExcel logic)
-      if (term === 'THIRD') {
-        const [t1Result, t2Result] = await Promise.all([
-          prisma.result.findUnique({
-            where: { result_unique: { studentId, subjectId, session, term: 'FIRST' } },
-            select: { total: true },
-          }),
-          prisma.result.findUnique({
-            where: { result_unique: { studentId, subjectId, session, term: 'SECOND' } },
-            select: { total: true },
-          }),
-        ]);
-        const t1 = t1Result?.total ?? 0;
-        const t2 = t2Result?.total ?? 0;
-        finalTotal = (t1 + t2 + total) / 3;
-        remarkText = `Cumulative Avg: ${finalTotal.toFixed(1)} (${gradeRemark(calculateGrade(finalTotal))})`;
-      }
-
       const grade = calculateGrade(finalTotal);
 
-      ops.push(
+      // Store as a lazy function, NOT an eagerly executed promise
+      ops.push(() =>
         prisma.result.upsert({
           where:  { result_unique: { studentId, subjectId, session, term } },
           update: { caScore: ca, examScore: exam, total: finalTotal, grade, remark: remarkText },
@@ -257,12 +262,47 @@ async function runSync(config, session, termRaw, onLog = () => {}) {
     }
   }
 
-  if (ops.length) {
-    // Batch in chunks of 50 to avoid transaction timeouts on large schools
-    const CHUNK = 50;
-    for (let i = 0; i < ops.length; i += CHUNK) {
-      await prisma.$transaction(ops.slice(i, i + CHUNK));
+  onLog({ type: 'info', message: `Writing ${ops.length} results to database...` });
+
+  // Execute in batches of 20 to speed up execution while respecting Supabase connection pool
+  const BATCH_SIZE = 20;
+  for (let i = 0; i < ops.length; i += BATCH_SIZE) {
+    const batch = ops.slice(i, i + BATCH_SIZE);
+    await Promise.all(batch.map(fn => fn()));
+  }
+
+  // Recalculate student positions in database for this session and term
+  try {
+    onLog({ type: 'info', message: 'Recalculating student subject positions across classes...' });
+    const classes = await prisma.class.findMany({ select: { id: true } });
+    const subjects = await prisma.subject.findMany({ select: { id: true } });
+
+    for (const c of classes) {
+      const classStudents = await prisma.student.findMany({
+        where: { currentClassId: c.id },
+        select: { id: true },
+      });
+      if (!classStudents.length) continue;
+      const classStudentIds = classStudents.map(s => s.id);
+
+      for (const sub of subjects) {
+        const subResults = await prisma.result.findMany({
+          where: { studentId: { in: classStudentIds }, subjectId: sub.id, session, term },
+          select: { id: true, studentId: true, total: true },
+        });
+        if (!subResults.length) continue;
+
+        const posMap = calculatePositions(subResults);
+        for (const [sid, pos] of Object.entries(posMap)) {
+          await prisma.result.updateMany({
+            where: { studentId: sid, subjectId: sub.id, session, term },
+            data: { position: pos },
+          });
+        }
+      }
     }
+  } catch (posErr) {
+    onLog({ type: 'warn', message: `Position calculation notice: ${posErr.message}` });
   }
 
   const saved = ops.length;

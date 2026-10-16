@@ -1,5 +1,6 @@
 const prisma = require('../../config/db');
-const { calculateGrade, gradeRemark, calculatePositions } = require('../../utils/grading');
+const { calculateGrade, gradeRemark, calculatePositions, formatPosition } = require('../../utils/grading');
+const { getStoredSettings } = require('../settings/settings.controller');
 const xlsx = require('xlsx');
 
 // ── Term normalizer ───────────────────────────────────────────────────────────
@@ -47,6 +48,39 @@ const upload = async (req, res, next) => {
       });
 
       const results = await prisma.$transaction(ops);
+
+      // Auto-calculate positions for this class + subject if classId provided
+      try {
+        const classId = records[0]?.classId;
+        const subjectId = records[0]?.subjectId;
+        const session = records[0]?.session || defaultSession;
+        const term = normalizeTerm(records[0]?.term);
+        if (classId && subjectId) {
+          const cStudents = await prisma.student.findMany({
+            where: { currentClassId: classId },
+            select: { id: true },
+          });
+          const cIds = cStudents.map(s => s.id);
+          const subResults = await prisma.result.findMany({
+            where: { studentId: { in: cIds }, subjectId, session, term },
+            select: { id: true, studentId: true, total: true },
+          });
+          const posMap = calculatePositions(subResults);
+          const posOps = Object.entries(posMap).map(([sid, pos]) =>
+            prisma.result.updateMany({
+              where: { studentId: sid, subjectId, session, term },
+              data: { position: pos },
+            })
+          );
+          if (posOps.length > 0) {
+            await prisma.$transaction(posOps);
+          }
+        }
+      } catch (calcErr) {
+        // Log without blocking response
+        console.error('Auto position calculation error:', calcErr?.message);
+      }
+
       return res.status(201).json({ message: `${results.length} result(s) saved`, results });
     }
 
@@ -96,6 +130,62 @@ const getByStudent = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// GET /api/results/class-scores?classId=&subjectId=&session=&term=
+const getClassScores = async (req, res, next) => {
+  try {
+    const { classId, subjectId, session } = req.query;
+    const term = req.query.term ? normalizeTerm(req.query.term) : undefined;
+
+    if (!classId) {
+      return res.status(400).json({ message: 'classId is required' });
+    }
+
+    const students = await prisma.student.findMany({
+      where: { currentClassId: classId, status: 'ACTIVE' },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        admissionNo: true,
+        photo: true,
+      },
+      orderBy: [
+        { lastName: 'asc' },
+        { firstName: 'asc' },
+      ],
+    });
+
+    let results = [];
+    if (subjectId && students.length > 0) {
+      const studentIds = students.map(s => s.id);
+      results = await prisma.result.findMany({
+        where: {
+          studentId: { in: studentIds },
+          subjectId,
+          ...(session && { session }),
+          ...(term && { term }),
+        },
+      });
+    }
+
+    const resultsMap = {};
+    results.forEach(r => {
+      resultsMap[r.studentId] = {
+        id: r.id,
+        caScore: r.caScore,
+        examScore: r.examScore,
+        total: r.total,
+        grade: r.grade,
+        remark: r.remark,
+        position: r.position ? formatPosition(r.position) : null,
+        published: r.published,
+      };
+    });
+
+    res.json({ students, resultsMap });
+  } catch (err) { next(err); }
+};
+
 // GET /api/results/report-card/:studentId?session=&term=
 const getReportCard = async (req, res, next) => {
   try {
@@ -117,7 +207,6 @@ const getReportCard = async (req, res, next) => {
           studentId,
           ...(session && { session }),
           ...(term && { term }),
-          // ✅ no published filter — show all uploaded results
         },
         include: { subject: { select: { name: true, code: true } } },
         orderBy: { subject: { name: 'asc' } },
@@ -133,27 +222,111 @@ const getReportCard = async (req, res, next) => {
 
     if (!student) return res.status(404).json({ message: 'Student not found' });
 
+    const storedSettings = getStoredSettings();
+    const isResultsReleased = Boolean(storedSettings?.resultsReleased);
+
+    // If student is viewing report card and results are withheld:
+    if (req.user?.role === 'STUDENT' && !isResultsReleased) {
+      return res.status(403).json({
+        message: 'Official report cards for this term have not yet been released by the school administration.',
+        resultsReleased: false,
+      });
+    }
+
     const attPresent = attendances.find(a => a.status === 'PRESENT')?._count.status || 0;
     const attAbsent = attendances.find(a => a.status === 'ABSENT')?._count.status || 0;
     const attLate = attendances.find(a => a.status === 'LATE')?._count.status || 0;
     const attTotal = attPresent + attAbsent + attLate;
     const attRate = attTotal ? Math.round((attPresent / attTotal) * 100) : 0;
+    // Attendance Score (value from attendance page - out of 10)
+    const attScore = attTotal ? Math.round((attPresent / attTotal) * 10 * 10) / 10 : 0;
 
-    const totalScore = results.reduce((s, r) => s + r.total, 0);
-    const average = results.length
-      ? (totalScore / results.length).toFixed(1)
+    // Load classmate results to compute real positions if not set
+    let classResults = [];
+    if (student.currentClassId && results.length > 0) {
+      const classmates = await prisma.student.findMany({
+        where: { currentClassId: student.currentClassId },
+        select: { id: true },
+      });
+      const classmateIds = classmates.map(c => c.id);
+      const subjectIds = results.map(r => r.subjectId);
+      classResults = await prisma.result.findMany({
+        where: {
+          studentId: { in: classmateIds },
+          subjectId: { in: subjectIds },
+          ...(session && { session }),
+          ...(term && { term }),
+        },
+        select: { studentId: true, subjectId: true, total: true },
+      });
+    }
+
+    // Process results: On final report sheet, CA score and Attendance score are summed as one CA
+    const processedResults = results.map(r => {
+      const combinedCA = Math.min(40, Math.round(((r.caScore || 0) + attScore) * 10) / 10);
+      const total = combinedCA + (r.examScore || 0);
+      const grade = calculateGrade(total);
+      const remark = gradeRemark(grade);
+
+      let pos = r.position;
+      if (!pos && classResults.length > 0) {
+        const subRes = classResults.filter(cr => cr.subjectId === r.subjectId);
+        const ranks = calculatePositions(subRes);
+        pos = ranks[student.id] || null;
+      }
+
+      return {
+        ...r,
+        rawCaScore: r.caScore,
+        attendanceScore: attScore,
+        caScore: combinedCA,
+        total,
+        grade,
+        remark: r.remark || remark,
+        position: pos ? formatPosition(pos) : '—',
+      };
+    });
+
+    const totalScore = processedResults.reduce((s, r) => s + r.total, 0);
+    const average = processedResults.length
+      ? (totalScore / processedResults.length).toFixed(1)
       : 0;
+
+    // Overall class position
+    let overallPosDisplay = '—';
+    if (student.currentClassId && classResults.length > 0) {
+      const studentTotals = {};
+      classmateIds.forEach(id => { studentTotals[id] = 0; });
+      classResults.forEach(cr => {
+        studentTotals[cr.studentId] = (studentTotals[cr.studentId] || 0) + (cr.total || 0);
+      });
+      const overallRankings = Object.entries(studentTotals).map(([sid, tot]) => ({ studentId: sid, total: tot }));
+      const overallPositions = calculatePositions(overallRankings);
+      const myRank = overallPositions[student.id];
+      if (myRank) {
+        overallPosDisplay = `${formatPosition(myRank)} of ${classmateIds.length}`;
+      }
+    }
 
     res.json({
       student: {
         ...student,
-        attendance: { present: attPresent, absent: attAbsent, late: attLate, rate: attRate },
+        attendance: {
+          present: attPresent,
+          absent: attAbsent,
+          late: attLate,
+          rate: attRate,
+          score: attScore,
+          maxScore: 10,
+          display: `${attScore}/10`,
+        },
       },
-      results,
+      results: processedResults,
       summary: {
         totalScore,
         average,
-        subjectCount: results.length,
+        subjectCount: processedResults.length,
+        position: overallPosDisplay,
       },
     });
   } catch (err) { next(err); }
@@ -335,4 +508,4 @@ const uploadSuperadminExcel = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { upload, getByStudent, getReportCard, calculate, publish, uploadTeacherExcel, uploadSuperadminExcel };
+module.exports = { upload, getByStudent, getReportCard, calculate, publish, uploadTeacherExcel, uploadSuperadminExcel, getClassScores };

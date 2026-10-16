@@ -27,13 +27,31 @@ function gradeRemark(grade) {
 
 /**
  * Calculates class positions from an array of { studentId, total }
- * Returns { [studentId]: position }
+ * Returns { [studentId]: position } (supports ties)
  */
 function calculatePositions(scores) {
-  const sorted = [...scores].sort((a, b) => b.total - a.total);
+  const sorted = [...scores].sort((a, b) => (b.total || 0) - (a.total || 0));
   const positions = {};
-  sorted.forEach((s, i) => { positions[s.studentId] = i + 1; });
+  for (let i = 0; i < sorted.length; i++) {
+    if (i > 0 && sorted[i].total === sorted[i - 1].total) {
+      positions[sorted[i].studentId] = positions[sorted[i - 1].studentId];
+    } else {
+      positions[sorted[i].studentId] = i + 1;
+    }
+  }
   return positions;
 }
 
-module.exports = { calculateGrade, gradeRemark, calculatePositions };
+/**
+ * Formats a numeric rank into an ordinal string e.g. 1 -> '1st', 2 -> '2nd'
+ */
+function formatPosition(pos) {
+  if (!pos || isNaN(pos)) return '—';
+  const n = parseInt(pos, 10);
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+module.exports = { calculateGrade, gradeRemark, calculatePositions, formatPosition };
+

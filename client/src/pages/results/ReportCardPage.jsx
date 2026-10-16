@@ -57,7 +57,7 @@ export default function ReportCardPage(){
   const [session, setSession] = useState(DEF_SESSION);
   const [term,    setTerm]    = useState(DEF_TERM);
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey:['report-card', studentId||'me', session, term],
     queryFn: ()=> api.get(`/results/report-card/${studentId||'me'}`,{params:{session,term}}).then(r=>r.data),
     enabled: isStudent ? true : !!studentId,
@@ -416,8 +416,10 @@ body{margin:0;padding:0;background:#fff;}
         </div>
       )}
       {isError&&(
-        <div style={{ maxWidth:900,margin:'0 auto',background:'#FEF2F2',border:'1px solid #FECACA',color:'#B91C1C',padding:'14px 18px',borderRadius:12,fontSize:14 }}>
-          Failed to load report card. Please ensure results have been uploaded for this term and session.
+        <div style={{ maxWidth:900,margin:'0 auto',background:'#FEF2F2',border:'1px solid #FECACA',color:'#B91C1C',padding:'20px 24px',borderRadius:12,fontSize:14,textAlign:'center' }}>
+          <div style={{ fontSize:28, marginBottom:8 }}>🔒</div>
+          <strong style={{ display:'block', fontSize:15, marginBottom:4 }}>Notice</strong>
+          {error?.response?.data?.message || 'Failed to load report card. Please ensure results have been uploaded for this term and session.'}
         </div>
       )}
       {!isStudent&&!studentId&&!isLoading&&(
@@ -470,6 +472,7 @@ body{margin:0;padding:0;background:#fff;}
                 ['Student Name',     `${student.firstName}${student.middleName?' '+student.middleName:''} ${student.lastName}`],
                 ['Admission No.',    student.admissionNo],
                 ['Class',            student.currentClass?.name||'—'],
+                ['Class Position',   summary.position || '—'],
                 ['Academic Session', session],
                 ['Term',             termLabel],
                 ['Gender',           student.gender ? student.gender.charAt(0).toUpperCase()+student.gender.slice(1).toLowerCase() : '—'],
@@ -562,7 +565,7 @@ body{margin:0;padding:0;background:#fff;}
               <>
                 <div className="rc-sh"><span className="rc-sh-dot"/>Attendance Record</div>
                 <div className="rc-attgrid">
-                  {[{l:'Days Present',v:student.attendance.present??'—',c:'#15803D'},{l:'Days Absent',v:student.attendance.absent??'—',c:'#B91C1C'},{l:'Days Late',v:student.attendance.late??'—',c:'#B45309'},{l:'Attendance Rate',v:`${student.attendance.rate??0}%`,c:'#1D4ED8'}].map(a=>(
+                  {[{l:'Days Present',v:student.attendance.present??'—',c:'#15803D'},{l:'Days Absent',v:student.attendance.absent??'—',c:'#B91C1C'},{l:'Days Late',v:student.attendance.late??'—',c:'#B45309'},{l:'Attendance Rate',v:`${student.attendance.rate??0}%`,c:'#1D4ED8'},{l:'Attendance Score',v:student.attendance.display||`${student.attendance.score??0}/10`,c:'#4F46E5'}].map(a=>(
                     <div key={a.l} className="rc-attpill">
                       <div className="rc-attv" style={{ color:a.c }}>{a.v}</div>
                       <div className="rc-attl">{a.l}</div>

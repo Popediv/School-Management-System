@@ -51,6 +51,7 @@ export const resultService = {
   upload: (data) => api.post('/results', data),
   uploadTeacherExcel: (data) => api.post('/results/upload-teacher-excel', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
   uploadSuperadminExcel: (data) => api.post('/results/upload-superadmin-excel', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  getClassScores: (p) => api.get('/results/class-scores', { params: p }),
   getStudent: (id, p) => api.get(`/results/student/${id}`, { params: p }),
   getReportCard: (id, p) => api.get(`/results/report-card/${id}`, { params: p }),
   calculate: (data) => api.post('/results/calculate', data),

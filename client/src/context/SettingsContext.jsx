@@ -14,6 +14,7 @@ export function SettingsProvider({ children }) {
 
     const currentSession = settings?.currentSession || CURRENT_SESSION;
     const currentTerm = settings?.currentTerm || CURRENT_TERM;
+    const resultsReleased = Boolean(settings?.resultsReleased);
     const schoolName = settings?.schoolName || 'Patimo College';
     const logoUrl = settings?.logoUrl || null;
 
@@ -27,6 +28,7 @@ export function SettingsProvider({ children }) {
         settings: settings || {},
         currentSession,
         currentTerm,
+        resultsReleased,
         schoolName,
         logoUrl,
         loading: isLoading,

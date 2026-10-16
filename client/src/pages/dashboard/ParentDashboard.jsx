@@ -36,7 +36,37 @@ export default function ParentDashboard() {
       {child ? (
         <div className="card mb-6" style={{ background:'linear-gradient(135deg,rgba(79,70,229,0.1),rgba(6,182,212,0.05))', border:'1px solid rgba(79,70,229,0.2)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:20, flexWrap:'wrap' }}>
-            <div style={{ width:64, height:76, borderRadius:'var(--radius-md)', background:'linear-gradient(135deg,var(--primary),var(--secondary))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.3rem', fontWeight:700, color:'white', flexShrink:0 }}>
+            {child.photo ? (
+              <img
+                src={child.photo.startsWith('http') ? child.photo : `/uploads/${child.photo}`}
+                alt={child.name}
+                style={{
+                  width: 68,
+                  height: 76,
+                  borderRadius: 'var(--radius-md)',
+                  objectFit: 'cover',
+                  border: '2px solid rgba(79,70,229,0.3)',
+                  boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+                  flexShrink: 0
+                }}
+                onError={(e) => { e.currentTarget.style.display = 'none'; if (e.currentTarget.nextElementSibling) e.currentTarget.nextElementSibling.style.display = 'flex'; }}
+              />
+            ) : null}
+            <div
+              style={{
+                width: 68,
+                height: 76,
+                borderRadius: 'var(--radius-md)',
+                background: 'linear-gradient(135deg,var(--primary),var(--secondary))',
+                display: child.photo ? 'none' : 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.3rem',
+                fontWeight: 700,
+                color: 'white',
+                flexShrink: 0
+              }}
+            >
               {initials}
             </div>
             <div style={{ flex:1 }}>

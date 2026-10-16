@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 import { classService, subjectService, resultService } from '../../services';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
-import { Upload, Save, Link2 } from 'lucide-react';
+import { Upload, Save, Link2, CheckCircle2 } from 'lucide-react';
 import api from '../../services/api';
 
 const TERMS = ['First Term', 'Second Term', 'Third Term'];
@@ -17,10 +17,12 @@ export default function UploadResultsPage() {
   const [classId, setClassId] = useState('');
   const [subjectId, setSubjectId] = useState('');
   const [term, setTerm] = useState(currentTerm === 'SECOND' ? 'Second Term' : currentTerm === 'THIRD' ? 'Third Term' : 'First Term');
-  const [session, setSession] = useState(currentSession);
+  const [session, setSession] = useState(currentSession || '2026/2027');
   const [scores, setScores] = useState({});  // { studentId: { ca, exam } }
   const [students, setStudents] = useState([]);
   const [loadingStu, setLoadingStu] = useState(false);
+  const [existingResults, setExistingResults] = useState({});
+  const [hasExistingScores, setHasExistingScores] = useState(false);
 
   useEffect(() => {
     if (currentSession) setSession(currentSession);
@@ -44,31 +46,63 @@ export default function UploadResultsPage() {
     ],
   });
 
-  useEffect(() => {
-    if (!classId) { setStudents([]); return; }
+  // Fetch students & prefill existing scores from DB whenever filters change
+  const fetchClassData = async () => {
+    if (!classId) {
+      setStudents([]);
+      setScores({});
+      setExistingResults({});
+      setHasExistingScores(false);
+      return;
+    }
     setLoadingStu(true);
-    api.get(`/students?classId=${classId}`)
-      .then(res => {
+    try {
+      const res = await resultService.getClassScores({
+        classId,
+        subjectId: subjectId || undefined,
+        session: session ? session.trim() : undefined,
+        term,
+      });
+      const list = res.data.students || [];
+      const resMap = res.data.resultsMap || {};
+      setStudents(list);
+      setExistingResults(resMap);
+
+      let foundScores = false;
+      const init = {};
+      list.forEach(s => {
+        const ex = resMap[s.id];
+        const hasValue = ex && (ex.caScore !== undefined || ex.examScore !== undefined);
+        if (hasValue && (ex.caScore > 0 || ex.examScore > 0)) {
+          foundScores = true;
+        }
+        init[s.id] = {
+          ca: (ex?.caScore !== undefined && ex?.caScore !== null) ? ex.caScore : '',
+          exam: (ex?.examScore !== undefined && ex?.examScore !== null) ? ex.examScore : '',
+        };
+      });
+      setScores(init);
+      setHasExistingScores(foundScores);
+    } catch (err) {
+      // Fallback to basic students list
+      try {
+        const res = await api.get(`/students?classId=${classId}`);
         const list = res.data.students || [];
         setStudents(list);
         const init = {};
         list.forEach(s => { init[s.id] = { ca: '', exam: '' }; });
         setScores(init);
-      })
-      .catch(() => {
-        // Demo fallback
-        const demo = [
-          { id: 's1', firstName: 'Adaeze', lastName: 'Okonkwo', admissionNo: 'GFM-2026-0001' },
-          { id: 's2', firstName: 'Emeka', lastName: 'Nwosu', admissionNo: 'GFM-2026-0002' },
-          { id: 's3', firstName: 'Chisom', lastName: 'Eze', admissionNo: 'GFM-2026-0003' },
-        ];
-        setStudents(demo);
-        const init = {};
-        demo.forEach(s => { init[s.id] = { ca: '', exam: '' }; });
-        setScores(init);
-      })
-      .finally(() => setLoadingStu(false));
-  }, [classId]);
+      } catch (e) {
+        toast.error('Failed to load class students');
+      }
+    } finally {
+      setLoadingStu(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchClassData();
+  }, [classId, subjectId, session, term]);
 
   const setScore = (studentId, field, value) => {
     setScores(prev => ({
@@ -80,7 +114,8 @@ export default function UploadResultsPage() {
   const { mutate: upload, isPending } = useMutation({
     mutationFn: (data) => resultService.upload(data),
     onSuccess: () => {
-      toast.success('Results uploaded successfully!');
+      toast.success('Results saved successfully!');
+      fetchClassData();
       qc.invalidateQueries({ queryKey: ['results'] });
     },
     onError: (err) => toast.error(err.response?.data?.message || 'Upload failed'),
@@ -221,13 +256,44 @@ export default function UploadResultsPage() {
             <input
               type="text"
               className="form-input"
-              placeholder="e.g. 2025/2026"
+              placeholder="e.g. 2026/2027"
               value={session}
               onChange={e => setSession(e.target.value)}
             />
           </div>
         </div>
       </div>
+
+      {/* Database sync / existing scores indicator */}
+      {hasExistingScores && (
+        <div style={{
+          background: 'rgba(16,185,129,0.08)',
+          border: '1px solid rgba(16,185,129,0.25)',
+          padding: '12px 18px',
+          borderRadius: 'var(--radius-md)',
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 10
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <CheckCircle2 size={20} style={{ color: 'var(--success)' }} />
+            <div>
+              <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Existing scores loaded from database
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                Scores from previous entry or Moodle sync are loaded. Edit any marks below and click <strong>Save Results</strong> to update.
+              </div>
+            </div>
+          </div>
+          <span className="badge badge-success" style={{ padding: '4px 10px', fontSize: '0.78rem' }}>
+            {Object.keys(existingResults).length} Records in DB
+          </span>
+        </div>
+      )}
 
       {/* Empty / Loading states */}
       {!classId && (
@@ -239,7 +305,7 @@ export default function UploadResultsPage() {
       {classId && loadingStu && (
         <div className="card" style={{ textAlign: 'center', padding: 48 }}>
           <div className="animate-spin" style={{ width: 36, height: 36, border: '3px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', margin: '0 auto' }} />
-          <p className="text-muted mt-4">Loading students…</p>
+          <p className="text-muted mt-4">Loading scores from database…</p>
         </div>
       )}
 
@@ -256,10 +322,12 @@ export default function UploadResultsPage() {
                 <th style={{ color: 'var(--secondary)' }}>Exam (max 60)</th>
                 <th>Total</th>
                 <th>Grade</th>
+                <th>Position</th>
               </tr></thead>
               <tbody>
                 {students.map((s, i) => {
                   const { total: tot, grade } = total(s.id);
+                  const dbResult = existingResults[s.id];
                   return (
                     <tr key={s.id}>
                       <td className="text-muted">{i + 1}</td>
@@ -294,6 +362,11 @@ export default function UploadResultsPage() {
                         {(scores[s.id]?.ca !== '' || scores[s.id]?.exam !== '') && (
                           <span className={`badge ${GRADE_COLOR[grade]}`}>{grade}</span>
                         )}
+                      </td>
+                      <td>
+                        <span className="badge badge-info" style={{ fontWeight: 600 }}>
+                          {dbResult?.position || '—'}
+                        </span>
                       </td>
                     </tr>
                   );

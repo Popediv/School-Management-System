@@ -1,4 +1,6 @@
 const prisma = require('../../config/db');
+const { calculatePositions, formatPosition, calculateGrade, gradeRemark } = require('../../utils/grading');
+const { getStoredSettings } = require('../settings/settings.controller');
 
 // ─── Admin Dashboard Stats ───────────────────────────────────────────────────
 const getStats = async (req, res, next) => {
@@ -270,10 +272,15 @@ const getParentStats = async (req, res, next) => {
         name:        `${childStudent.firstName} ${childStudent.lastName}`,
         admissionNo: childStudent.admissionNo,
         class:       childStudent.currentClass?.name || '—',
+        photo:       childStudent.photo,
         session:     childStudent.session,
       },
       attendance: { present: attPresent, absent: attAbsent, late: attLate, rate: attRate },
-      termResult: { avg: '—', position: '—' },
+      resultsReleased: Boolean(getStoredSettings()?.resultsReleased),
+      termResult: {
+        avg: Boolean(getStoredSettings()?.resultsReleased) ? '—' : 'Pending Release',
+        position: Boolean(getStoredSettings()?.resultsReleased) ? '—' : 'Pending Release',
+      },
       feeBalance: { outstanding: outstanding || 0 },
       payments: allPayments.map(p => ({
         id:          p.id,
@@ -293,6 +300,12 @@ const getParentStats = async (req, res, next) => {
 
 // ─── Helper: derive current academic session & term ───────────────────────────
 function currentSessionAndTerm() {
+  try {
+    const settings = getStoredSettings();
+    if (settings?.currentSession && settings?.currentTerm) {
+      return { session: settings.currentSession, term: settings.currentTerm };
+    }
+  } catch (e) {}
   const now   = new Date();
   const month = now.getMonth() + 1; // 1-based
   const yr    = month >= 9 ? now.getFullYear() : now.getFullYear() - 1;
@@ -313,7 +326,7 @@ const getStudentStats = async (req, res, next) => {
     if (!student) {
       return res.json({
         student:       null,
-        attendance:    { rate: 0, present: 0, absent: 0, late: 0 },
+        attendance:    { rate: 0, present: 0, absent: 0, late: 0, score: 0, display: '0/10' },
         results:       [],
         position:      '—',
         avg:           '—',
@@ -347,9 +360,13 @@ const getStudentStats = async (req, res, next) => {
     const attLate    = attendances.find(a => a.status === 'LATE')?._count.status    || 0;
     const attTotal   = attPresent + attAbsent + attLate;
     const attRate    = attTotal ? Math.round((attPresent / attTotal) * 100) : 0;
+    const attScore   = attTotal ? Math.round((attPresent / attTotal) * 10 * 10) / 10 : 0;
 
     // Fallback to most recent term if current term has no results
     let results = termResults;
+    let activeSession = currentSession;
+    let activeTerm = currentTerm;
+
     if (!results.length) {
       const latest = await prisma.result.findFirst({
         where:   { studentId: student.id },
@@ -357,6 +374,8 @@ const getStudentStats = async (req, res, next) => {
         select:  { session: true, term: true },
       });
       if (latest) {
+        activeSession = latest.session;
+        activeTerm = latest.term;
         results = await prisma.result.findMany({
           where:   { studentId: student.id, session: latest.session, term: latest.term },
           include: { subject: { select: { name: true, code: true } } },
@@ -365,36 +384,106 @@ const getStudentStats = async (req, res, next) => {
       }
     }
 
-    const resultsList = results.map(r => ({
-      id:      r.id,
-      subject: r.subject.name,
-      code:    r.subject.code,
-      ca:      r.caScore,
-      exam:    r.examScore,
-      total:   r.total,
-      grade:   r.grade,
-      remark:  r.remark,
-    }));
+    // Classmate scores for calculating Subject & Overall class positions
+    let classResults = [];
+    let classmatesCount = 1;
+    let overallPosDisplay = '—';
+    let overallPosRaw = null;
 
-    const totalScore = results.reduce((sum, r) => sum + r.total, 0);
-    const avgScore   = results.length ? (Math.round((totalScore / results.length) * 10) / 10) : null;
+    if (student.currentClassId) {
+      const classmates = await prisma.student.findMany({
+        where: { currentClassId: student.currentClassId },
+        select: { id: true },
+      });
+      classmatesCount = classmates.length || 1;
+      const classmateIds = classmates.map(c => c.id);
+
+      classResults = await prisma.result.findMany({
+        where: {
+          studentId: { in: classmateIds },
+          session: activeSession,
+          term: activeTerm,
+        },
+        select: { studentId: true, subjectId: true, total: true, caScore: true, examScore: true },
+      });
+
+      // Calculate overall class positions based on total marks
+      const studentTotals = {};
+      classmateIds.forEach(id => { studentTotals[id] = 0; });
+      classResults.forEach(cr => {
+        studentTotals[cr.studentId] = (studentTotals[cr.studentId] || 0) + (cr.total || 0);
+      });
+      const overallRankings = Object.entries(studentTotals).map(([sid, tot]) => ({ studentId: sid, total: tot }));
+      const overallPositions = calculatePositions(overallRankings);
+      overallPosRaw = overallPositions[student.id];
+      if (overallPosRaw) {
+        overallPosDisplay = `${formatPosition(overallPosRaw)} of ${classmatesCount}`;
+      }
+    }
+
+    const resultsList = results.map(r => {
+      // Find subject position in class
+      const subClassResults = classResults.filter(cr => cr.subjectId === r.subjectId);
+      const subPositions = calculatePositions(subClassResults);
+      const mySubPos = r.position || subPositions[student.id];
+
+      // Combined CA (CA Quiz + Attendance Score) capped at 40
+      const totalCa = Math.min(40, Math.round(((r.caScore || 0) + attScore) * 10) / 10);
+      const combinedTotal = totalCa + (r.examScore || 0);
+
+      return {
+        id:                     r.id,
+        subject:                r.subject.name,
+        code:                   r.subject.code,
+        ca:                     r.caScore,             // Raw CA score from Moodle/entry
+        attendanceScore:        attScore,              // Attendance score
+        attendanceScoreDisplay: `${attScore}/10`,
+        totalCa,                                       // Summed CA
+        exam:                   r.examScore,
+        total:                  combinedTotal,         // Sum of totalCa + exam
+        rawTotal:               r.total,
+        grade:                  calculateGrade(combinedTotal),
+        remark:                 r.remark || gradeRemark(calculateGrade(combinedTotal)),
+        position:               mySubPos ? formatPosition(mySubPos) : '—',
+        positionOf:             mySubPos && subClassResults.length ? `${formatPosition(mySubPos)} of ${subClassResults.length}` : (mySubPos ? formatPosition(mySubPos) : '—'),
+      };
+    });
+
+    const totalScore = resultsList.reduce((sum, r) => sum + r.total, 0);
+    const avgScore   = resultsList.length ? (Math.round((totalScore / resultsList.length) * 10) / 10) : null;
 
     const outstanding = allPayments
       .filter(p => p.status !== 'PAID')
       .reduce((acc, p) => acc + ((p.amount || 0) - (p.amountPaid || 0)), 0);
 
+    const storedSettings = getStoredSettings();
+    const isResultsReleased = Boolean(storedSettings?.resultsReleased);
+
     res.json({
       student: {
+        id:          student.id,
         name:        `${student.firstName} ${student.lastName}`,
+        firstName:   student.firstName,
+        lastName:    student.lastName,
         admissionNo: student.admissionNo,
         class:       student.currentClass?.name || '—',
-        session:     currentSession,
-        term:        currentTerm,
+        photo:       student.photo,
+        session:     activeSession,
+        term:        activeTerm,
       },
-      attendance: { rate: attRate, present: attPresent, absent: attAbsent, late: attLate },
-      results:    resultsList,
-      feeBalance: { outstanding: outstanding || 0 },
-      payments:   allPayments.map(p => ({
+      attendance: {
+        rate:        attRate,
+        present:     attPresent,
+        absent:      attAbsent,
+        late:        attLate,
+        score:       attScore,
+        maxScore:    10,
+        display:     `${attScore}/10`,
+      },
+      resultsReleased: isResultsReleased,
+      results:       isResultsReleased ? resultsList : [],
+      feeBalance:    { outstanding: outstanding || 0 },
+      payments:      allPayments.map(p => ({
         id:          p.id,
         description: p.description,
         amount:      p.amount,
@@ -403,8 +492,9 @@ const getStudentStats = async (req, res, next) => {
         status:      p.status,
         date:        p.createdAt.toISOString().split('T')[0],
       })),
-      position:      '—',
-      avg:           avgScore ?? '—',
+      position:      isResultsReleased ? overallPosDisplay : 'Pending Release',
+      positionRaw:   isResultsReleased ? (overallPosRaw ? formatPosition(overallPosRaw) : '—') : '—',
+      avg:           isResultsReleased ? (avgScore ?? '—') : '—',
       notifications: [
         {
           id:      'n1',

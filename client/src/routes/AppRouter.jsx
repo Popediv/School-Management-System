@@ -197,7 +197,7 @@ export default function AppRouter() {
                 </ProtectedRoute>
               } />
               <Route path="/results/moodle-sync" element={
-                <ProtectedRoute roles={[ROLES.SUPER_ADMIN]}>
+                <ProtectedRoute roles={ADMIN_ROLES}>
                   <DashboardLayout><MoodleSyncPage /></DashboardLayout>
                 </ProtectedRoute>
               } />

@@ -34,7 +34,7 @@ function parseArgs() {
 }
 
 // Append log to JSON history
-const LOG_PATH = path.join(__dirname, '..', 'src', 'config', 'moodle_sync_logs.json');
+const LOG_PATH = path.join(__dirname, '..', 'data', 'moodle_sync_logs.json');
 function saveLog(entry) {
   try {
     let logs = [];

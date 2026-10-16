@@ -73,7 +73,7 @@ const verify = async (req, res, next) => {
       address: stored.address || 'Plot 13&14, Maito Bakery Street, Adesola, Ibadan',
       phone: stored.phone || '+234 803 455 6007',
       email: stored.email || 'info@patimocollege.edu.ng',
-      currentSession: stored.currentSession || '2025/2026',
+      currentSession: stored.currentSession || '2026/2027',
     };
 
     // 2. Query student by either internal ID, Admission Number, or Moodle Username

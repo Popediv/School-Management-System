@@ -9,12 +9,15 @@ const router  = express.Router();
 const ctrl    = require('./moodle.controller');
 const { authenticate, allowRoles } = require('../../middleware/auth');
 
+const ADMIN = ['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL'];
+
 router.use(authenticate);
-router.use(allowRoles('SUPER_ADMIN'));   // only super admins may configure / trigger sync
+router.use(allowRoles(...ADMIN));
 
 router.get('/config',  ctrl.getConfig);
 router.post('/config', ctrl.saveConfig);
 router.post('/test',   ctrl.testConnection);
+router.get('/courses', ctrl.getCourses);
 router.post('/run',    ctrl.triggerSync);
 router.get('/logs',    ctrl.getLogs);
 

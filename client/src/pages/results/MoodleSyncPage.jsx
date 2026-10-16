@@ -15,7 +15,7 @@ import { toast } from 'react-toastify';
 import {
   Link2, Settings, Play, History, CheckCircle2,
   XCircle, AlertTriangle, Loader2, Plus, Trash2,
-  ChevronDown, ChevronUp, RefreshCw, Wifi
+  ChevronDown, ChevronUp, RefreshCw, Wifi, DownloadCloud
 } from 'lucide-react';
 import api from '../../services/api';
 import { useSettings } from '../../context/SettingsContext';
@@ -26,7 +26,8 @@ const moodleApi = {
   getConfig:  ()           => api.get('/moodle-sync/config').then(r => r.data),
   saveConfig: (body)       => api.post('/moodle-sync/config', body).then(r => r.data),
   testConn:   ()           => api.post('/moodle-sync/test').then(r => r.data),
-  runSync:    (body)       => api.post('/moodle-sync/run', body).then(r => r.data),
+  getCourses: ()           => api.get('/moodle-sync/courses').then(r => r.data),
+  runSync:    (body)       => api.post('/moodle-sync/run', body, { timeout: 180000 }).then(r => r.data),
   getLogs:    ()           => api.get('/moodle-sync/logs').then(r => r.data),
 };
 
@@ -111,8 +112,50 @@ function ConfigTab({ subjects }) {
     }
   };
 
+  const [fetchingCourses, setFetchingCourses] = useState(false);
+
+  const handleFetchCourses = async () => {
+    setFetchingCourses(true);
+    try {
+      await moodleApi.saveConfig({ moodleUrl, moodleToken, idField, courseMap });
+      const res = await moodleApi.getCourses();
+      const fetched = res.courses || [];
+      if (!fetched.length) {
+        toast.info('No courses found in Moodle');
+        return;
+      }
+      setCourseMap(prev => {
+        const existingMap = new Map(prev.map(c => [Number(c.courseId), c]));
+        const merged = fetched.map(fc => {
+          const existing = existingMap.get(Number(fc.id));
+          if (existing) {
+            return { ...existing, courseName: fc.fullname };
+          }
+          // Attempt auto-match by name or code
+          const match = subjects.find(s =>
+            fc.fullname.toLowerCase().includes(s.name.toLowerCase()) ||
+            (s.code && fc.shortname.toLowerCase().includes(s.code.toLowerCase()))
+          );
+          return {
+            courseId: fc.id,
+            courseName: fc.fullname,
+            subjectCode: match ? match.code : '',
+            caGradeItemName: 'CA',
+            examGradeItemName: 'EXAM',
+          };
+        });
+        return merged;
+      });
+      toast.success(`Loaded ${fetched.length} course(s) from Moodle!`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to fetch courses');
+    } finally {
+      setFetchingCourses(false);
+    }
+  };
+
   const addCourse = () => setCourseMap(prev => [...prev, {
-    courseId: '', subjectCode: '', caGradeItemName: 'CA', examGradeItemName: 'EXAM'
+    courseId: '', courseName: '', subjectCode: '', caGradeItemName: 'CA', examGradeItemName: 'EXAM'
   }]);
 
   const removeCourse = (i) => setCourseMap(prev => prev.filter((_, idx) => idx !== i));
@@ -183,8 +226,8 @@ function ConfigTab({ subjects }) {
             color: testResult.ok ? 'var(--success)' : 'var(--danger)',
           }}>
             {testResult.ok
-              ? <>✅ Connected to <strong>{testResult.siteName}</strong> (v{testResult.siteVersion}) — logged in as <strong>{testResult.username}</strong></>
-              : <>❌ {testResult.message}</>
+              ? <> Connected to <strong>{testResult.siteName}</strong> (v{testResult.siteVersion}) — logged in as <strong>{testResult.username}</strong></>
+              : <> {testResult.message}</>
             }
           </div>
         )}
@@ -209,35 +252,52 @@ function ConfigTab({ subjects }) {
 
       {/* Course → Subject Mappings */}
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
           <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>
             <Link2 size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />
             Course → Subject Mappings
           </h3>
-          <button className="btn btn-secondary" style={{ fontSize: '0.8rem' }} onClick={addCourse}>
-            <Plus size={14} /> Add Course
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              className="btn btn-secondary"
+              style={{ fontSize: '0.8rem' }}
+              onClick={handleFetchCourses}
+              disabled={fetchingCourses || !moodleUrl || !moodleToken}
+              title="Pulls all Moodle courses and IDs automatically"
+            >
+              {fetchingCourses ? <><Spinner size={14} /> Fetching…</> : <><DownloadCloud size={14} /> Auto-Fetch Moodle Courses</>}
+            </button>
+            <button className="btn btn-secondary" style={{ fontSize: '0.8rem' }} onClick={addCourse}>
+              <Plus size={14} /> Add Single
+            </button>
+          </div>
         </div>
 
         <p className="text-muted" style={{ fontSize: '0.82rem', marginBottom: 14 }}>
-          Map each Moodle course to an SMS subject. The grade item names must partially match
-          the names of your grade items inside Moodle's gradebook (case-insensitive).
+          Map each Moodle course to an SMS subject. Multiple Moodle courses (e.g. Maths JSS1, Maths JSS2) can map to the <strong>same</strong> SMS Subject (Mathematics) because each candidate's class is already tracked by their admission number!
         </p>
 
         {courseMap.length === 0 && (
           <div style={{ textAlign: 'center', padding: '28px 0', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-            No mappings yet. Click <strong>+ Add Course</strong> to start.
+            No mappings yet. Click <strong>Auto-Fetch Moodle Courses</strong> to load them all at once, or <strong>+ Add Single</strong>.
           </div>
         )}
 
         {courseMap.map((c, i) => (
           <div key={i} style={{
-            display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto',
+            display: 'grid', gridTemplateColumns: '1.2fr 1.2fr 1fr 1fr auto',
             gap: 10, alignItems: 'end', marginBottom: 10,
             padding: 12, background: 'var(--bg-hover)', borderRadius: 8,
           }}>
             <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label" style={{ fontSize: '0.75rem' }}>Moodle Course ID</label>
+              <label className="form-label" style={{ fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
+                <span>Moodle Course ID</span>
+                {c.courseName && (
+                  <span style={{ color: 'var(--primary)', fontWeight: 600, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.courseName}>
+                    {c.courseName}
+                  </span>
+                )}
+              </label>
               <input
                 className="form-input"
                 type="number"
@@ -260,7 +320,7 @@ function ConfigTab({ subjects }) {
               </select>
             </div>
             <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label" style={{ fontSize: '0.75rem' }}>CA Grade Item Name</label>
+              <label className="form-label" style={{ fontSize: '0.75rem' }}>CA Grade Item</label>
               <input
                 className="form-input"
                 placeholder="e.g. CA"
@@ -269,7 +329,7 @@ function ConfigTab({ subjects }) {
               />
             </div>
             <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label" style={{ fontSize: '0.75rem' }}>Exam Grade Item Name</label>
+              <label className="form-label" style={{ fontSize: '0.75rem' }}>Exam Grade Item</label>
               <input
                 className="form-input"
                 placeholder="e.g. EXAM"
@@ -309,13 +369,13 @@ function ConfigTab({ subjects }) {
           <li>Moodle Admin → <strong>Plugins → Web services → Manage protocols</strong> → Enable <strong>REST</strong> ✅</li>
           <li>Moodle Admin → <strong>Plugins → Web services → Add service</strong> → Create a service, add functions:
             <code style={{ display: 'block', margin: '4px 0 4px 12px', fontSize: '0.78rem' }}>
+              core_course_get_courses (to auto-fetch all subjects and IDs)<br />
               core_enrol_get_enrolled_users<br />
               gradereport_user_get_grade_items<br />
               core_webservice_get_site_info
             </code>
           </li>
           <li>Moodle Admin → <strong>Plugins → Web services → Manage tokens</strong> → Generate token for an admin → paste it above</li>
-          <li>Find course IDs in Moodle by opening a course — the URL shows <code>?id=4</code> (that 4 is the course ID)</li>
         </ol>
       </div>
     </div>

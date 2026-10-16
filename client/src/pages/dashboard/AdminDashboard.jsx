@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   GraduationCap, UserCog, School, CreditCard,
   TrendingUp, ClipboardCheck, UserPlus, ArrowRight,
-  Upload, CheckCircle2, AlertCircle
+  Upload, CheckCircle2, AlertCircle, Lock, Unlock
 } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 import { toast } from 'react-toastify';
@@ -80,8 +80,9 @@ function SchoolSettingsCard() {
 
   const [admissionPrefix, setAdmissionPrefix] = useState('');
   const [admissionStartingSequence, setAdmissionStartingSequence] = useState(1);
-  const [currentSession, setCurrentSession] = useState('2025/2026');
+  const [currentSession, setCurrentSession] = useState('2026/2027');
   const [currentTerm, setCurrentTerm] = useState('FIRST');
+  const [resultsReleased, setResultsReleased] = useState(false);
 
   // Sync state with settings
   React.useEffect(() => {
@@ -90,19 +91,34 @@ function SchoolSettingsCard() {
       if (settings.admissionStartingSequence) setAdmissionStartingSequence(settings.admissionStartingSequence);
       if (settings.currentSession) setCurrentSession(settings.currentSession);
       if (settings.currentTerm) setCurrentTerm(settings.currentTerm);
+      if (settings.resultsReleased !== undefined) setResultsReleased(Boolean(settings.resultsReleased));
     }
   }, [settings]);
 
   const handleSaveConfig = async () => {
     setSavingConfig(true);
     try {
-      await api.post('/settings', { admissionPrefix, admissionStartingSequence, currentSession, currentTerm });
+      await api.post('/settings', { admissionPrefix, admissionStartingSequence, currentSession, currentTerm, resultsReleased });
       toast.success('Configuration saved!');
       queryClient.invalidateQueries({ queryKey: ['school-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['student-dashboard'] });
     } catch (err) {
       toast.error('Failed to save settings');
     } finally {
       setSavingConfig(false);
+    }
+  };
+
+  const handleToggleReleaseFromCard = async (checked) => {
+    setResultsReleased(checked);
+    try {
+      await api.post('/settings', { resultsReleased: checked, currentSession, currentTerm });
+      toast.success(checked ? 'Results released to students & parents!' : 'Results withheld from students.');
+      queryClient.invalidateQueries({ queryKey: ['school-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['student-dashboard'] });
+    } catch (err) {
+      toast.error('Failed to update release status');
+      setResultsReleased(!checked);
     }
   };
 
@@ -192,7 +208,39 @@ function SchoolSettingsCard() {
           </div>
         </div>
 
-        <h4 style={{ marginBottom: 12, fontSize: '0.9rem' }}>Admission Number Configuration</h4>
+        {/* Results Release Control in School Settings Card */}
+        <div style={{
+          marginTop: 14,
+          padding: '12px 14px',
+          borderRadius: 'var(--radius-md)',
+          background: resultsReleased ? 'rgba(16,185,129,0.08)' : 'rgba(245,158,11,0.08)',
+          border: `1px solid ${resultsReleased ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'}`,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: resultsReleased ? '#059669' : '#b45309' }}>
+              {resultsReleased ? '✓ Results are Released' : '🔒 Results are Withheld'}
+            </span>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', margin: 0 }}>
+              <input
+                type="checkbox"
+                checked={resultsReleased}
+                onChange={e => handleToggleReleaseFromCard(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Release Result</span>
+            </label>
+          </div>
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+            {resultsReleased
+              ? 'Checked: Students and parents can view term scores, attendance, and positions.'
+              : 'Unchecked: Scores are hidden from student portal until you release them.'}
+          </p>
+        </div>
+
+        <h4 style={{ marginBottom: 12, marginTop: 16, fontSize: '0.9rem' }}>Admission Number Configuration</h4>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label" style={{ fontSize: '0.75rem' }}>Prefix</label>
@@ -213,11 +261,37 @@ function SchoolSettingsCard() {
 
 /* ── Main Dashboard Component ── */
 export default function AdminDashboard() {
-  // Fetching data from the /dashboard/stats route mapped to your getStats controller
+  const queryClient = useQueryClient();
+
+  // Fetching stats
   const { data: stats, isLoading, isError } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: () => api.get('/dashboard/stats').then(r => r.data),
   });
+
+  // Fetching global settings for release toggle
+  const { data: settings } = useQuery({
+    queryKey: ['school-settings'],
+    queryFn: () => api.get('/settings').then(r => r.data),
+  });
+
+  const resultsReleased = Boolean(settings?.resultsReleased);
+  const [togglingRelease, setTogglingRelease] = useState(false);
+
+  const handleToggleRelease = async () => {
+    const nextState = !resultsReleased;
+    setTogglingRelease(true);
+    try {
+      await api.post('/settings', { resultsReleased: nextState });
+      toast.success(nextState ? '🎉 Results have been released to students & parents!' : '🔒 Results are now withheld from student/parent view.');
+      queryClient.invalidateQueries({ queryKey: ['school-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['student-dashboard'] });
+    } catch (err) {
+      toast.error('Failed to update result release status');
+    } finally {
+      setTogglingRelease(false);
+    }
+  };
 
   return (
     <div>
@@ -229,9 +303,59 @@ export default function AdminDashboard() {
             Welcome back — here's what's happening at your school today.
           </p>
         </div>
-        <Link to="/students/register" className="btn btn-primary">
-          <UserPlus size={16} /> Register Student
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          {/* Release Result Interactive Button */}
+          <button
+            type="button"
+            className="btn"
+            onClick={handleToggleRelease}
+            disabled={togglingRelease}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 16px',
+              borderRadius: 24,
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              border: resultsReleased ? '1px solid #10b981' : '1px solid var(--border)',
+              background: resultsReleased ? 'rgba(16,185,129,0.12)' : 'var(--card-bg, #fff)',
+              color: resultsReleased ? '#059669' : 'var(--text-primary)',
+              boxShadow: resultsReleased ? '0 2px 8px rgba(16,185,129,0.15)' : 'none',
+              transition: 'all 0.2s ease',
+            }}
+            title={resultsReleased ? 'Results are currently released. Click to withhold.' : 'Results are withheld. Click to release to students.'}
+          >
+            <input
+              type="checkbox"
+              checked={resultsReleased}
+              onChange={() => {}} // Handled by button onClick
+              style={{
+                width: 16,
+                height: 16,
+                accentColor: '#10b981',
+                cursor: 'pointer',
+                pointerEvents: 'none',
+              }}
+            />
+            {resultsReleased ? (
+              <>
+                <Unlock size={15} style={{ color: '#059669' }} />
+                <span>Results Released</span>
+              </>
+            ) : (
+              <>
+                <Lock size={15} style={{ color: 'var(--text-muted)' }} />
+                <span>Release Result</span>
+              </>
+            )}
+          </button>
+
+          <Link to="/students/register" className="btn btn-primary">
+            <UserPlus size={16} /> Register Student
+          </Link>
+        </div>
       </div>
 
       {/* Error State Banner */}

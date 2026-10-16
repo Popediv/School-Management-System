@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const prisma = require('../../config/db');
 
 const SETTINGS_FILE = path.join(__dirname, '..', '..', 'config', 'settings.json');
 
@@ -84,8 +85,9 @@ const getSettings = async (req, res, next) => {
       signatureUrl,
       admissionPrefix: stored.admissionPrefix || 'PCI-' + new Date().getFullYear() + '-',
       admissionStartingSequence: stored.admissionStartingSequence || 1,
-      currentSession: stored.currentSession || '2025/2026',
+      currentSession: stored.currentSession || '2026/2027',
       currentTerm: stored.currentTerm || 'FIRST',
+      resultsReleased: stored.resultsReleased ?? false,
     });
   } catch (err) { next(err); }
 };
@@ -93,7 +95,21 @@ const getSettings = async (req, res, next) => {
 const updateSettings = async (req, res, next) => {
   try {
     const data = req.body;
-    saveSettings(data);
+    const updated = saveSettings(data);
+
+    if (data.resultsReleased !== undefined) {
+      const session = data.currentSession || updated.currentSession || '2026/2027';
+      const term = data.currentTerm || updated.currentTerm || 'FIRST';
+      try {
+        await prisma.result.updateMany({
+          where: { session, term },
+          data: { published: Boolean(data.resultsReleased) },
+        });
+      } catch (err) {
+        console.error('Failed to update result published flags in DB:', err.message);
+      }
+    }
+
     res.json({ message: 'Settings updated successfully', settings: getStoredSettings() });
   } catch (err) { next(err); }
 };

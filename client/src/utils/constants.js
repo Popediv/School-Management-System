@@ -1,4 +1,4 @@
-export const CURRENT_SESSION = '2025/2026';
+export const CURRENT_SESSION = '2026/2027';
 export const CURRENT_TERM = 'FIRST';
 
 export const generateSessions = (startYear = 2023, numYears = 20) => {

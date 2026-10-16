@@ -23,13 +23,22 @@
 const fs   = require('fs');
 const path = require('path');
 
-const CONFIG_PATH = path.join(__dirname, '..', '..', 'config', 'moodle_config.json');
+const CONFIG_PATH     = path.join(__dirname, '..', '..', '..', 'data', 'moodle_config.json');
+const OLD_CONFIG_PATH = path.join(__dirname, '..', '..', 'config', 'moodle_config.json');
 
 /** Returns the current config object (or empty defaults) */
 function getMoodleConfig() {
   try {
     if (fs.existsSync(CONFIG_PATH)) {
       return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+    }
+    // Backward-compat: migrate from old path inside src/config
+    if (fs.existsSync(OLD_CONFIG_PATH)) {
+      const data = JSON.parse(fs.readFileSync(OLD_CONFIG_PATH, 'utf8'));
+      const dir = path.dirname(CONFIG_PATH);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(CONFIG_PATH, JSON.stringify(data, null, 2));
+      return data;
     }
   } catch (_) { /* ignore parse errors */ }
 

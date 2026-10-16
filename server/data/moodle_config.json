@@ -1,0 +1,427 @@
+{
+  "moodleUrl": "http://192.168.0.2",
+  "moodleToken": "388b8c2d6723045fceeae989c62dd602",
+  "idField": "username",
+  "courseMap": [
+    {
+      "courseId": 87,
+      "courseName": "2026 CA Mock",
+      "subjectCode": "",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 88,
+      "courseName": "Basic Science and Technology JSS1",
+      "subjectCode": "BST",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 89,
+      "courseName": "Basic Science and Technology JSS2",
+      "subjectCode": "BST",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 90,
+      "courseName": "Basic Science and Technology JSS3",
+      "subjectCode": "BST",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 91,
+      "courseName": "National Values JSS1",
+      "subjectCode": "NVE-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 92,
+      "courseName": "National Values JSS2",
+      "subjectCode": "NVE-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 93,
+      "courseName": "National Values JSS3",
+      "subjectCode": "NVE-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 94,
+      "courseName": "CCA JSS1",
+      "subjectCode": "CCA-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 95,
+      "courseName": "CCA JSS2",
+      "subjectCode": "CCA-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 96,
+      "courseName": "CCA JSS3",
+      "subjectCode": "CCA-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 97,
+      "courseName": "Yoruba JSS1",
+      "subjectCode": "YOR-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 98,
+      "courseName": "Yoruba JSS2",
+      "subjectCode": "YOR-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 99,
+      "courseName": "Yoruba JSS3",
+      "subjectCode": "YOR-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 100,
+      "courseName": "Chemistry SSS1",
+      "subjectCode": "CHE-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 101,
+      "courseName": "Chemistry SSS2 n SSS3",
+      "subjectCode": "CHE-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 102,
+      "courseName": "Yoruba SSS1",
+      "subjectCode": "YOR-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 103,
+      "courseName": "Yoruba SSS2 n SSS3",
+      "subjectCode": "YOR-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 104,
+      "courseName": "Biology SSS1",
+      "subjectCode": "BIO-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 105,
+      "courseName": "Biology SSS2 ",
+      "subjectCode": "BIO-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 106,
+      "courseName": "Government SSS2",
+      "subjectCode": "GOV-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 107,
+      "courseName": "Government SSS3",
+      "subjectCode": "GOV-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 108,
+      "courseName": "Biology SSS3",
+      "subjectCode": "BIO-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 109,
+      "courseName": "Mathematics JSS1",
+      "subjectCode": "MTH-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 110,
+      "courseName": "Mathematics JSS2",
+      "subjectCode": "MTH-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 111,
+      "courseName": "Mathematics JSS3",
+      "subjectCode": "MTH-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 112,
+      "courseName": "English Language JSS1",
+      "subjectCode": "ENG-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 113,
+      "courseName": "English Language JSS2",
+      "subjectCode": "ENG-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 114,
+      "courseName": "English Language JSS3",
+      "subjectCode": "ENG-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 115,
+      "courseName": "Business Studies JSS1",
+      "subjectCode": "BUS-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 116,
+      "courseName": "Business Studies JSS2",
+      "subjectCode": "BUS-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 117,
+      "courseName": "Business Studies JSS3",
+      "subjectCode": "BUS-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 118,
+      "courseName": "PVS JSS1",
+      "subjectCode": "PVS-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 119,
+      "courseName": "PVS JSS2",
+      "subjectCode": "PVS-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 120,
+      "courseName": "PVS JSS3",
+      "subjectCode": "PVS-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 121,
+      "courseName": "Livestock Farming SSS1",
+      "subjectCode": "LIV",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 122,
+      "courseName": "Livestock Farming SSS2 n SSS3",
+      "subjectCode": "LIV",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 123,
+      "courseName": "Livestock Farming SSS3",
+      "subjectCode": "LIV",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 124,
+      "courseName": "Physics SSS1",
+      "subjectCode": "PHY-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 125,
+      "courseName": "Physics SSS2 n SSS3",
+      "subjectCode": "PHY-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 126,
+      "courseName": "Economics SSS1",
+      "subjectCode": "ECO-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 127,
+      "courseName": "Economics SSS2 ",
+      "subjectCode": "ECO-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 128,
+      "courseName": "Computer JSS1",
+      "subjectCode": "CMP-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 129,
+      "courseName": "Computer JSS2",
+      "subjectCode": "CMP-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 130,
+      "courseName": "Computer JSS3",
+      "subjectCode": "CMP-JSS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 131,
+      "courseName": "PHE JSS1",
+      "subjectCode": "PHE",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 132,
+      "courseName": "PHE JSS2",
+      "subjectCode": "PHE",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 133,
+      "courseName": "PHE JSS3",
+      "subjectCode": "PHE",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 134,
+      "courseName": "History JSS1",
+      "subjectCode": "HIS-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 135,
+      "courseName": "History JSS2",
+      "subjectCode": "HIS-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 136,
+      "courseName": "History JSS3",
+      "subjectCode": "HIS-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 137,
+      "courseName": "Economics SSS3",
+      "subjectCode": "ECO-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 138,
+      "courseName": "Financial Accounting SSS2 n SSS3",
+      "subjectCode": "FAC-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 139,
+      "courseName": "Literature in English SSS2",
+      "subjectCode": "LIT-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 140,
+      "courseName": "Mathematics SSS1",
+      "subjectCode": "MTH-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 142,
+      "courseName": "Civic Education SSS1",
+      "subjectCode": "CIV-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 143,
+      "courseName": "Civic Education SSS2 ",
+      "subjectCode": "CIV-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 144,
+      "courseName": "English Language SSS1",
+      "subjectCode": "ENG-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 145,
+      "courseName": "English Language SSS2 n SSS3",
+      "subjectCode": "ENG-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 146,
+      "courseName": "Civic Education SSS3",
+      "subjectCode": "CIV-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 147,
+      "courseName": "Mathematics SSS2 n SSS3",
+      "subjectCode": "MTH-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    }
+  ]
+}
