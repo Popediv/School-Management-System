@@ -75,13 +75,27 @@ function generateMoodlePassword(lastName) {
 
 /**
  * Generates a unique receipt number: RCP-20260001
+ * Scans existing max sequence number to avoid collisions under concurrency.
+ * Must be called inside a Prisma transaction for full safety.
  */
 async function generateReceiptNo(prisma) {
-  const year = new Date().getFullYear();
-  const count = await prisma.payment.count({
-    where: { receiptNo: { startsWith: `RCP-${year}` } }
+  const year   = new Date().getFullYear();
+  const prefix = `RCP-${year}`;
+
+  const latest = await prisma.payment.findFirst({
+    where:   { receiptNo: { startsWith: prefix } },
+    orderBy: { receiptNo: 'desc' },
+    select:  { receiptNo: true },
   });
-  return `RCP-${year}${String(count + 1).padStart(4, '0')}`;
+
+  let nextSeq = 1;
+  if (latest?.receiptNo) {
+    const numStr = latest.receiptNo.replace(prefix, '');
+    const num    = parseInt(numStr, 10);
+    if (!isNaN(num)) nextSeq = num + 1;
+  }
+
+  return `${prefix}${String(nextSeq).padStart(4, '0')}`;
 }
 
 /**

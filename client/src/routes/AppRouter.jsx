@@ -46,6 +46,7 @@ import KioskAttendancePage from '../pages/attendance/KioskAttendancePage';
 // Results
 import UploadResultsPage from '../pages/results/UploadResultsPage';
 import ReportCardPage from '../pages/results/ReportCardPage';
+import MoodleSyncPage from '../pages/results/MoodleSyncPage';
 
 // Fees
 import FeesPage from '../pages/fees/FeesPage';
@@ -193,6 +194,11 @@ export default function AppRouter() {
               <Route path="/results/upload" element={
                 <ProtectedRoute roles={[ROLES.TEACHER, ...ADMIN_ROLES]}>
                   <DashboardLayout><UploadResultsPage /></DashboardLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/results/moodle-sync" element={
+                <ProtectedRoute roles={[ROLES.SUPER_ADMIN]}>
+                  <DashboardLayout><MoodleSyncPage /></DashboardLayout>
                 </ProtectedRoute>
               } />
               <Route path="/results/report-card/:studentId" element={

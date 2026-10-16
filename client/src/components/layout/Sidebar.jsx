@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, GraduationCap, BookOpen,
   ClipboardList, BarChart2, CreditCard, IdCard,
   Bell, LogOut, ChevronRight, School, UserCog,
-  BookMarked, TrendingUp, Key, QrCode
+  BookMarked, TrendingUp, Key, QrCode, Link2
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../services/api';
@@ -32,6 +32,7 @@ const NAV = {
         { label: 'Attendance', icon: ClipboardList, to: '/attendance/mark' },
         { label: 'Attendance Kiosk', icon: QrCode, to: '/attendance/kiosk' },
         { label: 'Results', icon: BookMarked, to: '/results/upload' },
+        { label: 'Moodle Sync', icon: Link2, to: '/results/moodle-sync' },
         { label: 'Scheme of Work', icon: BookOpen, to: '/schemes' },
         { label: 'Reports', icon: BarChart2, to: '/attendance/report' },
       ]

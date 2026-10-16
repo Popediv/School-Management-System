@@ -156,48 +156,56 @@ const getReceipt = async (req, res, next) => {
 
 const getOutstanding = async (req, res, next) => {
   try {
-    const allPayments = await prisma.payment.findMany({
-      include: { student: { select: { firstName: true, lastName: true, admissionNo: true, currentClass: { select: { name: true } } } } },
-      orderBy: { createdAt: 'desc' },
-    });
+    // Run summary aggregates and the outstanding list in parallel
+    const [outstandingAgg, fullyPaidCount, outstandingPayments] = await Promise.all([
+      // Aggregate totals without loading every row
+      prisma.payment.aggregate({
+        where: { status: { in: ['PENDING', 'PARTIAL'] } },
+        _sum:  { amount: true, amountPaid: true },
+        _count: { _all: true },
+      }),
+      prisma.payment.count({ where: { status: 'PAID' } }),
+      // Only load rows we actually need to list
+      prisma.payment.findMany({
+        where:   { status: { in: ['PENDING', 'PARTIAL'] } },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          student: {
+            select: {
+              firstName: true,
+              lastName:  true,
+              admissionNo: true,
+              currentClass: { select: { name: true } },
+            },
+          },
+        },
+      }),
+    ]);
 
-    let totalOutstanding = 0;
-    const studentIdsWithBalance = new Set();
-    let fullyPaid = 0;
-    let partialPaid = 0;
+    const totalOutstanding = (outstandingAgg._sum.amount || 0) - (outstandingAgg._sum.amountPaid || 0);
+    const partialPaid      = outstandingPayments.filter(p => p.status === 'PARTIAL').length;
+    const studentIdsWithBalance = new Set(outstandingPayments.map(p => p.studentId));
 
-    const outstanding = [];
-
-    allPayments.forEach(p => {
-      if (p.status === 'PAID') {
-        fullyPaid++;
-      } else {
-        totalOutstanding += (p.amount - (p.amountPaid || 0));
-        studentIdsWithBalance.add(p.studentId);
-        if (p.status === 'PARTIAL') partialPaid++;
-
-        outstanding.push({
-          id: p.id,
-          studentName: `${p.student.lastName} ${p.student.firstName}`,
-          admissionNo: p.student.admissionNo,
-          class: p.student.currentClass?.name || '—',
-          amount: p.amount,
-          balance: p.amount - (p.amountPaid || 0),
-          type: p.description,
-          dueDate: p.createdAt.toISOString().split('T')[0], // Using createdAt as dueDate for now
-          status: p.status === 'PENDING' ? 'UNPAID' : p.status,
-        });
-      }
-    });
+    const outstanding = outstandingPayments.map(p => ({
+      id:          p.id,
+      studentName: `${p.student.lastName} ${p.student.firstName}`,
+      admissionNo: p.student.admissionNo,
+      class:       p.student.currentClass?.name || '—',
+      amount:      p.amount,
+      balance:     p.amount - (p.amountPaid || 0),
+      type:        p.description,
+      dueDate:     p.createdAt.toISOString().split('T')[0],
+      status:      p.status === 'PENDING' ? 'UNPAID' : p.status,
+    }));
 
     res.json({
       summary: {
         totalOutstanding,
         totalStudents: studentIdsWithBalance.size,
-        fullyPaid,
+        fullyPaid:     fullyPaidCount,
         partialPaid,
       },
-      outstanding
+      outstanding,
     });
   } catch (err) { next(err); }
 };
@@ -351,56 +359,59 @@ const bulkInvoiceClass = async (req, res, next) => {
       return res.status(400).json({ message: 'classId, term, and session are required' });
     }
 
-    const structures = await prisma.feeStructure.findMany({
-      where: { classId, term, session }
-    });
+    const [structures, students] = await Promise.all([
+      prisma.feeStructure.findMany({ where: { classId, term, session } }),
+      prisma.student.findMany({ where: { currentClassId: classId, status: 'ACTIVE' } }),
+    ]);
 
     if (structures.length === 0) {
       return res.status(400).json({ message: 'No fee structures configured for this class, term, and session. Please configure fees first.' });
     }
-
-    const students = await prisma.student.findMany({
-      where: { currentClassId: classId, status: 'ACTIVE' }
-    });
-
     if (students.length === 0) {
       return res.status(400).json({ message: 'No active students found in this class to bill.' });
     }
 
-    let createdCount = 0;
-    let skippedCount = 0;
+    const studentIds = students.map(s => s.id);
 
-    await prisma.$transaction(async (tx) => {
-      for (const student of students) {
-        for (const struct of structures) {
-          const existing = await tx.payment.findFirst({
-            where: {
-              studentId: student.id,
-              description: struct.description,
-              term,
-              session
-            }
-          });
+    // Pre-load all existing invoices for this class+term+session in one query
+    // Build a Set of "studentId|description" keys for O(1) duplicate detection
+    const existingPayments = await prisma.payment.findMany({
+      where: { studentId: { in: studentIds }, term, session },
+      select: { studentId: true, description: true },
+    });
+    const existingKeys = new Set(existingPayments.map(p => `${p.studentId}|${p.description}`));
 
-          if (existing) {
-            skippedCount++;
-            continue;
-          }
+    let createdCount  = 0;
+    let skippedCount  = 0;
+    const toCreate    = [];
 
-          const receiptNo = await generateReceiptNo(tx);
-          await tx.payment.create({
-            data: {
-              studentId: student.id,
-              amount: struct.amount,
-              description: struct.description,
-              session,
-              term,
-              receiptNo,
-              status: 'PENDING'
-            }
-          });
-          createdCount++;
+    for (const student of students) {
+      for (const struct of structures) {
+        const key = `${student.id}|${struct.description}`;
+        if (existingKeys.has(key)) {
+          skippedCount++;
+          continue;
         }
+        toCreate.push({ student, struct });
+        createdCount++;
+      }
+    }
+
+    // Generate receipt numbers and create all invoices in a single transaction
+    await prisma.$transaction(async (tx) => {
+      for (const { student, struct } of toCreate) {
+        const receiptNo = await generateReceiptNo(tx);
+        await tx.payment.create({
+          data: {
+            studentId:   student.id,
+            amount:      struct.amount,
+            description: struct.description,
+            session,
+            term,
+            receiptNo,
+            status:      'PENDING',
+          },
+        });
       }
     });
 
@@ -409,8 +420,8 @@ const bulkInvoiceClass = async (req, res, next) => {
       summary: {
         invoicesGenerated: createdCount,
         skippedDuplicates: skippedCount,
-        studentsBilled: students.length
-      }
+        studentsBilled:    students.length,
+      },
     });
   } catch (err) { next(err); }
 };

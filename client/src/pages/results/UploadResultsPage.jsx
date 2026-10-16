@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { classService, subjectService, resultService } from '../../services';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
-import { Upload, Save } from 'lucide-react';
+import { Upload, Save, Link2 } from 'lucide-react';
 import api from '../../services/api';
 
 const TERMS = ['First Term', 'Second Term', 'Third Term'];
@@ -169,6 +170,11 @@ export default function UploadResultsPage() {
               <Upload size={16} /> Teacher Sheet
               <input type="file" accept=".xlsx, .xls" style={{ display: 'none' }} onChange={handleTeacherExcelUpload} />
             </label>
+          )}
+          {user?.role === 'SUPER_ADMIN' && (
+            <Link to="/results/moodle-sync" className="btn btn-secondary">
+              <Link2 size={16} /> Sync from Moodle
+            </Link>
           )}
           {user?.role === 'SUPER_ADMIN' && session && (
             <label className="btn btn-warning">
