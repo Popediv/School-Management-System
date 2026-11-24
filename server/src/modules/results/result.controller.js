@@ -1,6 +1,7 @@
 const prisma = require('../../config/db');
 const { calculateGrade, gradeRemark, calculatePositions, formatPosition } = require('../../utils/grading');
 const { getStoredSettings } = require('../settings/settings.controller');
+const { readPsychomotor, writePsychomotor, getStudentPsychomotor } = require('./psychomotor.store');
 const xlsx = require('xlsx');
 
 // ── Term normalizer ───────────────────────────────────────────────────────────
@@ -36,7 +37,7 @@ const upload = async (req, res, next) => {
         const session = r.session || defaultSession;
         const ca = parseFloat(r.ca ?? r.caScore ?? 0);
         const exam = parseFloat(r.exam ?? r.examScore ?? 0);
-        const total = ca + exam;
+        const total = Math.round(ca + exam);
         const grade = calculateGrade(total);
         const remark = gradeRemark(grade);
 
@@ -93,7 +94,7 @@ const upload = async (req, res, next) => {
 
     const ca = parseFloat(caScore) || 0;
     const exam = parseFloat(examScore) || 0;
-    const total = ca + exam;
+    const total = Math.round(ca + exam);
     const grade = calculateGrade(total);
     const remark = gradeRemark(grade);
 
@@ -243,12 +244,13 @@ const getReportCard = async (req, res, next) => {
 
     // Load classmate results to compute real positions if not set
     let classResults = [];
+    let classmateIds = [];   // declared here so both blocks below can access it
     if (student.currentClassId && results.length > 0) {
       const classmates = await prisma.student.findMany({
         where: { currentClassId: student.currentClassId },
         select: { id: true },
       });
-      const classmateIds = classmates.map(c => c.id);
+      classmateIds = classmates.map(c => c.id);   // assign (no const — uses outer let)
       const subjectIds = results.map(r => r.subjectId);
       classResults = await prisma.result.findMany({
         where: {
@@ -261,10 +263,11 @@ const getReportCard = async (req, res, next) => {
       });
     }
 
-    // Process results: On final report sheet, CA score and Attendance score are summed as one CA
+    // Process results: On final report sheet, CA score and Attendance score are summed as one CA (max 30: 20 CA + 10 Attendance, Exam is 70)
+    // Note: total is strictly rounded to a whole number per school academic requirements
     const processedResults = results.map(r => {
-      const combinedCA = Math.min(40, Math.round(((r.caScore || 0) + attScore) * 10) / 10);
-      const total = combinedCA + (r.examScore || 0);
+      const combinedCA = Math.min(30, Math.round(((r.caScore || 0) + attScore) * 10) / 10);
+      const total = Math.round(combinedCA + (r.examScore || 0));
       const grade = calculateGrade(total);
       const remark = gradeRemark(grade);
 
@@ -282,12 +285,12 @@ const getReportCard = async (req, res, next) => {
         caScore: combinedCA,
         total,
         grade,
-        remark: r.remark || remark,
+        remark,          // always use freshly computed remark — matches the displayed grade
         position: pos ? formatPosition(pos) : '—',
       };
     });
 
-    const totalScore = processedResults.reduce((s, r) => s + r.total, 0);
+    const totalScore = Math.round(processedResults.reduce((s, r) => s + r.total, 0));
     const average = processedResults.length
       ? (totalScore / processedResults.length).toFixed(1)
       : 0;
@@ -308,9 +311,18 @@ const getReportCard = async (req, res, next) => {
       }
     }
 
+    const studentPsychomotor = getStudentPsychomotor(studentId, session, term || 'FIRST');
+    const photoUrl = student.photo
+      ? (student.photo.startsWith('http') || student.photo.startsWith('data:')
+          ? student.photo
+          : (student.photo.startsWith('/') ? student.photo : `/uploads/${student.photo}`))
+      : null;
+
     res.json({
       student: {
         ...student,
+        photoUrl,
+        photo: photoUrl || student.photo,
         attendance: {
           present: attPresent,
           absent: attAbsent,
@@ -328,6 +340,7 @@ const getReportCard = async (req, res, next) => {
         subjectCount: processedResults.length,
         position: overallPosDisplay,
       },
+      psychomotor: studentPsychomotor,
     });
   } catch (err) { next(err); }
 };
@@ -410,7 +423,7 @@ const uploadTeacherExcel = async (req, res, next) => {
 
       const ca = parseFloat(row['CA'] ?? row['CA Score'] ?? 0) || 0;
       const exam = parseFloat(row['Exam'] ?? row['Exam Score'] ?? 0) || 0;
-      const total = ca + exam;
+      const total = Math.round(ca + exam);
       const grade = calculateGrade(total);
       const remark = gradeRemark(grade);
 
@@ -467,7 +480,7 @@ const uploadSuperadminExcel = async (req, res, next) => {
         if (caKey || examKey) {
           const ca = parseFloat(row[caKey] ?? 0) || 0;
           const exam = parseFloat(row[examKey] ?? 0) || 0;
-          const total = ca + exam;
+          const total = Math.round(ca + exam);
           let finalTotal = total;
 
           let remarkText = gradeRemark(calculateGrade(total));
@@ -485,8 +498,8 @@ const uploadSuperadminExcel = async (req, res, next) => {
             const t2 = secondTermResult ? secondTermResult.total : 0;
             const termCount = 1 + (firstTermResult ? 1 : 0) + (secondTermResult ? 1 : 0);
 
-            finalTotal = (t1 + t2 + total) / 3; // Strict average by 3 OR by termCount? We'll average strictly by 3 as standard for 3rd term cumulatives.
-            remarkText = `Cumulative Avg: ${finalTotal.toFixed(1)} (${gradeRemark(calculateGrade(finalTotal))})`;
+            finalTotal = Math.round((t1 + t2 + total) / 3);
+            remarkText = `Cumulative Avg: ${finalTotal} (${gradeRemark(calculateGrade(finalTotal))})`;
           }
 
           const grade = calculateGrade(finalTotal);
@@ -508,4 +521,88 @@ const uploadSuperadminExcel = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { upload, getByStudent, getReportCard, calculate, publish, uploadTeacherExcel, uploadSuperadminExcel, getClassScores };
+// GET /api/results/psychomotor?classId=&session=&term=
+const getPsychomotor = async (req, res, next) => {
+  try {
+    const { classId, session } = req.query;
+    const term = normalizeTerm(req.query.term);
+
+    if (!classId || !session) {
+      return res.status(400).json({ message: 'classId and session are required' });
+    }
+
+    const students = await prisma.student.findMany({
+      where: { currentClassId: classId, status: 'ACTIVE' },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        otherNames: true,
+        admissionNo: true,
+        photo: true,
+      },
+      orderBy: [
+        { lastName: 'asc' },
+        { firstName: 'asc' },
+      ],
+    });
+
+    const allData = readPsychomotor();
+    const ratingsMap = {};
+    students.forEach(s => {
+      const key = `${s.id}_${session}_${term}`;
+      ratingsMap[s.id] = allData[key]?.traits || null;
+    });
+
+    res.json({ students, ratingsMap });
+  } catch (err) { next(err); }
+};
+
+// POST /api/results/psychomotor
+const savePsychomotor = async (req, res, next) => {
+  try {
+    const { records, session, classId } = req.body;
+    const term = normalizeTerm(req.body.term);
+
+    if (!Array.isArray(records)) {
+      return res.status(400).json({ message: 'records array is required' });
+    }
+
+    const allData = readPsychomotor();
+    let count = 0;
+
+    for (const r of records) {
+      if (!r.studentId) continue;
+      const rSession = r.session || session;
+      const rTerm = normalizeTerm(r.term || term);
+      const key = `${r.studentId}_${rSession}_${rTerm}`;
+
+      allData[key] = {
+        studentId: r.studentId,
+        classId: r.classId || classId || null,
+        session: rSession,
+        term: rTerm,
+        traits: r.traits || {},
+        updatedAt: new Date().toISOString(),
+        updatedBy: req.user?.name || req.user?.email || 'Teacher',
+      };
+      count++;
+    }
+
+    writePsychomotor(allData);
+    res.json({ message: `Successfully saved psychomotor ratings for ${count} student(s)`, count });
+  } catch (err) { next(err); }
+};
+
+module.exports = {
+  upload,
+  getByStudent,
+  getReportCard,
+  calculate,
+  publish,
+  uploadTeacherExcel,
+  uploadSuperadminExcel,
+  getClassScores,
+  getPsychomotor,
+  savePsychomotor,
+};

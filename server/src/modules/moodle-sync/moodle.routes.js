@@ -14,11 +14,12 @@ const ADMIN = ['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL'];
 router.use(authenticate);
 router.use(allowRoles(...ADMIN));
 
-router.get('/config',  ctrl.getConfig);
-router.post('/config', ctrl.saveConfig);
-router.post('/test',   ctrl.testConnection);
-router.get('/courses', ctrl.getCourses);
-router.post('/run',    ctrl.triggerSync);
-router.get('/logs',    ctrl.getLogs);
+router.get('/config',       ctrl.getConfig);
+router.post('/config',      ctrl.saveConfig);
+router.post('/test',        ctrl.testConnection);
+router.get('/courses',      ctrl.getCourses);
+router.post('/run',         ctrl.triggerSync);
+router.get('/status/:jobId',ctrl.getJobStatus);
+router.get('/logs',         ctrl.getLogs);
 
 module.exports = router;

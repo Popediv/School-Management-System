@@ -4,13 +4,6 @@
   "idField": "username",
   "courseMap": [
     {
-      "courseId": 87,
-      "courseName": "2026 CA Mock",
-      "subjectCode": "",
-      "caGradeItemName": "CA",
-      "examGradeItemName": "EXAM"
-    },
-    {
       "courseId": 88,
       "courseName": "Basic Science and Technology JSS1",
       "subjectCode": "BST",

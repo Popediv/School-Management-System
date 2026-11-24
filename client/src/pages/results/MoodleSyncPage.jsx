@@ -23,12 +23,13 @@ import { useSettings } from '../../context/SettingsContext';
 // ── API helpers ───────────────────────────────────────────────────────────────
 
 const moodleApi = {
-  getConfig:  ()           => api.get('/moodle-sync/config').then(r => r.data),
-  saveConfig: (body)       => api.post('/moodle-sync/config', body).then(r => r.data),
-  testConn:   ()           => api.post('/moodle-sync/test').then(r => r.data),
-  getCourses: ()           => api.get('/moodle-sync/courses').then(r => r.data),
-  runSync:    (body)       => api.post('/moodle-sync/run', body, { timeout: 180000 }).then(r => r.data),
-  getLogs:    ()           => api.get('/moodle-sync/logs').then(r => r.data),
+  getConfig:    ()      => api.get('/moodle-sync/config').then(r => r.data),
+  saveConfig:   (body)  => api.post('/moodle-sync/config', body).then(r => r.data),
+  testConn:     ()      => api.post('/moodle-sync/test').then(r => r.data),
+  getCourses:   ()      => api.get('/moodle-sync/courses').then(r => r.data),
+  runSync:      (body)  => api.post('/moodle-sync/run', body).then(r => r.data),   // returns { jobId } immediately
+  getJobStatus: (jobId) => api.get(`/moodle-sync/status/${jobId}`).then(r => r.data),
+  getLogs:      ()      => api.get('/moodle-sync/logs').then(r => r.data),
 };
 
 // ── Tiny components ───────────────────────────────────────────────────────────
@@ -397,7 +398,9 @@ function RunSyncTab() {
   const [running,   setRunning]   = useState(false);
   const [result,    setResult]    = useState(null);
   const [logLines,  setLogLines]  = useState([]);
-  const logRef = useRef(null);
+  const [jobId,     setJobId]     = useState(null);
+  const pollRef = useRef(null);
+  const logRef  = useRef(null);
 
   useEffect(() => {
     if (currentSession) setSession(currentSession);
@@ -409,26 +412,65 @@ function RunSyncTab() {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [logLines]);
 
+  // Cleanup poll interval on unmount
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+
+  const stopPolling = () => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+  };
+
   const handleRun = async () => {
     if (!session.trim()) return toast.warning('Please enter the academic session');
     if (!term)           return toast.warning('Please select a term');
 
     setRunning(true);
     setResult(null);
-    setLogLines([{ type: 'info', message: '🚀 Starting Moodle sync…' }]);
+    setJobId(null);
+    setLogLines([{ type: 'info', message: '🚀 Submitting sync job to server…' }]);
+    stopPolling();
 
+    let currentJobId;
     try {
       const res = await moodleApi.runSync({ session: session.trim(), term });
-      setResult(res);
-      setLogLines(res.log || []);
+      currentJobId = res.jobId;
+      setJobId(currentJobId);
+      setLogLines([{ type: 'info', message: `✅ Job started (${currentJobId}). Receiving live updates…` }]);
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || 'Sync failed';
-      setResult({ status: 'error', message: msg });
+      const msg = err.response?.data?.message || err.message || 'Failed to start sync';
+      setResult({ status: 'error', message: msg, saved: 0, skipped: 0, errors: [msg] });
       setLogLines([{ type: 'error', message: msg }]);
       toast.error(msg);
-    } finally {
       setRunning(false);
+      return;
     }
+
+    // Poll every 2 seconds for live log + completion
+    pollRef.current = setInterval(async () => {
+      try {
+        const status = await moodleApi.getJobStatus(currentJobId);
+        setLogLines(status.log || []);
+
+        if (status.status !== 'running') {
+          stopPolling();
+          setRunning(false);
+          const r = status.result || {};
+          setResult({
+            status:  status.status,
+            message: status.status === 'success'
+              ? `Sync complete — ${r.saved ?? 0} result(s) saved`
+              : 'Sync encountered errors',
+            saved:   r.saved   ?? 0,
+            skipped: r.skipped ?? 0,
+            errors:  r.errors  ?? [],
+          });
+          if (status.status === 'success') toast.success(`✅ Sync done — ${r.saved} records saved!`);
+          else toast.error('Sync finished with errors. See log below.');
+        }
+      } catch (pollErr) {
+        // Network blip — keep polling, don't stop
+        console.warn('Poll error (will retry):', pollErr.message);
+      }
+    }, 2000);
   };
 
   return (
@@ -443,6 +485,7 @@ function RunSyncTab() {
         <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: 16 }}>
           Pulls all grade data from Moodle for the selected session/term and writes
           results directly into your SMS database, matched by admission number.
+          The sync runs in the background — you'll see live progress below.
         </p>
 
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -450,7 +493,7 @@ function RunSyncTab() {
             <label className="form-label">Academic Session <span className="required">*</span></label>
             <input
               className="form-input"
-              placeholder="e.g. 2025/2026"
+              placeholder="e.g. 2026/2027"
               value={session}
               onChange={e => setSession(e.target.value)}
             />
@@ -473,6 +516,14 @@ function RunSyncTab() {
             }
           </button>
         </div>
+
+        {/* Running indicator */}
+        {running && (
+          <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.85rem', color: 'var(--primary)' }}>
+            <Spinner size={14} />
+            <span>Sync is running in the background. This page will update automatically — you can keep the tab open.</span>
+          </div>
+        )}
       </div>
 
       {/* Result summary */}
@@ -500,14 +551,15 @@ function RunSyncTab() {
       {/* Live log */}
       {logLines.length > 0 && (
         <div className="card" style={{ padding: 0 }}>
-          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', fontWeight: 600, fontSize: '0.85rem' }}>
-            Sync Log
+          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+            {running && <Spinner size={13} />}
+            Sync Log {running ? '— Live' : '— Completed'}
           </div>
           <div
             ref={logRef}
             style={{
               padding: '12px 16px',
-              maxHeight: 320,
+              maxHeight: 380,
               overflowY: 'auto',
               background: 'var(--bg-dark, #0f0f12)',
               borderRadius: '0 0 12px 12px',
@@ -516,7 +568,7 @@ function RunSyncTab() {
             {logLines.map((l, i) => <LogLine key={i} entry={l} />)}
             {running && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                <Spinner size={13} /> Running…
+                <Spinner size={13} /> Waiting for next update…
               </div>
             )}
           </div>

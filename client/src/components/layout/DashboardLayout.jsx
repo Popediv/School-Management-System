@@ -39,6 +39,7 @@ const TITLES = {
   '/attendance/mark': 'Mark Attendance',
   '/attendance/report': 'Attendance Reports',
   '/results/upload': 'Upload Results',
+  '/results/psychomotor': 'Psychomotor Assessment',
   '/fees': 'Fees & Bursary',
   '/idcards': 'ID Card Generator',
   '/notifications': 'Notifications',

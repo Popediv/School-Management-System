@@ -1,5 +1,1420 @@
 [
   {
+    "startedAt": "2026-10-18T17:49:24.950Z",
+    "completedAt": "2026-10-18T18:04:09.534Z",
+    "session": "2026/2027",
+    "term": "FIRST",
+    "status": "success",
+    "triggeredBy": "admin@school.edu",
+    "total": 0,
+    "saved": 0,
+    "skipped": 0,
+    "errors": [
+      "Subject code \"\" not found in SMS — skipping course 87",
+      "Failed to fetch enrolled users for course 88: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 89: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 90: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 91: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 92: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 93: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 94: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 95: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 96: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 97: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 98: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 99: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 100: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 101: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 102: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 103: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 104: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 105: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 106: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 107: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 108: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 109: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 110: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 111: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 112: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 113: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 114: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 115: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 116: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 117: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 118: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 119: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 120: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 121: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 122: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 123: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 124: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 125: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 126: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 127: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 128: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 129: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 130: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 131: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 132: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 133: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 134: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 135: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 136: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 137: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 138: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 139: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 140: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 142: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 143: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 144: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 145: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 146: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 147: Moodle API request timed out after 15 seconds"
+    ],
+    "log": [
+      {
+        "time": "2026-10-18T17:49:24.950Z",
+        "type": "info",
+        "message": "🚀 Sync job started in background..."
+      },
+      {
+        "time": "2026-10-18T17:49:24.953Z",
+        "type": "info",
+        "message": "Loading SMS students and subjects..."
+      },
+      {
+        "time": "2026-10-18T17:49:26.215Z",
+        "type": "info",
+        "message": "Loaded 52 students, 38 subjects"
+      },
+      {
+        "time": "2026-10-18T17:49:27.921Z",
+        "type": "warn",
+        "message": "Subject code \"\" not found in SMS — skipping course 87"
+      },
+      {
+        "time": "2026-10-18T17:49:27.921Z",
+        "type": "info",
+        "message": "Syncing course 88 (BST)..."
+      },
+      {
+        "time": "2026-10-18T17:49:32.934Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 88: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:49:32.934Z",
+        "type": "info",
+        "message": "Syncing course 89 (BST)..."
+      },
+      {
+        "time": "2026-10-18T17:49:37.936Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 89: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:49:37.936Z",
+        "type": "info",
+        "message": "Syncing course 90 (BST)..."
+      },
+      {
+        "time": "2026-10-18T17:49:42.938Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 90: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:49:42.938Z",
+        "type": "info",
+        "message": "Syncing course 91 (NVE-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:49:47.956Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 91: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:49:47.956Z",
+        "type": "info",
+        "message": "Syncing course 92 (NVE-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:49:52.966Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 92: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:49:52.966Z",
+        "type": "info",
+        "message": "Syncing course 93 (NVE-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:49:57.981Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 93: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:49:57.981Z",
+        "type": "info",
+        "message": "Syncing course 94 (CCA-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:50:02.978Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 94: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:50:02.978Z",
+        "type": "info",
+        "message": "Syncing course 95 (CCA-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:50:07.988Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 95: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:50:07.988Z",
+        "type": "info",
+        "message": "Syncing course 96 (CCA-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:50:12.992Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 96: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:50:12.992Z",
+        "type": "info",
+        "message": "Syncing course 97 (YOR-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:50:18.009Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 97: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:50:18.009Z",
+        "type": "info",
+        "message": "Syncing course 98 (YOR-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:50:23.016Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 98: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:50:23.016Z",
+        "type": "info",
+        "message": "Syncing course 99 (YOR-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:50:28.018Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 99: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:50:28.018Z",
+        "type": "info",
+        "message": "Syncing course 100 (CHE-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:50:33.031Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 100: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:50:33.031Z",
+        "type": "info",
+        "message": "Syncing course 101 (CHE-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:50:38.048Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 101: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:50:38.048Z",
+        "type": "info",
+        "message": "Syncing course 102 (YOR-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:50:43.057Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 102: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:50:43.057Z",
+        "type": "info",
+        "message": "Syncing course 103 (YOR-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:50:48.065Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 103: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:50:48.065Z",
+        "type": "info",
+        "message": "Syncing course 104 (BIO-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:50:53.065Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 104: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:50:53.065Z",
+        "type": "info",
+        "message": "Syncing course 105 (BIO-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:50:58.076Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 105: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:50:58.076Z",
+        "type": "info",
+        "message": "Syncing course 106 (GOV-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:51:03.092Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 106: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:51:03.092Z",
+        "type": "info",
+        "message": "Syncing course 107 (GOV-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:51:08.107Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 107: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:51:08.107Z",
+        "type": "info",
+        "message": "Syncing course 108 (BIO-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:51:13.118Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 108: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:51:13.118Z",
+        "type": "info",
+        "message": "Syncing course 109 (MTH-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:51:18.130Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 109: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:51:18.130Z",
+        "type": "info",
+        "message": "Syncing course 110 (MTH-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:51:23.138Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 110: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:51:23.138Z",
+        "type": "info",
+        "message": "Syncing course 111 (MTH-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:51:28.157Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 111: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:51:28.158Z",
+        "type": "info",
+        "message": "Syncing course 112 (ENG-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:51:33.166Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 112: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:51:33.166Z",
+        "type": "info",
+        "message": "Syncing course 113 (ENG-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:51:38.175Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 113: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:51:38.175Z",
+        "type": "info",
+        "message": "Syncing course 114 (ENG-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:51:43.178Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 114: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:51:43.178Z",
+        "type": "info",
+        "message": "Syncing course 115 (BUS-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:51:48.183Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 115: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:51:48.183Z",
+        "type": "info",
+        "message": "Syncing course 116 (BUS-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:51:53.200Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 116: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:51:53.200Z",
+        "type": "info",
+        "message": "Syncing course 117 (BUS-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:51:58.213Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 117: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:51:58.213Z",
+        "type": "info",
+        "message": "Syncing course 118 (PVS-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:52:03.223Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 118: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:52:03.223Z",
+        "type": "info",
+        "message": "Syncing course 119 (PVS-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:52:08.229Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 119: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:52:08.229Z",
+        "type": "info",
+        "message": "Syncing course 120 (PVS-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:52:13.238Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 120: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:52:13.238Z",
+        "type": "info",
+        "message": "Syncing course 121 (LIV)..."
+      },
+      {
+        "time": "2026-10-18T17:52:18.244Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 121: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:52:18.244Z",
+        "type": "info",
+        "message": "Syncing course 122 (LIV)..."
+      },
+      {
+        "time": "2026-10-18T17:52:23.257Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 122: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:52:23.257Z",
+        "type": "info",
+        "message": "Syncing course 123 (LIV)..."
+      },
+      {
+        "time": "2026-10-18T17:52:28.259Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 123: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:52:28.259Z",
+        "type": "info",
+        "message": "Syncing course 124 (PHY-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:52:33.264Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 124: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:52:33.264Z",
+        "type": "info",
+        "message": "Syncing course 125 (PHY-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:52:38.277Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 125: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:52:38.277Z",
+        "type": "info",
+        "message": "Syncing course 126 (ECO-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:52:43.288Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 126: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:52:43.288Z",
+        "type": "info",
+        "message": "Syncing course 127 (ECO-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:52:48.304Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 127: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:52:48.304Z",
+        "type": "info",
+        "message": "Syncing course 128 (CMP-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:52:53.307Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 128: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:52:53.307Z",
+        "type": "info",
+        "message": "Syncing course 129 (CMP-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:52:58.322Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 129: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:52:58.323Z",
+        "type": "info",
+        "message": "Syncing course 130 (CMP-JSS)..."
+      },
+      {
+        "time": "2026-10-18T17:53:03.338Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 130: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:53:03.338Z",
+        "type": "info",
+        "message": "Syncing course 131 (PHE)..."
+      },
+      {
+        "time": "2026-10-18T17:53:08.354Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 131: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:53:08.354Z",
+        "type": "info",
+        "message": "Syncing course 132 (PHE)..."
+      },
+      {
+        "time": "2026-10-18T17:53:13.369Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 132: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:53:13.369Z",
+        "type": "info",
+        "message": "Syncing course 133 (PHE)..."
+      },
+      {
+        "time": "2026-10-18T17:53:18.382Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 133: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:53:18.382Z",
+        "type": "info",
+        "message": "Syncing course 134 (HIS-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:53:23.391Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 134: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:53:23.391Z",
+        "type": "info",
+        "message": "Syncing course 135 (HIS-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:53:28.396Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 135: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:53:28.396Z",
+        "type": "info",
+        "message": "Syncing course 136 (HIS-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:53:33.401Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 136: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:53:33.401Z",
+        "type": "info",
+        "message": "Syncing course 137 (ECO-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:53:38.404Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 137: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:53:38.404Z",
+        "type": "info",
+        "message": "Syncing course 138 (FAC-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:53:43.406Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 138: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:53:43.406Z",
+        "type": "info",
+        "message": "Syncing course 139 (LIT-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:53:48.419Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 139: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:53:48.419Z",
+        "type": "info",
+        "message": "Syncing course 140 (MTH-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:53:53.428Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 140: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:53:53.429Z",
+        "type": "info",
+        "message": "Syncing course 142 (CIV-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:53:58.438Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 142: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:53:58.438Z",
+        "type": "info",
+        "message": "Syncing course 143 (CIV-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:54:03.452Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 143: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:54:03.452Z",
+        "type": "info",
+        "message": "Syncing course 144 (ENG-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:54:08.459Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 144: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:54:08.459Z",
+        "type": "info",
+        "message": "Syncing course 145 (ENG-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:54:13.460Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 145: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:54:13.460Z",
+        "type": "info",
+        "message": "Syncing course 146 (CIV-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:54:18.473Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 146: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:54:18.473Z",
+        "type": "info",
+        "message": "Syncing course 147 (MTH-SS)..."
+      },
+      {
+        "time": "2026-10-18T17:54:23.483Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 147: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-18T17:54:23.483Z",
+        "type": "info",
+        "message": "Grade data collected for 0 students. Writing to database..."
+      },
+      {
+        "time": "2026-10-18T17:54:23.483Z",
+        "type": "info",
+        "message": "Writing 0 results to database..."
+      },
+      {
+        "time": "2026-10-18T17:54:23.483Z",
+        "type": "info",
+        "message": "Recalculating student subject positions across classes..."
+      },
+      {
+        "time": "2026-10-18T18:04:09.534Z",
+        "type": "success",
+        "message": "✅ Sync complete. Saved 0 result(s). Skipped 0. Errors: 60"
+      }
+    ]
+  },
+  {
+    "startedAt": "2026-10-16T22:39:25.752Z",
+    "completedAt": "2026-10-17T18:12:53.963Z",
+    "session": "2026/2027",
+    "term": "FIRST",
+    "status": "success",
+    "triggeredBy": "system",
+    "total": 0,
+    "saved": 0,
+    "skipped": 0,
+    "errors": [
+      "Subject code \"\" not found in SMS — skipping course 87",
+      "Failed to fetch enrolled users for course 88: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 89: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 90: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 91: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 92: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 93: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 94: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 95: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 96: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 97: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 98: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 99: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 100: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 101: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 102: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 103: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 104: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 105: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 106: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 107: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 108: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 109: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 110: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 111: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 112: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 113: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 114: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 115: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 116: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 117: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 118: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 119: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 120: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 121: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 122: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 123: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 124: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 125: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 126: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 127: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 128: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 129: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 130: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 131: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 132: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 133: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 134: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 135: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 136: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 137: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 138: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 139: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 140: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 142: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 143: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 144: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 145: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 146: Moodle API request timed out after 15 seconds",
+      "Failed to fetch enrolled users for course 147: Moodle API request timed out after 15 seconds"
+    ],
+    "log": [
+      {
+        "time": "2026-10-16T22:39:25.752Z",
+        "type": "info",
+        "message": "🚀 Sync job started in background..."
+      },
+      {
+        "time": "2026-10-16T22:39:25.756Z",
+        "type": "info",
+        "message": "Loading SMS students and subjects..."
+      },
+      {
+        "time": "2026-10-16T22:39:26.579Z",
+        "type": "info",
+        "message": "Loaded 52 students, 38 subjects"
+      },
+      {
+        "time": "2026-10-16T22:39:27.563Z",
+        "type": "warn",
+        "message": "Subject code \"\" not found in SMS — skipping course 87"
+      },
+      {
+        "time": "2026-10-16T22:39:27.563Z",
+        "type": "info",
+        "message": "Syncing course 88 (BST)..."
+      },
+      {
+        "time": "2026-10-16T22:39:32.574Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 88: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:39:32.574Z",
+        "type": "info",
+        "message": "Syncing course 89 (BST)..."
+      },
+      {
+        "time": "2026-10-16T22:39:37.581Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 89: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:39:37.581Z",
+        "type": "info",
+        "message": "Syncing course 90 (BST)..."
+      },
+      {
+        "time": "2026-10-16T22:39:42.591Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 90: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:39:42.591Z",
+        "type": "info",
+        "message": "Syncing course 91 (NVE-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:39:47.600Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 91: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:39:47.600Z",
+        "type": "info",
+        "message": "Syncing course 92 (NVE-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:39:52.612Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 92: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:39:52.612Z",
+        "type": "info",
+        "message": "Syncing course 93 (NVE-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:39:57.614Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 93: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:39:57.614Z",
+        "type": "info",
+        "message": "Syncing course 94 (CCA-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:40:02.624Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 94: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:40:02.624Z",
+        "type": "info",
+        "message": "Syncing course 95 (CCA-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:40:07.641Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 95: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:40:07.641Z",
+        "type": "info",
+        "message": "Syncing course 96 (CCA-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:40:12.643Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 96: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:40:12.644Z",
+        "type": "info",
+        "message": "Syncing course 97 (YOR-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:40:17.654Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 97: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:40:17.654Z",
+        "type": "info",
+        "message": "Syncing course 98 (YOR-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:40:22.663Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 98: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:40:22.663Z",
+        "type": "info",
+        "message": "Syncing course 99 (YOR-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:40:27.673Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 99: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:40:27.673Z",
+        "type": "info",
+        "message": "Syncing course 100 (CHE-SS)..."
+      },
+      {
+        "time": "2026-10-16T22:40:32.683Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 100: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:40:32.683Z",
+        "type": "info",
+        "message": "Syncing course 101 (CHE-SS)..."
+      },
+      {
+        "time": "2026-10-16T22:40:37.694Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 101: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:40:37.694Z",
+        "type": "info",
+        "message": "Syncing course 102 (YOR-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:40:42.704Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 102: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:40:42.704Z",
+        "type": "info",
+        "message": "Syncing course 103 (YOR-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:40:47.713Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 103: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:40:47.714Z",
+        "type": "info",
+        "message": "Syncing course 104 (BIO-SS)..."
+      },
+      {
+        "time": "2026-10-16T22:40:52.725Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 104: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:40:52.725Z",
+        "type": "info",
+        "message": "Syncing course 105 (BIO-SS)..."
+      },
+      {
+        "time": "2026-10-16T22:40:57.734Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 105: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:40:57.734Z",
+        "type": "info",
+        "message": "Syncing course 106 (GOV-SS)..."
+      },
+      {
+        "time": "2026-10-16T22:41:02.739Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 106: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:41:02.739Z",
+        "type": "info",
+        "message": "Syncing course 107 (GOV-SS)..."
+      },
+      {
+        "time": "2026-10-16T22:41:07.743Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 107: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:41:07.743Z",
+        "type": "info",
+        "message": "Syncing course 108 (BIO-SS)..."
+      },
+      {
+        "time": "2026-10-16T22:41:12.744Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 108: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:41:12.744Z",
+        "type": "info",
+        "message": "Syncing course 109 (MTH-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:41:17.753Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 109: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:41:17.753Z",
+        "type": "info",
+        "message": "Syncing course 110 (MTH-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:41:22.764Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 110: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:41:22.764Z",
+        "type": "info",
+        "message": "Syncing course 111 (MTH-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:41:27.773Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 111: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:41:27.773Z",
+        "type": "info",
+        "message": "Syncing course 112 (ENG-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:41:32.784Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 112: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:41:32.784Z",
+        "type": "info",
+        "message": "Syncing course 113 (ENG-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:41:37.794Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 113: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:41:37.794Z",
+        "type": "info",
+        "message": "Syncing course 114 (ENG-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:41:42.803Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 114: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:41:42.803Z",
+        "type": "info",
+        "message": "Syncing course 115 (BUS-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:41:47.813Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 115: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:41:47.813Z",
+        "type": "info",
+        "message": "Syncing course 116 (BUS-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:41:52.819Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 116: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:41:52.819Z",
+        "type": "info",
+        "message": "Syncing course 117 (BUS-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:41:57.833Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 117: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:41:57.833Z",
+        "type": "info",
+        "message": "Syncing course 118 (PVS-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:42:02.842Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 118: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:42:02.842Z",
+        "type": "info",
+        "message": "Syncing course 119 (PVS-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:42:07.850Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 119: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:42:07.850Z",
+        "type": "info",
+        "message": "Syncing course 120 (PVS-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:42:12.856Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 120: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:42:12.857Z",
+        "type": "info",
+        "message": "Syncing course 121 (LIV)..."
+      },
+      {
+        "time": "2026-10-16T22:42:17.872Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 121: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:42:17.873Z",
+        "type": "info",
+        "message": "Syncing course 122 (LIV)..."
+      },
+      {
+        "time": "2026-10-16T22:42:22.883Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 122: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:42:22.883Z",
+        "type": "info",
+        "message": "Syncing course 123 (LIV)..."
+      },
+      {
+        "time": "2026-10-16T22:42:27.890Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 123: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:42:27.890Z",
+        "type": "info",
+        "message": "Syncing course 124 (PHY-SS)..."
+      },
+      {
+        "time": "2026-10-16T22:42:32.904Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 124: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:42:32.904Z",
+        "type": "info",
+        "message": "Syncing course 125 (PHY-SS)..."
+      },
+      {
+        "time": "2026-10-16T22:42:37.917Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 125: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:42:37.917Z",
+        "type": "info",
+        "message": "Syncing course 126 (ECO-SS)..."
+      },
+      {
+        "time": "2026-10-16T22:42:42.924Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 126: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:42:42.924Z",
+        "type": "info",
+        "message": "Syncing course 127 (ECO-SS)..."
+      },
+      {
+        "time": "2026-10-16T22:42:47.932Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 127: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:42:47.932Z",
+        "type": "info",
+        "message": "Syncing course 128 (CMP-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:42:52.942Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 128: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:42:52.942Z",
+        "type": "info",
+        "message": "Syncing course 129 (CMP-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:42:57.952Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 129: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:42:57.952Z",
+        "type": "info",
+        "message": "Syncing course 130 (CMP-JSS)..."
+      },
+      {
+        "time": "2026-10-16T22:43:02.963Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 130: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:43:02.963Z",
+        "type": "info",
+        "message": "Syncing course 131 (PHE)..."
+      },
+      {
+        "time": "2026-10-16T22:43:07.982Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 131: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:43:07.982Z",
+        "type": "info",
+        "message": "Syncing course 132 (PHE)..."
+      },
+      {
+        "time": "2026-10-16T22:43:12.993Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 132: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:43:12.993Z",
+        "type": "info",
+        "message": "Syncing course 133 (PHE)..."
+      },
+      {
+        "time": "2026-10-16T22:43:18.003Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 133: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:43:18.003Z",
+        "type": "info",
+        "message": "Syncing course 134 (HIS-SS)..."
+      },
+      {
+        "time": "2026-10-16T22:43:23.008Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 134: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:43:23.008Z",
+        "type": "info",
+        "message": "Syncing course 135 (HIS-SS)..."
+      },
+      {
+        "time": "2026-10-16T22:43:28.012Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 135: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:43:28.012Z",
+        "type": "info",
+        "message": "Syncing course 136 (HIS-SS)..."
+      },
+      {
+        "time": "2026-10-16T22:43:33.013Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 136: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:43:33.014Z",
+        "type": "info",
+        "message": "Syncing course 137 (ECO-SS)..."
+      },
+      {
+        "time": "2026-10-16T22:43:38.016Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 137: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:43:38.016Z",
+        "type": "info",
+        "message": "Syncing course 138 (FAC-SS)..."
+      },
+      {
+        "time": "2026-10-16T22:43:43.030Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 138: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:43:43.030Z",
+        "type": "info",
+        "message": "Syncing course 139 (LIT-SS)..."
+      },
+      {
+        "time": "2026-10-16T22:43:48.043Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 139: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-16T22:43:48.043Z",
+        "type": "info",
+        "message": "Syncing course 140 (MTH-SS)..."
+      },
+      {
+        "time": "2026-10-17T18:12:18.892Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 140: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-17T18:12:18.892Z",
+        "type": "info",
+        "message": "Syncing course 142 (CIV-SS)..."
+      },
+      {
+        "time": "2026-10-17T18:12:23.903Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 142: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-17T18:12:23.903Z",
+        "type": "info",
+        "message": "Syncing course 143 (CIV-SS)..."
+      },
+      {
+        "time": "2026-10-17T18:12:28.914Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 143: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-17T18:12:28.914Z",
+        "type": "info",
+        "message": "Syncing course 144 (ENG-SS)..."
+      },
+      {
+        "time": "2026-10-17T18:12:33.919Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 144: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-17T18:12:33.919Z",
+        "type": "info",
+        "message": "Syncing course 145 (ENG-SS)..."
+      },
+      {
+        "time": "2026-10-17T18:12:38.924Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 145: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-17T18:12:38.924Z",
+        "type": "info",
+        "message": "Syncing course 146 (CIV-SS)..."
+      },
+      {
+        "time": "2026-10-17T18:12:43.939Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 146: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-17T18:12:43.940Z",
+        "type": "info",
+        "message": "Syncing course 147 (MTH-SS)..."
+      },
+      {
+        "time": "2026-10-17T18:12:48.954Z",
+        "type": "error",
+        "message": "Failed to fetch enrolled users for course 147: Moodle API request timed out after 15 seconds"
+      },
+      {
+        "time": "2026-10-17T18:12:48.954Z",
+        "type": "info",
+        "message": "Grade data collected for 0 students. Writing to database..."
+      },
+      {
+        "time": "2026-10-17T18:12:48.954Z",
+        "type": "info",
+        "message": "Writing 0 results to database..."
+      },
+      {
+        "time": "2026-10-17T18:12:48.954Z",
+        "type": "info",
+        "message": "Recalculating student subject positions across classes..."
+      },
+      {
+        "time": "2026-10-17T18:12:53.963Z",
+        "type": "warn",
+        "message": "Position calculation notice: \nInvalid `prisma.class.findMany()` invocation:\n\n\nCan't reach database server at `aws-0-eu-west-1.pooler.supabase.com:6543`\n\nPlease make sure your database server is running at `aws-0-eu-west-1.pooler.supabase.com:6543`."
+      },
+      {
+        "time": "2026-10-17T18:12:53.963Z",
+        "type": "success",
+        "message": "✅ Sync complete. Saved 0 result(s). Skipped 0. Errors: 60"
+      }
+    ]
+  },
+  {
     "startedAt": "2026-10-16T22:15:37.147Z",
     "completedAt": "2026-10-16T22:20:34.696Z",
     "session": "2026/2027",

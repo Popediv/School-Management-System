@@ -12,6 +12,8 @@ router.post('/', allowRoles(...ADMIN, 'TEACHER'), ctrl.upload);
 router.post('/upload-teacher-excel', allowRoles(...ADMIN, 'TEACHER'), uploadMw.single('file'), ctrl.uploadTeacherExcel);
 router.post('/upload-superadmin-excel', allowRoles('SUPER_ADMIN'), uploadMw.single('file'), ctrl.uploadSuperadminExcel);
 router.get('/class-scores', allowRoles(...ADMIN, 'TEACHER'), ctrl.getClassScores);
+router.get('/psychomotor', allowRoles(...ADMIN, 'TEACHER'), ctrl.getPsychomotor);
+router.post('/psychomotor', allowRoles(...ADMIN, 'TEACHER'), ctrl.savePsychomotor);
 router.get('/student/:studentId', allowRoles(...ADMIN, 'TEACHER', 'PARENT', 'STUDENT'), ctrl.getByStudent);
 router.get('/report-card/:studentId', allowRoles(...ADMIN, 'TEACHER', 'PARENT', 'STUDENT'), ctrl.getReportCard);
 router.post('/calculate', allowRoles(...ADMIN), ctrl.calculate);

@@ -1,16 +1,14 @@
 /**
- * Calculates grade from total score (Nigerian WAEC style)
+ * Calculates grade from total score
+ * Scale: A (75–100), B (65–74), C (55–64), D (45–54), E (40–44), F (0–39)
  */
 function calculateGrade(total) {
-  if (total >= 75) return 'A1';
-  if (total >= 70) return 'B2';
-  if (total >= 65) return 'B3';
-  if (total >= 60) return 'C4';
-  if (total >= 55) return 'C5';
-  if (total >= 50) return 'C6';
-  if (total >= 45) return 'D7';
-  if (total >= 40) return 'E8';
-  return 'F9';
+  if (total >= 75) return 'A';
+  if (total >= 65) return 'B';
+  if (total >= 55) return 'C';
+  if (total >= 45) return 'D';
+  if (total >= 40) return 'E';
+  return 'F';
 }
 
 /**
@@ -18,9 +16,12 @@ function calculateGrade(total) {
  */
 function gradeRemark(grade) {
   const map = {
-    A1: 'Excellent', B2: 'Very Good', B3: 'Good',
-    C4: 'Credit',   C5: 'Credit',    C6: 'Credit',
-    D7: 'Pass',     E8: 'Pass',      F9: 'Fail',
+    A: 'Excellent',
+    B: 'Very Good',
+    C: 'Good',
+    D: 'Pass',
+    E: 'Poor',
+    F: 'Fail',
   };
   return map[grade] || '';
 }

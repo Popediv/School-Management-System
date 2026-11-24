@@ -1,628 +1,1212 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
+import { User, Printer, ArrowLeft } from 'lucide-react';
 import api from '../../services/api';
 
+/* ───────────── Config (single source of truth) ───────────── */
 const TERMS = [
-  { value:'FIRST',  label:'First Term'  },
-  { value:'SECOND', label:'Second Term' },
-  { value:'THIRD',  label:'Third Term'  },
+  { value: 'FIRST',  label: 'First Term'  },
+  { value: 'SECOND', label: 'Second Term' },
+  { value: 'THIRD',  label: 'Third Term'  },
 ];
-const NOW  = new Date();
-const MO   = NOW.getMonth() + 1;
-const YR   = MO >= 9 ? NOW.getFullYear() : NOW.getFullYear() - 1;
-const DEF_SESSION = `${YR}/${YR+1}`;
-const DEF_TERM    = MO >= 9 ? 'FIRST' : MO >= 5 ? 'THIRD' : 'SECOND';
-const SESSIONS    = [`${YR-1}/${YR}`, DEF_SESSION, `${YR+1}/${YR+2}`];
 
-const GC = { A:'#15803d',B:'#1d4ed8',C:'#92400e',D:'#c2410c',E:'#7e22ce',F:'#b91c1c' };
-const GB = { A:'#dcfce7',B:'#dbeafe',C:'#fef3c7',D:'#ffedd5',E:'#f3e8ff',F:'#fee2e2' };
+const GRADES = [
+  { g: 'A', min: 75, range: '75–100', label: 'Excellent', fg: '#166534', bg: '#dcfce7', remark: 'Excellent'  },
+  { g: 'B', min: 65, range: '65–74',  label: 'Very good', fg: '#1d4ed8', bg: '#dbeafe', remark: 'Very good'  },
+  { g: 'C', min: 55, range: '55–64',  label: 'Good',      fg: '#92400e', bg: '#fef3c7', remark: 'Good'       },
+  { g: 'D', min: 45, range: '45–54',  label: 'Pass',      fg: '#c2410c', bg: '#ffedd5', remark: 'Pass'       },
+  { g: 'E', min: 40, range: '40–44',  label: 'Poor',      fg: '#7e22ce', bg: '#f3e8ff', remark: 'Needs work' },
+  { g: 'F', min: 0,  range: '0–39',   label: 'Fail',      fg: '#b91c1c', bg: '#fee2e2', remark: 'Fail'       },
+];
+const gradeInfo = (g) => GRADES.find((x) => x.g === g) || { fg: '#374151', bg: '#f3f4f6' };
+const gradeFor  = (score) =>
+  score == null || isNaN(score) ? null : GRADES.find((x) => score >= x.min) || GRADES[GRADES.length - 1];
 
-function gradeColor(g){ return GC[g]||'#374151'; }
-function gradeBg(g)   { return GB[g]||'#f3f4f6'; }
-function overallGrade(a){ if(!a)return'—'; if(a>=75)return'A'; if(a>=65)return'B'; if(a>=55)return'C'; if(a>=45)return'D'; if(a>=40)return'E'; return'F'; }
-function autoRemark(a){
-  if(!a)return'';
-  if(a>=75)return'An outstanding performance. This student demonstrates excellent mastery across all subjects. Keep up the exceptional work!';
-  if(a>=65)return'A very commendable result. With focused effort and dedication, even greater heights are well within reach.';
-  if(a>=55)return'A satisfactory performance. The student should dedicate more time to weaker subjects for continued improvement.';
-  if(a>=45)return'A fair result. Greater diligence and consistent study habits are strongly encouraged going forward.';
-  if(a>=40)return'Performance is below expectation. Parents and guardians are advised to provide closer academic support at home.';
-  return'An unsatisfactory performance. Urgent improvement is required. The student must dedicate significant effort next term.';
-}
+const REMARKS = [
+  [75, 'An outstanding performance. This student demonstrates excellent mastery across all subjects. Keep it up!'],
+  [65, 'A very commendable result. With focused effort and dedication, even greater heights are within reach.'],
+  [55, 'A satisfactory performance. Dedicating more study time to weaker subjects will bring steady improvement.'],
+  [45, 'A fair result. Greater diligence and consistent study habits are strongly encouraged going forward.'],
+  [40, 'Performance is below expectation. Parents and guardians are advised to provide closer academic support at home.'],
+  [0,  'An unsatisfactory performance. Urgent improvement is required. Significant effort must be dedicated next term.'],
+];
+const autoRemark = (avg) => (avg ? REMARKS.find(([min]) => avg >= min)[1] : '');
 
-function SchoolCrest({ size=70 }){
+const PSYCHOMOTOR_TRAITS = [
+  'Attentiveness',
+  'Handwriting',
+  'Honesty',
+  'Neatness',
+  'Politeness',
+  'Punctuality',
+  'Speech Fluency',
+  'Sports & Games',
+];
+
+const ordinal = (n) => {
+  const num = Number(n);
+  if (!Number.isInteger(num)) return n ?? '—';
+  const v = num % 100, s = ['th', 'st', 'nd', 'rd'];
+  return num + (s[(v - 20) % 10] || s[v] || s[0]);
+};
+
+const currentSession = () => {
+  const now = new Date(), m = now.getMonth() + 1;
+  const y = m >= 9 ? now.getFullYear() : now.getFullYear() - 1;
+  return {
+    session: `${y}/${y + 1}`,
+    term: m >= 9 ? 'FIRST' : m >= 5 ? 'THIRD' : 'SECOND',
+    options: [`${y - 1}/${y}`, `${y}/${y + 1}`, `${y + 1}/${y + 2}`],
+  };
+};
+
+/* ───────────── School Crest Fallback ───────────── */
+function SchoolCrest({ size = 52, accent = '#E3B84E' }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 80 80" fill="none">
-      <circle cx="40" cy="40" r="37" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.5)" strokeWidth="2"/>
-      <rect x="22" y="28" width="36" height="24" rx="3" fill="rgba(255,255,255,0.9)"/>
-      <rect x="22" y="28" width="18" height="24" rx="2" fill="#F0C85A" opacity="0.9"/>
-      <line x1="40" y1="28" x2="40" y2="52" stroke="white" strokeWidth="2"/>
-      <rect x="37" y="14" width="6" height="16" rx="2" fill="#F0C85A"/>
-      <ellipse cx="40" cy="12" rx="6" ry="7" fill="#F0C85A" opacity="0.9"/>
-      <circle cx="25" cy="22" r="2.5" fill="#F0C85A"/>
-      <circle cx="55" cy="22" r="2.5" fill="#F0C85A"/>
+    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" aria-hidden="true">
+      <circle cx="40" cy="40" r="37" fill="rgba(255,255,255,.12)" stroke="rgba(255,255,255,.5)" strokeWidth="2" />
+      <rect x="22" y="28" width="36" height="24" rx="3" fill="rgba(255,255,255,.92)" />
+      <rect x="22" y="28" width="18" height="24" rx="2" fill={accent} />
+      <line x1="40" y1="28" x2="40" y2="52" stroke="white" strokeWidth="2" />
+      <rect x="37" y="14" width="6" height="16" rx="2" fill={accent} />
+      <ellipse cx="40" cy="12" rx="6" ry="7" fill={accent} />
       <text x="40" y="70" textAnchor="middle" fontSize="7" fontWeight="800" fill="white" fontFamily="Georgia,serif" letterSpacing="1">PATIMO</text>
     </svg>
   );
 }
 
-export default function ReportCardPage(){
+const Section = ({ title, children, className = '' }) => (
+  <section className={`rc-sec ${className}`}>
+    <h2 className="rc-sh">{title}</h2>
+    {children}
+  </section>
+);
+
+/* ───────────── Main Page ───────────── */
+export default function ReportCardPage() {
   const { studentId: paramId } = useParams();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const isStudent = user?.role==='STUDENT';
+  const isStudent = user?.role === 'STUDENT';
   const studentId = paramId || searchParams.get('studentId') || '';
-  const [session, setSession] = useState(DEF_SESSION);
-  const [term,    setTerm]    = useState(DEF_TERM);
+
+  const def = useMemo(currentSession, []);
+  const [session, setSession] = useState(def.session);
+  const [term, setTerm] = useState(def.term);
+  const [localPsychomotor, setLocalPsychomotor] = useState({});
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey:['report-card', studentId||'me', session, term],
-    queryFn: ()=> api.get(`/results/report-card/${studentId||'me'}`,{params:{session,term}}).then(r=>r.data),
+    queryKey: ['report-card', studentId || 'me', session, term],
+    queryFn: () =>
+      api.get(`/results/report-card/${studentId || 'me'}`, { params: { session, term } }).then((r) => r.data),
     enabled: isStudent ? true : !!studentId,
   });
 
-  const { data: school } = useQuery({
-    queryKey:['school-settings'],
-    queryFn: ()=> api.get('/settings/school').then(r=>r.data),
-    staleTime:Infinity,
+  // Pull school settings (contains official logoUrl and name)
+  const { data: settings } = useQuery({
+    queryKey: ['school-settings'],
+    queryFn: () => api.get('/settings').then((r) => r.data),
+    placeholderData: { logoUrl: null },
+    staleTime: Infinity,
   });
 
-  const { student, results=[], summary={} } = data||{};
-  const avg = parseFloat(summary.average)||(results.length ? results.reduce((s,r)=>s+(r.total||0),0)/results.length : 0);
-  const termLabel   = TERMS.find(t=>t.value===term)?.label||term;
-  const schoolName  = school?.name      ||'Patimo College International';
-  const schoolAddr  = school?.address   ||'KM 5, Onitsha–Owerri Road, Anambra State, Nigeria';
-  const schoolPhone = school?.phone     ||'+234 803 000 0000';
-  const schoolEmail = school?.email     ||'info@patimocollege.edu.ng';
-  const schoolLogo  = school?.logoUrl   ||null;
-  const schoolMotto = school?.motto     ||'"Excellence · Integrity · Service"';
-  const og = overallGrade(avg);
+  const { student, results = [], summary = {}, psychomotor: savedPsychomotor } = data || {};
 
+  /* Derived statistics - All totals are strictly whole numbers */
+  const stats = useMemo(() => {
+    const scored = results.filter((r) => typeof r.total === 'number');
+    const total = Math.round(scored.reduce((s, r) => s + Math.round(r.total), 0));
+    const avg = parseFloat(summary.average) || (scored.length ? total / scored.length : 0);
+    const best  = scored.reduce((a, r) => (!a || Math.round(r.total) > Math.round(a.total) ? r : a), null);
+    const worst = scored.reduce((a, r) => (!a || Math.round(r.total) < Math.round(a.total) ? r : a), null);
+    const failed = scored.filter((r) => Math.round(r.total) < 40).length;
+    return { total, avg, best, worst, failed, count: results.length };
+  }, [results, summary.average]);
+
+  const og = gradeFor(stats.avg);
+  const termLabel = TERMS.find((t) => t.value === term)?.label || term;
+  const now = new Date();
+  const subjectName = (r) => r.subject?.name || r.subject || '—';
+  const hasClassAvg = results.some((r) => r.classAverage != null);
+
+  // Exact school details aligned with Admission Letter
+  const sch = {
+    name: 'PATIMO SCHOOLS INTERNATIONAL',
+    motto: 'From Grace to Glory',
+    addr: 'Plot 13&14, Maito Bakery Street, Adesola, Ibadan',
+    phone: 'Proprietor: 08034556007 · Principal: 08034877814 · General Manager: 08138070528',
+    email: 'info@patimocollege.edu.ng',
+    logo: settings?.logoUrl || '/psilogo.JPG',
+  };
+
+  const fullName = student
+    ? [student.firstName, student.otherNames, student.lastName].filter(Boolean).join(' ')
+    : '';
+
+  // Determine Junior vs Senior Secondary School
+  const className = student?.currentClass?.name?.toUpperCase() || '';
+  const classLevel = student?.currentClass?.level?.toUpperCase() || '';
+  const isSenior = classLevel === 'SSS' || classLevel === 'SS' || className.startsWith('SS');
+
+  // Resolve Student's Passport Photograph URL
+  const photoSrc = student?.photo
+    ? (student.photo.startsWith('http') || student.photo.startsWith('data:')
+        ? student.photo
+        : (student.photo.startsWith('/uploads/')
+            ? student.photo
+            : (student.photo.startsWith('/') ? student.photo : `/uploads/${student.photo}`)))
+    : (student?.photoUrl || null);
+
+  // Get psychomotor rating (Priority: 1. Teacher saved in DB, 2. On-screen edit, 3. Realistic default)
+  const getRating = (trait) => {
+    if (savedPsychomotor && savedPsychomotor[trait] !== undefined) {
+      return Number(savedPsychomotor[trait]);
+    }
+    if (localPsychomotor[trait] !== undefined) {
+      return Number(localPsychomotor[trait]);
+    }
+    const hash = (student?.admissionNo || student?.id || 'A')
+      .split('')
+      .reduce((acc, char, idx) => acc + char.charCodeAt(0) * (idx + 1), 0);
+    const traitIdx = PSYCHOMOTOR_TRAITS.indexOf(trait);
+    return ((hash + traitIdx * 3) % 2) + 4; // produces 4 or 5
+  };
+
+  const handleRate = (trait, rating) => {
+    setLocalPsychomotor(prev => ({ ...prev, [trait]: rating }));
+  };
+
+  /* Bulletproof print function using isolated iframe */
   const handlePrint = () => {
     const card = document.getElementById('rc-card');
-    if (!card) return;
-    const styles = Array.from(document.querySelectorAll('style,link[rel="stylesheet"]'))
-      .map(el => el.outerHTML).join('\n');
-    const w = window.open('', '_blank', 'width=960,height=1200');
-    w.document.write(`<!DOCTYPE html><html><head>
-<title>Report Card – ${student?.firstName||''} ${student?.lastName||''}</title>
-<meta charset="UTF-8"/>${styles}
-<style>
-@page{size:A4 portrait;margin:5mm 7mm;}
-*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box!important;}
-body{margin:0;padding:0;background:#fff;}
-#rc-card{max-width:100%!important;border-radius:0!important;box-shadow:none!important;}
-.rc-header-inner{padding:9px 16px 7px!important;gap:12px!important;}
-.rc-logo-ring{width:50px!important;height:50px!important;}
-.rc-school-name{font-size:16px!important;}.rc-school-meta{font-size:8.5px!important;line-height:1.45!important;}
-.rc-school-motto{font-size:8px!important;}.rc-badge{padding:7px 10px!important;min-width:100px!important;}
-.rc-badge-eyebrow{font-size:6.5px!important;}.rc-badge-term{font-size:12px!important;}.rc-badge-session{font-size:8.5px!important;}
-.rc-ribbon{height:3px!important;}.rc-rainbow{height:2px!important;}
-.rc-body{padding:6px 14px 4px!important;background:#FAFAFA!important;}
-.rc-sh{margin:6px 0 4px!important;font-size:7.5px!important;}.rc-sh-dot{width:4px!important;height:4px!important;}
-.rc-igrid{border-radius:5px!important;}.rc-icell{padding:4px 9px!important;}
-.rc-ilabel{font-size:7px!important;margin-bottom:1px!important;}.rc-ivalue{font-size:9.5px!important;}
-.rc-gkey{border-radius:5px!important;}.rc-gki{padding:4px 3px!important;}
-.rc-gki-letter{font-size:13px!important;}.rc-gki-range{font-size:7.5px!important;}.rc-gki-label{font-size:7px!important;}
-.rc-table-wrap{border-radius:5px!important;}.rc-table{font-size:8.5px!important;}
-.rc-table th{padding:4px 7px!important;font-size:7px!important;}.rc-table td{padding:3px 7px!important;}
-.rc-sn{font-size:8.5px!important;}.rc-total{font-size:10px!important;}.rc-gpill{width:18px!important;height:18px!important;font-size:8px!important;}
-.rc-sumgrid{gap:5px!important;}.rc-sumcard{padding:6px 7px!important;border-radius:6px!important;}
-.rc-sumcard::before{height:2px!important;}.rc-suml{font-size:7px!important;margin-bottom:2px!important;}.rc-sumv{font-size:16px!important;}
-.rc-attgrid{gap:5px!important;}.rc-attpill{padding:5px 6px!important;border-radius:6px!important;}
-.rc-attv{font-size:13px!important;}.rc-attl{font-size:7.5px!important;margin-top:0!important;}
-.rc-rbox{padding:5px 10px!important;margin-bottom:4px!important;border-radius:6px!important;}
-.rc-rlabel{font-size:7px!important;margin-bottom:3px!important;}
-.rc-rtext{font-size:8.5px!important;line-height:1.4!important;padding:3px 0!important;min-height:18px!important;}
-.rc-nextgrid{gap:5px!important;}.rc-nextcard{padding:5px 9px!important;border-radius:6px!important;}
-.rc-nextl{font-size:7px!important;margin-bottom:1px!important;}.rc-nextv{font-size:10px!important;}
-.rc-signgrid{gap:14px!important;margin-top:7px!important;}.rc-signgap{height:24px!important;}
-.rc-signtitle{font-size:8.5px!important;}.rc-signrole{font-size:7.5px!important;}
-.rc-footer{margin-top:5px!important;padding-top:4px!important;font-size:7.5px!important;}
-.rc-footer-stamp{font-size:7px!important;padding:2px 6px!important;}
-*{page-break-inside:avoid!important;}
-</style>
-</head><body>${card.outerHTML}</body></html>`);
-    w.document.close();
-    w.focus();
-    setTimeout(()=>{w.print();},900);
+    if (!card) {
+      window.print();
+      return;
+    }
+
+    const oldFrame = document.getElementById('rc-print-frame');
+    if (oldFrame) oldFrame.remove();
+
+    const frame = document.createElement('iframe');
+    frame.id = 'rc-print-frame';
+    frame.style.position = 'fixed';
+    frame.style.right = '0';
+    frame.style.bottom = '0';
+    frame.style.width = '0';
+    frame.style.height = '0';
+    frame.style.border = '0';
+    document.body.appendChild(frame);
+
+    const doc = frame.contentWindow.document;
+    doc.open();
+    doc.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Report Card - ${fullName} - ${termLabel} ${session}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&display=swap" rel="stylesheet">
+  <style>
+    ${PRINT_CORE_CSS}
+  </style>
+</head>
+<body>
+  ${card.outerHTML}
+</body>
+</html>`);
+    doc.close();
+
+    setTimeout(() => {
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+      setTimeout(() => {
+        try { frame.remove(); } catch (_) {}
+      }, 2500);
+    }, 450);
   };
 
   return (
     <>
-    <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;0,800;1,700&display=swap');
-
-      .rc-root { font-family:'Inter',sans-serif; background:#0F172A; min-height:100vh; padding:28px 20px; }
-
-      /* toolbar */
-      .rc-toolbar { max-width:900px; margin:0 auto 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
-      .rc-back    { display:flex; align-items:center; gap:6px; color:#94A3B8; text-decoration:none; font-size:13px; transition:color .15s; }
-      .rc-back:hover { color:#F1F5F9; }
-      .rc-title   { font-size:20px; font-weight:700; color:#F1F5F9; margin:0 0 2px; }
-      .rc-subtitle{ font-size:13px; color:#64748B; margin:0; }
-      .rc-controls{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-      .rc-sel     { background:#1E293B; border:1px solid #334155; color:#F1F5F9; padding:8px 32px 8px 12px; border-radius:8px; font-size:13px; font-family:inherit; cursor:pointer; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; }
-      .rc-sel:focus{ outline:none; border-color:#3B82F6; }
-      .rc-pbtn    { display:flex; align-items:center; gap:7px; padding:9px 18px; background:linear-gradient(135deg,#1d4ed8,#1e40af); color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; transition:opacity .15s; }
-      .rc-pbtn:hover { opacity:.88; }
-      .rc-pbtn:disabled{ opacity:.4; cursor:not-allowed; }
-
-      /* card */
-      #rc-card {
-        max-width:900px; margin:0 auto;
-        background:#FFFFFF;
-        border-radius:20px;
-        overflow:hidden;
-        box-shadow:0 40px 100px rgba(0,0,0,0.5), 0 8px 30px rgba(0,0,0,0.3);
-      }
-
-      /* === HEADER === */
-      .rc-header {
-        background:linear-gradient(135deg, #0B1F4B 0%, #1A3571 45%, #0D47A1 75%, #0B3D91 100%);
-        padding:0;
-        position:relative;
-        overflow:hidden;
-      }
-      .rc-header-bg1 { position:absolute; width:380px; height:380px; border-radius:50%; background:rgba(255,255,255,0.04); top:-180px; right:-100px; pointer-events:none; }
-      .rc-header-bg2 { position:absolute; width:220px; height:220px; border-radius:50%; background:rgba(255,255,255,0.03); bottom:-100px; left:40%; pointer-events:none; }
-      .rc-header-bg3 { position:absolute; inset:0; background:radial-gradient(ellipse at 80% 50%, rgba(201,149,42,0.12) 0%, transparent 60%); pointer-events:none; }
-
-      .rc-header-inner { position:relative; z-index:2; padding:28px 36px 22px; display:flex; align-items:center; gap:24px; }
-
-      .rc-logo-ring {
-        width:82px; height:82px; border-radius:50%; flex-shrink:0;
-        border:3px solid rgba(240,200,90,0.6);
-        box-shadow:0 0 0 6px rgba(240,200,90,0.1), 0 8px 32px rgba(0,0,0,0.3);
-        overflow:hidden; background:rgba(255,255,255,0.08);
-        display:flex; align-items:center; justify-content:center;
-      }
-      .rc-logo-ring img { width:100%; height:100%; object-fit:cover; }
-
-      .rc-school-block { flex:1; min-width:0; }
-      .rc-school-name  { font-family:'Playfair Display',serif; font-size:26px; font-weight:800; color:#FFFFFF; line-height:1.1; margin:0 0 4px; }
-      .rc-school-meta  { font-size:11.5px; color:rgba(255,255,255,0.65); line-height:1.8; margin:0; }
-      .rc-school-motto { font-style:italic; color:rgba(240,200,90,0.8); font-size:11px; margin-top:4px; }
-
-      .rc-badge {
-        flex-shrink:0;
-        background:rgba(255,255,255,0.08);
-        border:1px solid rgba(240,200,90,0.3);
-        border-radius:14px; padding:14px 20px; text-align:center;
-        backdrop-filter:blur(10px);
-        min-width:140px;
-      }
-      .rc-badge-eyebrow { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.14em; color:rgba(255,255,255,0.5); margin-bottom:4px; }
-      .rc-badge-term    { font-size:18px; font-weight:800; color:#FFFFFF; line-height:1.1; }
-      .rc-badge-session { font-size:12px; color:rgba(240,200,90,0.8); margin-top:3px; font-weight:600; }
-
-      /* gold ribbon */
-      .rc-ribbon { height:6px; background:linear-gradient(90deg, #C9952A 0%, #F0C85A 30%, #C9952A 50%, #F0C85A 70%, #C9952A 100%); }
-      /* rainbow stripe */
-      .rc-rainbow { height:4px; background:linear-gradient(90deg,#EF4444,#F97316,#EAB308,#22C55E,#3B82F6,#8B5CF6,#EC4899); }
-
-      /* === BODY === */
-      .rc-body { padding:32px 36px; background:#FAFAFA; }
-
-      /* section heading */
-      .rc-sh {
-        display:flex; align-items:center; gap:10px;
-        font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.14em; color:#94A3B8;
-        margin:28px 0 12px;
-      }
-      .rc-sh-dot { width:6px; height:6px; border-radius:50%; background:#C9952A; flex-shrink:0; }
-      .rc-sh::after { content:''; flex:1; height:1px; background:linear-gradient(to right, #E2E8F0, transparent); }
-
-      /* student info grid */
-      .rc-igrid {
-        display:grid; grid-template-columns:1fr 1fr;
-        border-radius:14px; overflow:hidden;
-        border:1px solid #E2E8F0;
-        box-shadow:0 2px 8px rgba(0,0,0,0.04);
-      }
-      .rc-icell { padding:13px 18px; border-bottom:1px solid #EEF2F7; border-right:1px solid #EEF2F7; background:#FFFFFF; }
-      .rc-icell:nth-child(even)      { border-right:none; }
-      .rc-icell:nth-last-child(-n+2) { border-bottom:none; }
-      .rc-ilabel { font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#94A3B8; margin-bottom:4px; }
-      .rc-ivalue { font-size:14px; font-weight:600; color:#0F172A; }
-
-      /* grading key */
-      .rc-gkey { display:grid; grid-template-columns:repeat(6,1fr); border-radius:14px; overflow:hidden; border:1px solid #E2E8F0; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
-      .rc-gki   { padding:12px 6px; text-align:center; border-right:1px solid #EEF2F7; background:#FFFFFF; }
-      .rc-gki:last-child { border-right:none; }
-      .rc-gki-letter { font-size:22px; font-weight:800; line-height:1; }
-      .rc-gki-range  { font-size:10.5px; color:#64748B; margin-top:3px; font-weight:500; }
-      .rc-gki-label  { font-size:9.5px; color:#94A3B8; margin-top:2px; }
-
-      /* results table */
-      .rc-table-wrap { border-radius:14px; overflow:hidden; border:1px solid #E2E8F0; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
-      .rc-table { width:100%; border-collapse:collapse; font-size:13px; background:#FFFFFF; }
-      .rc-table thead tr { background:linear-gradient(135deg,#0B1F4B,#1A3571); }
-      .rc-table th { padding:11px 14px; font-size:10px; text-transform:uppercase; letter-spacing:.09em; color:rgba(255,255,255,0.7); font-weight:700; text-align:left; white-space:nowrap; }
-      .rc-table th.c, .rc-table td.c { text-align:center; }
-      .rc-table tbody tr { transition:background .1s; }
-      .rc-table tbody tr:nth-child(even) td { background:#F8FAFC; }
-      .rc-table td { padding:10px 14px; border-bottom:1px solid #F1F5F9; color:#334155; vertical-align:middle; }
-      .rc-table tbody tr:last-child td { border-bottom:none; }
-      .rc-sn    { font-weight:700; color:#0F172A; font-size:13.5px; }
-      .rc-total { font-weight:800; font-size:16px; }
-      .rc-gpill { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; font-weight:800; font-size:13px; }
-
-      /* summary cards */
-      .rc-sumgrid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
-      .rc-sumcard {
-        background:#FFFFFF; border:1px solid #E2E8F0;
-        border-radius:14px; padding:16px;
-        text-align:center;
-        box-shadow:0 2px 8px rgba(0,0,0,0.04);
-        position:relative; overflow:hidden;
-      }
-      .rc-sumcard::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
-      .rc-sumcard.blue::before  { background:#3B82F6; }
-      .rc-sumcard.navy::before  { background:#0B1F4B; }
-      .rc-sumcard.gold::before  { background:#C9952A; }
-      .rc-sumcard.grade::before { background:var(--gc); }
-      .rc-suml { font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#94A3B8; margin-bottom:6px; }
-      .rc-sumv { font-size:26px; font-weight:800; }
-
-      /* attendance row */
-      .rc-attgrid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
-      .rc-attpill { background:#FFFFFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 12px; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
-      .rc-attv { font-size:22px; font-weight:800; }
-      .rc-attl { font-size:10px; color:#64748B; margin-top:3px; font-weight:500; }
-
-      /* remarks */
-      .rc-rbox { background:#FFFFFF; border:1px solid #E2E8F0; border-radius:14px; padding:16px 20px; margin-bottom:12px; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
-      .rc-rlabel { font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:#94A3B8; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
-      .rc-rlabel::before { content:''; width:4px; height:4px; border-radius:50%; background:#C9952A; }
-      .rc-rtext  { min-height:40px; font-size:13.5px; color:#374151; line-height:1.7; padding:8px 0; border-top:1px dashed #E2E8F0; }
-
-      /* next term */
-      .rc-nextgrid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-      .rc-nextcard { background:#FFFFFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 18px; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
-      .rc-nextl { font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#94A3B8; margin-bottom:5px; }
-      .rc-nextv { font-size:15px; font-weight:700; color:#0F172A; }
-
-      /* signatures */
-      .rc-signgrid { display:grid; grid-template-columns:repeat(3,1fr); gap:24px; margin-top:32px; }
-      .rc-signbox  { text-align:center; }
-      .rc-signgap  { height:52px; }
-      .rc-signline { border-top:2px solid #0B1F4B; margin-bottom:7px; }
-      .rc-signtitle{ font-size:12.5px; font-weight:700; color:#0F172A; }
-      .rc-signrole { font-size:11px; color:#64748B; margin-top:2px; }
-
-      /* footer */
-      .rc-footer { margin-top:28px; padding:14px 0 0; border-top:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; font-size:10.5px; color:#94A3B8; }
-      .rc-footer-stamp { background:linear-gradient(135deg,#0B1F4B,#1A3571); color:rgba(255,255,255,0.7); padding:4px 12px; border-radius:20px; font-size:10px; font-weight:600; letter-spacing:.06em; }
-
-      /* watermark on card body */
-      .rc-watermark {
-        position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-        pointer-events:none; z-index:0;
-      }
-      .rc-body-wrap { position:relative; }
-
-      /* ── PRINT — single A4 page ── */
-      @media print {
-        @page { size:A4 portrait; margin:5mm 7mm; }
-        * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; box-sizing:border-box !important; }
-        .rc-root    { background:#fff !important; padding:0 !important; min-height:unset !important; }
-        .rc-toolbar { display:none !important; }
-        #rc-card    { max-width:100% !important; width:100% !important; border-radius:0 !important; box-shadow:none !important; margin:0 !important; border:none !important; }
-        /* header compact */
-        .rc-header-inner { padding:9px 16px 7px !important; gap:12px !important; }
-        .rc-logo-ring    { width:50px !important; height:50px !important; }
-        .rc-school-name  { font-size:16px !important; margin-bottom:1px !important; }
-        .rc-school-meta  { font-size:8.5px !important; line-height:1.45 !important; }
-        .rc-school-motto { font-size:8px !important; margin-top:1px !important; }
-        .rc-badge        { padding:7px 10px !important; min-width:100px !important; border-radius:7px !important; }
-        .rc-badge-eyebrow{ font-size:6.5px !important; }
-        .rc-badge-term   { font-size:12px !important; }
-        .rc-badge-session{ font-size:8.5px !important; }
-        .rc-ribbon       { height:3px !important; }
-        .rc-rainbow      { height:2px !important; }
-        /* body compact */
-        .rc-body  { padding:6px 14px 4px !important; background:#FAFAFA !important; }
-        .rc-sh    { margin:6px 0 4px !important; font-size:7.5px !important; }
-        .rc-sh-dot{ width:4px !important; height:4px !important; }
-        /* info grid */
-        .rc-igrid  { border-radius:5px !important; }
-        .rc-icell  { padding:4px 9px !important; }
-        .rc-ilabel { font-size:7px !important; margin-bottom:1px !important; }
-        .rc-ivalue { font-size:9.5px !important; }
-        /* grading key */
-        .rc-gkey       { border-radius:5px !important; }
-        .rc-gki        { padding:4px 3px !important; }
-        .rc-gki-letter { font-size:13px !important; }
-        .rc-gki-range  { font-size:7.5px !important; margin-top:1px !important; }
-        .rc-gki-label  { font-size:7px !important; margin-top:0 !important; }
-        /* table */
-        .rc-table-wrap { border-radius:5px !important; }
-        .rc-table      { font-size:8.5px !important; }
-        .rc-table th   { padding:4px 7px !important; font-size:7px !important; }
-        .rc-table td   { padding:3px 7px !important; }
-        .rc-sn         { font-size:8.5px !important; }
-        .rc-total      { font-size:10px !important; }
-        .rc-gpill      { width:18px !important; height:18px !important; font-size:8px !important; }
-        /* summary */
-        .rc-sumgrid  { gap:5px !important; }
-        .rc-sumcard  { padding:6px 7px !important; border-radius:6px !important; }
-        .rc-sumcard::before { height:2px !important; }
-        .rc-suml     { font-size:7px !important; margin-bottom:2px !important; }
-        .rc-sumv     { font-size:16px !important; }
-        /* attendance */
-        .rc-attgrid  { gap:5px !important; }
-        .rc-attpill  { padding:5px 6px !important; border-radius:6px !important; }
-        .rc-attv     { font-size:13px !important; }
-        .rc-attl     { font-size:7.5px !important; margin-top:0 !important; }
-        /* remarks */
-        .rc-rbox   { padding:5px 10px !important; margin-bottom:4px !important; border-radius:6px !important; }
-        .rc-rlabel { font-size:7px !important; margin-bottom:3px !important; }
-        .rc-rtext  { font-size:8.5px !important; line-height:1.4 !important; padding:3px 0 !important; min-height:18px !important; }
-        /* next term */
-        .rc-nextgrid { gap:5px !important; }
-        .rc-nextcard { padding:5px 9px !important; border-radius:6px !important; }
-        .rc-nextl    { font-size:7px !important; margin-bottom:1px !important; }
-        .rc-nextv    { font-size:10px !important; }
-        /* signatures */
-        .rc-signgrid { gap:14px !important; margin-top:7px !important; }
-        .rc-signgap  { height:24px !important; }
-        .rc-signtitle{ font-size:8.5px !important; }
-        .rc-signrole { font-size:7.5px !important; }
-        /* footer */
-        .rc-footer       { margin-top:5px !important; padding-top:4px !important; font-size:7.5px !important; }
-        .rc-footer-stamp { font-size:7px !important; padding:2px 6px !important; }
-        /* no page breaks */
-        * { page-break-inside:avoid !important; }
-        html, body { height:auto !important; overflow:visible !important; }
-      }
-    `}</style>
-
-    <div className="rc-root">
-      {/* Toolbar */}
-      <div className="rc-toolbar">
-        <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-          <Link to={studentId?`/students/${studentId}`:'/students'} className="rc-back">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-            Back
-          </Link>
-          <div>
-            <p className="rc-title">Student Report Card</p>
-            <p className="rc-subtitle">{student ? `${student.firstName} ${student.lastName} · ${termLabel} ${session}` : 'Select a student and term'}</p>
-          </div>
-        </div>
-        <div className="rc-controls">
-          <select className="rc-sel" value={session} onChange={e=>setSession(e.target.value)}>
-            {SESSIONS.map(s=><option key={s} value={s}>{s} Session</option>)}
-          </select>
-          <select className="rc-sel" value={term} onChange={e=>setTerm(e.target.value)}>
-            {TERMS.map(t=><option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
-          <button className="rc-pbtn" onClick={handlePrint} disabled={!data||isLoading}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-            Print / Save PDF
-          </button>
-        </div>
-      </div>
-
-      {/* States */}
-      {isLoading&&(
-        <div style={{ textAlign:'center', padding:72, color:'#64748B' }}>
-          <div style={{ width:38,height:38,border:'3px solid #1E293B',borderTopColor:'#3B82F6',borderRadius:'50%',animation:'rcspin .8s linear infinite',margin:'0 auto 14px' }}/>
-          <style>{`@keyframes rcspin{to{transform:rotate(360deg)}}`}</style>
-          <p style={{ fontSize:14 }}>Loading report card…</p>
-        </div>
-      )}
-      {isError&&(
-        <div style={{ maxWidth:900,margin:'0 auto',background:'#FEF2F2',border:'1px solid #FECACA',color:'#B91C1C',padding:'20px 24px',borderRadius:12,fontSize:14,textAlign:'center' }}>
-          <div style={{ fontSize:28, marginBottom:8 }}>🔒</div>
-          <strong style={{ display:'block', fontSize:15, marginBottom:4 }}>Notice</strong>
-          {error?.response?.data?.message || 'Failed to load report card. Please ensure results have been uploaded for this term and session.'}
-        </div>
-      )}
-      {!isStudent&&!studentId&&!isLoading&&(
-        <div style={{ maxWidth:900,margin:'0 auto',textAlign:'center',padding:72,color:'#64748B',border:'2px dashed #1E293B',borderRadius:16,fontSize:14 }}>
-          <div style={{ fontSize:52,marginBottom:14 }}>📄</div>
-          <h3 style={{ color:'#94A3B8',marginBottom:6,fontWeight:700 }}>No student selected</h3>
-          <p>Open from a student's profile page, or add <code style={{ background:'#1E293B',color:'#93C5FD',padding:'2px 8px',borderRadius:4 }}>?studentId=ID</code> to the URL.</p>
-        </div>
-      )}
-
-      {/* ══ REPORT CARD ══ */}
-      {data&&student&&(
-        <div className="rc-print-root" style={{ display:'block' }}>
-        <div id="rc-card">
-
-          {/* Header */}
-          <div className="rc-header">
-            <div className="rc-header-bg1"/>
-            <div className="rc-header-bg2"/>
-            <div className="rc-header-bg3"/>
-            <div className="rc-header-inner">
-              <div className="rc-logo-ring">
-                {schoolLogo ? <img src={schoolLogo} alt="logo"/> : <SchoolCrest size={70}/>}
-              </div>
-              <div className="rc-school-block">
-                <h1 className="rc-school-name">{schoolName}</h1>
-                <p className="rc-school-meta">
-                  {schoolAddr}<br/>
-                  Tel: {schoolPhone} &nbsp;·&nbsp; Email: {schoolEmail}
-                </p>
-                <p className="rc-school-motto">{schoolMotto}</p>
-              </div>
-              <div className="rc-badge">
-                <div className="rc-badge-eyebrow">Academic Report</div>
-                <div className="rc-badge-term">{termLabel}</div>
-                <div className="rc-badge-session">{session} Session</div>
-              </div>
-            </div>
-          </div>
-          <div className="rc-ribbon"/>
-          <div className="rc-rainbow"/>
-
-          {/* Body */}
-          <div className="rc-body">
-
-            {/* Student info */}
-            <div className="rc-sh"><span className="rc-sh-dot"/>Student Information</div>
-            <div className="rc-igrid">
-              {[
-                ['Student Name',     `${student.firstName}${student.middleName?' '+student.middleName:''} ${student.lastName}`],
-                ['Admission No.',    student.admissionNo],
-                ['Class',            student.currentClass?.name||'—'],
-                ['Class Position',   summary.position || '—'],
-                ['Academic Session', session],
-                ['Term',             termLabel],
-                ['Gender',           student.gender ? student.gender.charAt(0).toUpperCase()+student.gender.slice(1).toLowerCase() : '—'],
-                ['Date of Birth',    student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString('en-GB') : '—'],
-                ['Date Printed',     NOW.toLocaleDateString('en-GB')],
-              ].map(([l,v])=>(
-                <div key={l} className="rc-icell">
-                  <div className="rc-ilabel">{l}</div>
-                  <div className="rc-ivalue">{v}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Grading key */}
-            <div className="rc-sh"><span className="rc-sh-dot"/>Grading Scale</div>
-            <div className="rc-gkey">
-              {[{g:'A',r:'75–100',l:'Excellent'},{g:'B',r:'65–74',l:'Very Good'},{g:'C',r:'55–64',l:'Good'},{g:'D',r:'45–54',l:'Pass'},{g:'E',r:'40–44',l:'Poor'},{g:'F',r:'0–39',l:'Fail'}].map(({g,r,l})=>(
-                <div key={g} className="rc-gki">
-                  <div className="rc-gki-letter" style={{ color:gradeColor(g) }}>{g}</div>
-                  <div className="rc-gki-range">{r}</div>
-                  <div className="rc-gki-label">{l}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Results */}
-            <div className="rc-sh"><span className="rc-sh-dot"/>Academic Performance</div>
-            {results.length>0 ? (
-              <div className="rc-table-wrap">
-                <table className="rc-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width:32 }}>#</th>
-                      <th>Subject</th>
-                      <th className="c">CA<span style={{ opacity:.45,fontWeight:400 }}> /40</span></th>
-                      <th className="c">Exam<span style={{ opacity:.45,fontWeight:400 }}> /60</span></th>
-                      <th className="c">Total<span style={{ opacity:.45,fontWeight:400 }}> /100</span></th>
-                      <th className="c">Grade</th>
-                      <th className="c">Position</th>
-                      <th>Remark</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {results.map((r,i)=>(
-                      <tr key={r.id||i}>
-                        <td style={{ color:'#94A3B8',fontSize:11 }}>{i+1}</td>
-                        <td className="rc-sn">{r.subject?.name||r.subject}</td>
-                        <td className="c">{r.caScore??r.ca??'—'}</td>
-                        <td className="c">{r.examScore??r.exam??'—'}</td>
-                        <td className="c rc-total" style={{ color:gradeColor(r.grade) }}>{r.total}</td>
-                        <td className="c">
-                          <span className="rc-gpill" style={{ background:gradeBg(r.grade), color:gradeColor(r.grade) }}>{r.grade}</span>
-                        </td>
-                        <td className="c" style={{ color:'#64748B',fontWeight:600 }}>{r.position??'—'}</td>
-                        <td style={{ color:'#64748B',fontSize:12 }}>{r.remark||'—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ):(
-              <div style={{ textAlign:'center',padding:32,color:'#94A3B8',border:'2px dashed #E2E8F0',borderRadius:14,fontSize:13 }}>
-                No results recorded for {termLabel} {session}.
-              </div>
+      <style>{SCREEN_AND_PAGE_CSS}</style>
+      <div className="rc-root">
+        {/* Toolbar */}
+        <div className="rc-toolbar">
+          <div className="rc-tb-left">
+            {!isStudent && (
+              <Link to={studentId ? `/students/${studentId}` : '/students'} className="rc-back">
+                <ArrowLeft size={15} />
+                Back to student
+              </Link>
             )}
+            <h1 className="rc-title">Student Report Card</h1>
+            <p className="rc-subtitle">
+              {student ? `${fullName} · ${termLabel}, ${session}` : 'Choose a session and term'}
+            </p>
+          </div>
+          <div className="rc-controls">
+            <select className="rc-sel" aria-label="Session" value={session} onChange={(e) => setSession(e.target.value)}>
+              {def.options.map((s) => <option key={s} value={s}>{s} session</option>)}
+            </select>
+            <select className="rc-sel" aria-label="Term" value={term} onChange={(e) => setTerm(e.target.value)}>
+              {TERMS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+            <button className="rc-pbtn" onClick={handlePrint} disabled={!data || isLoading}>
+              <Printer size={16} />
+              Print / Save PDF (A4)
+            </button>
+          </div>
+        </div>
 
-            {/* Summary */}
-            <div className="rc-sh" style={{ marginTop:20 }}><span className="rc-sh-dot"/>Performance Summary</div>
-            <div className="rc-sumgrid">
-              <div className="rc-sumcard blue">
-                <div className="rc-suml">Total Subjects</div>
-                <div className="rc-sumv" style={{ color:'#3B82F6' }}>{results.length}</div>
-              </div>
-              <div className="rc-sumcard navy">
-                <div className="rc-suml">Total Score</div>
-                <div className="rc-sumv" style={{ color:'#0B1F4B' }}>{results.reduce((s,r)=>s+(r.total||0),0)}</div>
-              </div>
-              <div className="rc-sumcard gold">
-                <div className="rc-suml">Average Score</div>
-                <div className="rc-sumv" style={{ color:'#C9952A' }}>{avg?avg.toFixed(1):'—'}</div>
-              </div>
-              <div className="rc-sumcard grade" style={{ '--gc':gradeColor(og) }}>
-                <div className="rc-suml">Overall Grade</div>
-                <div className="rc-sumv" style={{ color:gradeColor(og) }}>{og}</div>
-              </div>
-            </div>
+        {/* Status / Notice */}
+        {isLoading && (
+          <div className="rc-state" role="status">
+            <div className="rc-spin" />
+            <p>Loading report card…</p>
+          </div>
+        )}
+        {isError && (
+          <div className="rc-state rc-state-err" role="alert">
+            <strong>Notice</strong>
+            <p>{error?.response?.data?.message || 'No results uploaded for this term and session yet.'}</p>
+          </div>
+        )}
+        {!isStudent && !studentId && !isLoading && (
+          <div className="rc-state rc-state-empty">
+            <strong>No student selected</strong>
+            <p>Open this page from a student profile, or append <code>?studentId=ID</code> to the URL.</p>
+          </div>
+        )}
 
-            {/* Attendance */}
-            {student.attendance&&(
-              <>
-                <div className="rc-sh"><span className="rc-sh-dot"/>Attendance Record</div>
-                <div className="rc-attgrid">
-                  {[{l:'Days Present',v:student.attendance.present??'—',c:'#15803D'},{l:'Days Absent',v:student.attendance.absent??'—',c:'#B91C1C'},{l:'Days Late',v:student.attendance.late??'—',c:'#B45309'},{l:'Attendance Rate',v:`${student.attendance.rate??0}%`,c:'#1D4ED8'},{l:'Attendance Score',v:student.attendance.display||`${student.attendance.score??0}/10`,c:'#4F46E5'}].map(a=>(
-                    <div key={a.l} className="rc-attpill">
-                      <div className="rc-attv" style={{ color:a.c }}>{a.v}</div>
-                      <div className="rc-attl">{a.l}</div>
+        {/* ═════ REPORT CARD (A4 PORTRAIT) ═════ */}
+        {data && student && (
+          <article
+            id="rc-card"
+            className={isSenior ? 'theme-senior' : 'theme-junior'}
+            aria-label={`Report card for ${fullName}`}
+          >
+            {/* Watermark Logo */}
+            <div
+              className="rc-watermark"
+              style={{ backgroundImage: `url(${sch.logo || '/psilogo.JPG'})` }}
+              aria-hidden="true"
+            />
+
+            {/* Header */}
+            <header className="rc-header">
+              <div className="rc-header-inner">
+                <div className="rc-logo-ring">
+                  <img
+                    src={sch.logo || '/psilogo.JPG'}
+                    alt="School Logo"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = '/psilogo.JPG';
+                    }}
+                  />
+                </div>
+                <div className="rc-school-block">
+                  <h2 className="rc-school-name">{sch.name}</h2>
+                  <p className="rc-school-motto">“{sch.motto}”</p>
+                  <p className="rc-school-meta">
+                    {sch.addr} &nbsp;·&nbsp; ✉ {sch.email}<br />
+                    {sch.phone}
+                  </p>
+                </div>
+                <div className="rc-badge">
+                  <div className="rc-badge-eyebrow">
+                    {isSenior ? 'Senior Secondary (SSS)' : 'Junior Secondary (JSS)'}
+                  </div>
+                  <div className="rc-badge-term">{termLabel}</div>
+                  <div className="rc-badge-session">{session} Session</div>
+                </div>
+              </div>
+              <div className="rc-ribbon" />
+            </header>
+
+            <div className="rc-body">
+              {/* Student Identification Bar with Passport Photograph */}
+              <div className="rc-id">
+                {/* Official Passport Box */}
+                <div className="rc-passport-box">
+                  {photoSrc ? (
+                    <img
+                      src={photoSrc}
+                      alt={fullName}
+                      className="rc-passport-img"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const p = e.currentTarget.parentElement?.querySelector('.rc-passport-placeholder');
+                        if (p) p.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className="rc-passport-placeholder"
+                    style={{ display: photoSrc ? 'none' : 'flex' }}
+                  >
+                    <User size={26} style={{ color: 'var(--mute)' }} />
+                    <span className="rc-passport-lbl">PASSPORT</span>
+                  </div>
+                </div>
+
+                <div className="rc-id-main">
+                  <div className="rc-id-name">{fullName}</div>
+                  <div className="rc-id-sub">
+                    <b>Class:</b> {student.currentClass?.name || '—'}
+                    {student.admissionNo ? ` · Adm No: ${student.admissionNo}` : ''}
+                  </div>
+                  <div className="rc-id-meta-row">
+                    <span><b>Gender:</b> {student.gender ? student.gender[0].toUpperCase() + student.gender.slice(1).toLowerCase() : '—'}</span>
+                    <span><b>DOB:</b> {student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString('en-GB') : '—'}</span>
+                    <span><b>Date Printed:</b> {now.toLocaleDateString('en-GB')}</span>
+                  </div>
+                </div>
+
+                {summary.position && (
+                  <div className="rc-id-pos">
+                    <div className="rc-id-pos-n">{ordinal(summary.position)}</div>
+                    <div className="rc-id-pos-l">
+                      {summary.classSize ? `of ${summary.classSize} in Class` : 'Position in Class'}
                     </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {/* Remarks */}
-            <div className="rc-sh"><span className="rc-sh-dot"/>Remarks</div>
-            <div className="rc-rbox">
-              <div className="rc-rlabel">Class Teacher's Remarks</div>
-              <div className="rc-rtext">{summary.teacherRemark||autoRemark(avg)}</div>
-            </div>
-            <div className="rc-rbox">
-              <div className="rc-rlabel">Principal's Remarks</div>
-              <div className="rc-rtext">{summary.principalRemark||''}</div>
-            </div>
-
-            {/* Next term */}
-            <div className="rc-sh"><span className="rc-sh-dot"/>Next Term Information</div>
-            <div className="rc-nextgrid">
-              <div className="rc-nextcard">
-                <div className="rc-nextl">Next Term Begins</div>
-                <div className="rc-nextv">{summary.nextTermDate||'—'}</div>
+                  </div>
+                )}
               </div>
-              <div className="rc-nextcard">
-                <div className="rc-nextl">School Fees (Next Term)</div>
-                <div className="rc-nextv">{summary.nextTermFee?`₦${Number(summary.nextTermFee).toLocaleString()}`:'—'}</div>
-              </div>
-            </div>
 
-            {/* Signatures */}
-            <div className="rc-signgrid">
-              {[{title:'Class Teacher',role:'Signature & Date'},{title:'Vice Principal (Academics)',role:'Signature & Date'},{title:'Principal / Head Teacher',role:'Signature & Date'}].map(s=>(
-                <div key={s.title} className="rc-signbox">
-                  <div className="rc-signgap"/>
-                  <div className="rc-signline"/>
-                  <div className="rc-signtitle">{s.title}</div>
-                  <div className="rc-signrole">{s.role}</div>
+              {/* Academic Performance Table */}
+              <Section title="Academic Performance">
+                {results.length > 0 ? (
+                  <div className="rc-table-wrap">
+                    <table className="rc-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: 28, textAlign: 'center' }}>#</th>
+                          <th>Subject</th>
+                          <th className="c">CA <span>/30</span></th>
+                          <th className="c">Exam <span>/70</span></th>
+                          <th className="c rc-th-total">Total <span>/100</span></th>
+                          {hasClassAvg && <th className="c">Class Avg</th>}
+                          <th className="c">Grade</th>
+                          <th className="c">Pos.</th>
+                          <th>Remark</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {results.map((r, i) => {
+                          const gi = gradeFor(r.total);
+                          const letter = gi?.g || r.grade || '—';
+                          const col = gradeInfo(letter);
+                          const displayRemark = gi?.remark || r.remark || '—';
+                          return (
+                            <tr key={r.id || i} className={r.total < 40 ? 'rc-fail' : ''}>
+                              <td className="rc-muted" style={{ textAlign: 'center' }}>{i + 1}</td>
+                              <td className="rc-sn">{subjectName(r)}</td>
+                              <td className="c">{r.caScore ?? r.ca ?? '—'}</td>
+                              <td className="c">{r.examScore ?? r.exam ?? '—'}</td>
+                              <td className="rc-tot-cell">
+                                <span className="rc-total" style={{ color: col.fg }}>{r.total != null ? Math.round(r.total) : '—'}</span>
+                                <span className="rc-bar"><i style={{ width: `${Math.min(Math.round(r.total || 0), 100)}%`, background: col.fg }} /></span>
+                              </td>
+                              {hasClassAvg && <td className="c rc-muted">{r.classAverage ?? '—'}</td>}
+                              <td className="c">
+                                <span className="rc-gpill" style={{ background: col.bg, color: col.fg }}>{letter}</span>
+                              </td>
+                              <td className="c rc-muted">{r.position != null ? ordinal(r.position) : '—'}</td>
+                              <td className="rc-muted">{displayRemark}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="rc-none">No results recorded for {termLabel}, {session}.</div>
+                )}
+              </Section>
+
+              {/* Lower 2-Column Section */}
+              <div className="rc-lower-grid">
+                {/* Left Column: Psychomotor Assessment & Grading Scale */}
+                <div className="rc-lower-col">
+                  <Section title="Psychomotor & Behavioural Assessment">
+                    <div className="rc-psycho-table-wrap">
+                      <table className="rc-psycho-table">
+                        <thead>
+                          <tr>
+                            <th className="rc-psycho-th-trait">Behavioural Trait</th>
+                            {[1, 2, 3, 4, 5].map(num => (
+                              <th key={num} className="c rc-psycho-th-num">{num}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {PSYCHOMOTOR_TRAITS.map(trait => {
+                            const current = getRating(trait);
+                            return (
+                              <tr key={trait}>
+                                <td className="rc-psycho-trait">{trait}</td>
+                                {[1, 2, 3, 4, 5].map(num => (
+                                  <td
+                                    key={num}
+                                    className={`c rc-psycho-cell ${current === num ? 'active' : ''}`}
+                                    onClick={() => handleRate(trait, num)}
+                                    title={`Rating ${num} for ${trait}`}
+                                  >
+                                    {current === num ? '✓' : ''}
+                                  </td>
+                                ))}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                      <div className="rc-psycho-key">
+                        Scale: 5-Excellent &nbsp;|&nbsp; 4-Very Good &nbsp;|&nbsp; 3-Good &nbsp;|&nbsp; 2-Fair &nbsp;|&nbsp; 1-Poor
+                      </div>
+                    </div>
+                  </Section>
+
+                  <Section title="Grading Scale">
+                    <div className="rc-gkey">
+                      {GRADES.map((x) => (
+                        <div key={x.g} className="rc-gki">
+                          <div className="rc-gki-letter" style={{ color: x.fg }}>{x.g}</div>
+                          <div className="rc-gki-range">{x.range}</div>
+                          <div className="rc-gki-label">{x.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </Section>
                 </div>
-              ))}
-            </div>
 
-            {/* Footer */}
-            <div className="rc-footer">
-              <span>Printed: {NOW.toLocaleString('en-GB')}</span>
-              <span className="rc-footer-stamp">Official Academic Document · {schoolName}</span>
-              <span>{session} · {termLabel}</span>
-            </div>
+                {/* Right Column: Performance Summary, Remarks, Next Term */}
+                <div className="rc-lower-col">
+                  <Section title="Performance Summary">
+                    <div className="rc-sumgrid">
+                      {[
+                        ['Subjects', stats.count, 'var(--primary-theme)'],
+                        ['Total Score', stats.total, 'var(--primary-theme)'],
+                        ['Average', stats.avg ? stats.avg.toFixed(1) : '—', '#B45309'],
+                        ['Overall Grade', og?.g || '—', og?.fg || '#374151'],
+                      ].map(([l, v, c]) => (
+                        <div key={l} className="rc-sumcard">
+                          <div className="rc-suml">{l}</div>
+                          <div className="rc-sumv" style={{ color: c }}>{v}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {stats.best && stats.count > 1 && (
+                      <p className="rc-insight">
+                        <b>Strongest:</b> {subjectName(stats.best)} ({stats.best.total}) &nbsp;·&nbsp;
+                        <b>Needs Attention:</b> {subjectName(stats.worst)} ({stats.worst.total})
+                        {stats.failed > 0 && <> &nbsp;·&nbsp; Below pass mark in <b>{stats.failed}</b></>}
+                      </p>
+                    )}
+                  </Section>
 
-          </div>{/* rc-body */}
-        </div>{/* rc-card */}
-        </div>
-      )}
-    </div>
+                  <Section title="Remarks">
+                    <div className="rc-rbox">
+                      <div className="rc-rlabel">Class Teacher’s Comment</div>
+                      <div className="rc-rtext">{summary.teacherRemark || autoRemark(stats.avg)}</div>
+                    </div>
+                    <div className="rc-rbox">
+                      <div className="rc-rlabel">Principal’s Comment</div>
+                      <div className="rc-rtext">{summary.principalRemark || 'A commendable academic performance. Keep striving for greater heights.'}</div>
+                    </div>
+                  </Section>
+
+                  <Section title="Next Term">
+                    <div className="rc-nextgrid">
+                      <div className="rc-nextcard">
+                        <div className="rc-nextl">Resumption Date</div>
+                        <div className="rc-nextv">{summary.nextTermDate || '—'}</div>
+                      </div>
+                      <div className="rc-nextcard">
+                        <div className="rc-nextl">School Fees</div>
+                        <div className="rc-nextv">{summary.nextTermFee ? `₦${Number(summary.nextTermFee).toLocaleString('en-NG')}` : '—'}</div>
+                      </div>
+                    </div>
+                  </Section>
+                </div>
+              </div>
+
+              {/* Signatures */}
+              <div className="rc-signgrid">
+                {['Class Teacher', 'Vice Principal (Academics)', 'Principal'].map((t) => (
+                  <div key={t} className="rc-signbox">
+                    <div className="rc-signgap" />
+                    <div className="rc-signline" />
+                    <div className="rc-signtitle">{t}</div>
+                    <div className="rc-signrole">Signature & Date</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Official Document Footer */}
+              <footer className="rc-footer">
+                <span>Printed: {now.toLocaleDateString('en-GB')}</span>
+                <span className="rc-footer-stamp">
+                  Official Academic Document · {sch.name} {isSenior ? '(Senior Section)' : '(Junior Section)'}
+                </span>
+                <span>{session} · {termLabel}</span>
+              </footer>
+            </div>
+          </article>
+        )}
+      </div>
     </>
   );
 }
+
+/* ───────────── Print Core CSS (Fills A4 Gracefully) ───────────── */
+const PRINT_CORE_CSS = `
+@page {
+  size: A4 portrait;
+  margin: 6mm 8mm !important;
+}
+* {
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+  box-sizing: border-box !important;
+}
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  background: #fff !important;
+  font-family: 'Source Sans 3', system-ui, -apple-system, sans-serif !important;
+  color: #0F172A !important;
+  font-size: 11px !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+/* Theme variables */
+#rc-card.theme-junior {
+  --primary-theme: #0E244E;
+  --secondary-theme: #1A3870;
+  --accent-gold: #E3B84E;
+  --header-bg: linear-gradient(125deg, #0A1B3B 0%, #153268 50%, #1C448E 100%);
+  --ribbon-bg: linear-gradient(90deg, #C9952A, #F0C85A 30%, #C9952A 50%, #F0C85A 70%, #C9952A);
+  --border-theme: #CBD5E1;
+}
+
+#rc-card.theme-senior {
+  --primary-theme: #500714;
+  --secondary-theme: #7A1B28;
+  --accent-gold: #F0C85A;
+  --header-bg: linear-gradient(125deg, #3B0A11 0%, #5E131E 50%, #831B2A 100%);
+  --ribbon-bg: linear-gradient(90deg, #831B2A, #D4AF37 30%, #831B2A 50%, #F0C85A 70%, #831B2A);
+  --border-theme: #D9C3C6;
+}
+
+#rc-card {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  height: 283mm !important;
+  max-height: 283mm !important;
+  min-height: 283mm !important;
+  margin: 0 auto !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border: 1.5px solid var(--border-theme) !important;
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+  page-break-after: avoid !important;
+  break-after: avoid !important;
+  page-break-before: avoid !important;
+  break-before: avoid !important;
+  background: #fff !important;
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  overflow: hidden !important;
+}
+
+.rc-watermark {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) rotate(-10deg) !important;
+  width: 320px !important;
+  height: 320px !important;
+  background-size: contain !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  opacity: 0.045 !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+
+.rc-header {
+  background: var(--header-bg) !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+.rc-header-inner {
+  padding: 12px 18px 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important;
+}
+.rc-logo-ring {
+  width: 60px !important;
+  height: 60px !important;
+  border-radius: 8px !important;
+  border: 2px solid var(--accent-gold) !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #fff !important;
+  padding: 2px !important;
+  flex-shrink: 0 !important;
+}
+.rc-logo-ring img { width: 100% !important; height: 100% !important; object-fit: contain !important; background: #fff !important; }
+.rc-school-block { flex: 1 !important; min-width: 0 !important; }
+.rc-school-name {
+  font-family: 'Fraunces', serif !important;
+  font-size: 20px !important;
+  font-weight: 800 !important;
+  color: #fff !important;
+  line-height: 1.1 !important;
+  margin: 0 0 2px !important;
+  letter-spacing: 0.5px !important;
+}
+.rc-school-motto {
+  font-style: italic !important;
+  color: var(--accent-gold) !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  margin: 0 0 3px !important;
+}
+.rc-school-meta {
+  font-size: 9.5px !important;
+  color: rgba(255, 255, 255, .85) !important;
+  line-height: 1.35 !important;
+  margin: 0 !important;
+}
+.rc-badge {
+  flex-shrink: 0 !important;
+  border: 1px solid var(--accent-gold) !important;
+  border-radius: 8px !important;
+  padding: 8px 14px !important;
+  text-align: center !important;
+  min-width: 120px !important;
+  background: rgba(255, 255, 255, .1) !important;
+}
+.rc-badge-eyebrow { font-size: 8.5px !important; color: rgba(255, 255, 255, .8) !important; text-transform: uppercase !important; font-weight: 700 !important; }
+.rc-badge-term { font-family: 'Fraunces', serif !important; font-size: 15px !important; font-weight: 800 !important; color: #fff !important; line-height: 1.15 !important; }
+.rc-badge-session { font-size: 10.5px !important; color: var(--accent-gold) !important; font-weight: 700 !important; margin-top: 2px !important; }
+.rc-ribbon {
+  height: 4px !important;
+  background: var(--ribbon-bg) !important;
+}
+.rc-body {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  padding: 8px 18px 6px !important;
+  position: relative !important;
+  z-index: 1 !important;
+  min-height: 0 !important;
+}
+
+/* Student ID with Passport */
+.rc-id {
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  padding: 8px 12px !important;
+  border: 1px solid #CBD5E1 !important;
+  border-left: 4px solid var(--primary-theme) !important;
+  border-radius: 8px !important;
+  background: #FBFCFE !important;
+}
+.rc-passport-box {
+  width: 58px !important;
+  height: 68px !important;
+  border-radius: 4px !important;
+  border: 1.5px solid #94A3B8 !important;
+  overflow: hidden !important;
+  background: #F1F5F9 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+.rc-passport-img { width: 100% !important; height: 100% !important; object-fit: cover !important; }
+.rc-passport-placeholder { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; }
+.rc-passport-lbl { font-size: 7px !important; color: #94A3B8 !important; font-weight: 700 !important; margin-top: 2px !important; }
+.rc-id-main { flex: 1 !important; min-width: 0 !important; }
+.rc-id-name { font-family: 'Fraunces', serif !important; font-size: 16px !important; font-weight: 800 !important; line-height: 1.15 !important; color: #0F172A !important; }
+.rc-id-sub { font-size: 11px !important; color: #475569 !important; margin-top: 2px !important; }
+.rc-id-meta-row { display: flex !important; gap: 16px !important; font-size: 9.5px !important; color: #334155 !important; margin-top: 4px !important; }
+.rc-id-pos { text-align: right !important; padding-left: 14px !important; border-left: 1px solid #CBD5E1 !important; }
+.rc-id-pos-n { font-family: 'Fraunces', serif !important; font-size: 22px !important; font-weight: 800 !important; color: var(--primary-theme) !important; line-height: 1 !important; }
+.rc-id-pos-l { font-size: 9px !important; color: #64748B !important; margin-top: 2px !important; }
+
+/* Section Heading */
+.rc-sec { margin-top: 10px !important; }
+.rc-sh {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-family: 'Fraunces', serif !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: var(--primary-theme) !important;
+  margin: 0 0 5px !important;
+}
+.rc-sh::after { content: '' !important; flex: 1 !important; height: 1px !important; background: #CBD5E1 !important; }
+
+/* Academic Table */
+.rc-table-wrap { border: 1px solid #CBD5E1 !important; border-radius: 6px !important; overflow: hidden !important; }
+.rc-table { width: 100% !important; border-collapse: collapse !important; font-size: 10.5px !important; }
+.rc-table thead tr { background: var(--primary-theme) !important; }
+.rc-table th { padding: 6px 8px !important; font-size: 9.5px !important; color: rgba(255, 255, 255, .95) !important; font-weight: 700 !important; text-align: left !important; }
+.rc-table th span { opacity: .75 !important; font-weight: 400 !important; font-size: 8px !important; }
+.rc-table .c { text-align: center !important; }
+.rc-table td { padding: 5px 8px !important; border-bottom: 1px solid #E2E8F0 !important; vertical-align: middle !important; }
+.rc-table tbody tr:nth-child(even) { background: #F8FAFC !important; }
+.rc-sn { font-weight: 600 !important; font-size: 11px !important; color: #0F172A !important; }
+.rc-muted { color: #64748B !important; font-size: 10px !important; }
+.rc-tot-cell { min-width: 80px !important; }
+.rc-total { font-weight: 800 !important; font-size: 12px !important; display: inline-block !important; width: 24px !important; }
+.rc-bar { display: inline-block !important; vertical-align: middle !important; width: 38px !important; height: 5px !important; border-radius: 2px !important; background: #E2E8F0 !important; margin-left: 4px !important; overflow: hidden !important; }
+.rc-bar i { display: block !important; height: 100% !important; border-radius: 2px !important; }
+.rc-gpill { display: inline-flex !important; align-items: center !important; justify-content: center !important; width: 19px !important; height: 19px !important; border-radius: 50% !important; font-weight: 800 !important; font-size: 9.5px !important; }
+
+/* Lower 2 Columns */
+.rc-lower-grid {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 12px !important;
+  margin-top: 10px !important;
+}
+.rc-lower-col { display: flex !important; flex-direction: column !important; gap: 8px !important; }
+
+/* Psychomotor */
+.rc-psycho-table-wrap { border: 1px solid #CBD5E1 !important; border-radius: 6px !important; overflow: hidden !important; background: #fff !important; }
+.rc-psycho-table { width: 100% !important; border-collapse: collapse !important; font-size: 9.5px !important; }
+.rc-psycho-table thead tr { background: #F1F5F9 !important; border-bottom: 1px solid #CBD5E1 !important; }
+.rc-psycho-th-trait { padding: 4.5px 8px !important; font-weight: 700 !important; text-align: left !important; color: var(--primary-theme) !important; }
+.rc-psycho-th-num { width: 22px !important; padding: 4.5px 0 !important; font-weight: 800 !important; color: var(--primary-theme) !important; border-left: 1px solid #CBD5E1 !important; text-align: center !important; }
+.rc-psycho-table td { padding: 3.5px 8px !important; border-bottom: 1px solid #E2E8F0 !important; }
+.rc-psycho-trait { font-weight: 500 !important; color: #334155 !important; }
+.rc-psycho-cell { border-left: 1px solid #CBD5E1 !important; font-weight: 800 !important; color: #166534 !important; text-align: center !important; font-size: 11px !important; }
+.rc-psycho-cell.active { background: #F0FDF4 !important; }
+.rc-psycho-key { padding: 3px 8px !important; background: #F8FAFC !important; border-top: 1px solid #CBD5E1 !important; font-size: 8px !important; color: #64748B !important; text-align: center !important; font-weight: 600 !important; }
+
+/* Grading Scale */
+.rc-gkey { display: grid !important; grid-template-columns: repeat(6, 1fr) !important; border: 1px solid #CBD5E1 !important; border-radius: 6px !important; overflow: hidden !important; background: #fff !important; }
+.rc-gki { padding: 5px 3px !important; text-align: center !important; border-right: 1px solid #CBD5E1 !important; }
+.rc-gki:last-child { border-right: 0 !important; }
+.rc-gki-letter { font-family: 'Fraunces', serif !important; font-size: 14px !important; font-weight: 800 !important; line-height: 1 !important; }
+.rc-gki-range { font-size: 8.5px !important; color: #475569 !important; font-weight: 600 !important; margin-top: 1px !important; }
+.rc-gki-label { font-size: 7.5px !important; color: #64748B !important; }
+
+/* Summary */
+.rc-sumgrid { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; border: 1px solid #CBD5E1 !important; border-radius: 6px !important; overflow: hidden !important; background: #fff !important; }
+.rc-sumcard { padding: 6px 8px !important; border-right: 1px solid #CBD5E1 !important; text-align: center !important; }
+.rc-sumcard:last-child { border-right: 0 !important; }
+.rc-suml { font-size: 8.5px !important; color: #64748B !important; margin-bottom: 2px !important; font-weight: 600 !important; }
+.rc-sumv { font-family: 'Fraunces', serif !important; font-size: 16px !important; font-weight: 800 !important; line-height: 1 !important; }
+.rc-insight { font-size: 9px !important; color: #334155 !important; margin: 4px 0 0 !important; line-height: 1.35 !important; }
+
+/* Remarks */
+.rc-rbox { border: 1px solid #CBD5E1 !important; border-radius: 6px !important; padding: 6px 10px !important; margin-bottom: 6px !important; background: #fff !important; }
+.rc-rlabel { font-size: 8.5px !important; font-weight: 700 !important; color: var(--primary-theme) !important; margin-bottom: 2px !important; }
+.rc-rtext { min-height: 28px !important; font-size: 9.5px !important; color: #334155 !important; line-height: 1.35 !important; border-top: 1px dashed #E2E8F0 !important; padding-top: 3px !important; }
+
+/* Next Term */
+.rc-nextgrid { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+.rc-nextcard { border: 1px solid #CBD5E1 !important; border-radius: 6px !important; padding: 6px 10px !important; background: #fff !important; }
+.rc-nextl { font-size: 8px !important; color: #64748B !important; margin-bottom: 1px !important; font-weight: 600 !important; }
+.rc-nextv { font-size: 11px !important; font-weight: 700 !important; color: #0F172A !important; }
+
+/* Signatures */
+.rc-signgrid { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 24px !important; margin-top: 14px !important; }
+.rc-signbox { text-align: center !important; }
+.rc-signgap { height: 34px !important; }
+.rc-signline { border-top: 1.5px solid var(--primary-theme) !important; margin-bottom: 3px !important; }
+.rc-signtitle { font-size: 10px !important; font-weight: 700 !important; color: #0F172A !important; }
+.rc-signrole { font-size: 8.5px !important; color: #64748B !important; }
+
+/* Footer */
+.rc-footer { margin-top: 10px !important; padding-top: 6px !important; border-top: 1px solid #CBD5E1 !important; display: flex !important; justify-content: space-between !important; align-items: center !important; font-size: 8px !important; color: #94A3B8 !important; }
+.rc-footer-stamp { background: var(--primary-theme) !important; color: rgba(255, 255, 255, .9) !important; padding: 2px 8px !important; border-radius: 12px !important; font-size: 8px !important; font-weight: 600 !important; }
+`;
+
+/* ───────────── Screen & Interactive CSS ───────────── */
+const SCREEN_AND_PAGE_CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&display=swap');
+
+.rc-root {
+  --navy: #0E244E;
+  --navy2: #1A3870;
+  --gold: #E3B84E;
+  --ink: #0F172A;
+  --mute: #64748B;
+  --line: #E2E8F0;
+  font-family: 'Source Sans 3', system-ui, sans-serif;
+  background: #E8ECF3;
+  min-height: 100vh;
+  padding: 24px 16px 48px;
+  color: var(--ink);
+}
+.rc-root * { box-sizing: border-box; }
+
+/* Themes */
+#rc-card.theme-junior {
+  --primary-theme: #0E244E;
+  --secondary-theme: #1A3870;
+  --accent-gold: #E3B84E;
+  --header-bg: linear-gradient(125deg, #0A1B3B 0%, #153268 50%, #1C448E 100%);
+  --ribbon-bg: linear-gradient(90deg, #C9952A, #F0C85A 30%, #C9952A 50%, #F0C85A 70%, #C9952A);
+  --border-theme: #CBD5E1;
+}
+
+#rc-card.theme-senior {
+  --primary-theme: #4A0E17;
+  --secondary-theme: #7A1B28;
+  --accent-gold: #F0C85A;
+  --header-bg: linear-gradient(125deg, #3B0A11 0%, #5E131E 50%, #831B2A 100%);
+  --ribbon-bg: linear-gradient(90deg, #831B2A, #D4AF37 30%, #831B2A 50%, #F0C85A 70%, #831B2A);
+  --border-theme: #E2D3D5;
+}
+
+/* Toolbar */
+.rc-toolbar {
+  max-width: 900px;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.rc-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--mute);
+  text-decoration: none;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.rc-back:hover { color: var(--ink); }
+.rc-title { font-family: 'Fraunces', serif; font-size: 24px; font-weight: 700; margin: 0; }
+.rc-subtitle { font-size: 13.5px; color: var(--mute); margin: 2px 0 0; }
+.rc-controls { display: flex; gap: 8px; flex-wrap: wrap; }
+.rc-sel {
+  background: #fff;
+  border: 1px solid #CBD5E1;
+  color: var(--ink);
+  padding: 9px 32px 9px 12px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13.5px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+.rc-pbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  background: var(--navy);
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.rc-pbtn:hover { background: var(--navy2); }
+.rc-pbtn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* States */
+.rc-state {
+  max-width: 900px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 56px 24px;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--mute);
+  font-size: 14px;
+}
+.rc-state strong { display: block; font-size: 16px; color: var(--ink); margin-bottom: 6px; }
+.rc-state p { margin: 0; }
+.rc-state-err { background: #FEF2F2; border: 1px solid #FECACA; color: #991B1B; }
+.rc-state-err strong { color: #991B1B; }
+.rc-state-empty { border: 2px dashed #CBD5E1; background: transparent; }
+.rc-spin {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #CBD5E1;
+  border-top-color: var(--navy2);
+  border-radius: 50%;
+  margin: 0 auto 12px;
+  animation: rcspin .8s linear infinite;
+}
+@keyframes rcspin { to { transform: rotate(360deg) } }
+
+/* Screen Card */
+#rc-card {
+  max-width: 900px;
+  min-height: 1050px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, .18);
+  position: relative;
+  border: 1.5px solid var(--border-theme);
+}
+
+.rc-watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-10deg);
+  width: 380px;
+  height: 380px;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.045;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.rc-header {
+  background: var(--header-bg);
+  position: relative;
+  z-index: 1;
+}
+.rc-header-inner {
+  position: relative;
+  padding: 22px 30px 18px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.rc-logo-ring {
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  border: 3px solid var(--accent-gold);
+  overflow: hidden;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.rc-logo-ring img { width: 100%; height: 100%; object-fit: contain; }
+.rc-school-block { flex: 1; min-width: 0; }
+.rc-school-name { font-family: 'Fraunces', serif; font-size: 24px; font-weight: 800; color: #fff; line-height: 1.1; margin: 0 0 2px; letter-spacing: 0.5px; }
+.rc-school-motto { font-style: italic; color: var(--accent-gold); font-size: 13px; font-weight: 600; margin: 0 0 4px; }
+.rc-school-meta { font-size: 11.5px; color: rgba(255, 255, 255, .8); line-height: 1.5; margin: 0; }
+.rc-badge {
+  flex-shrink: 0;
+  border: 1px solid var(--accent-gold);
+  border-radius: 8px;
+  padding: 10px 16px;
+  text-align: center;
+  min-width: 140px;
+  background: rgba(255, 255, 255, .1);
+}
+.rc-badge-eyebrow { font-size: 10px; color: rgba(255, 255, 255, .8); margin-bottom: 2px; text-transform: uppercase; font-weight: 700; }
+.rc-badge-term { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 800; color: #fff; line-height: 1.15; }
+.rc-badge-session { font-size: 12px; color: var(--accent-gold); margin-top: 2px; font-weight: 700; }
+.rc-ribbon { height: 4px; background: var(--ribbon-bg); }
+
+.rc-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px 28px 16px;
+  position: relative;
+  z-index: 1;
+}
+.rc-sec { margin-top: 18px; }
+.rc-sh {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Fraunces', serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--primary-theme);
+  margin: 0 0 8px;
+}
+.rc-sh::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
+/* Student ID with Passport */
+.rc-id {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--primary-theme);
+  border-radius: 8px;
+  background: #FBFCFE;
+}
+.rc-passport-box {
+  width: 66px;
+  height: 78px;
+  border-radius: 6px;
+  border: 1.5px solid #CBD5E1;
+  overflow: hidden;
+  background: #F1F5F9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+.rc-passport-img { width: 100%; height: 100%; object-fit: cover; }
+.rc-passport-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.rc-passport-lbl { font-size: 8px; color: var(--mute); font-weight: 700; letter-spacing: 0.5px; }
+.rc-id-main { flex: 1; min-width: 0; }
+.rc-id-name { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 800; line-height: 1.2; color: #0F172A; }
+.rc-id-sub { font-size: 13px; color: var(--mute); margin-top: 2px; }
+.rc-id-meta-row { display: flex; gap: 18px; font-size: 12px; color: #475569; margin-top: 4px; flex-wrap: wrap; }
+.rc-id-pos { text-align: right; padding-left: 16px; border-left: 1px solid var(--line); }
+.rc-id-pos-n { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 800; color: var(--primary-theme); line-height: 1; }
+.rc-id-pos-l { font-size: 11px; color: var(--mute); margin-top: 2px; }
+
+/* Table */
+.rc-table-wrap { border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; }
+.rc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rc-table thead tr { background: var(--primary-theme); }
+.rc-table th { padding: 9px 12px; font-size: 11.5px; color: rgba(255, 255, 255, .95); font-weight: 700; text-align: left; white-space: nowrap; }
+.rc-table th span { opacity: .7; font-weight: 400; font-size: 10px; }
+.rc-table .c { text-align: center; }
+.rc-table td { padding: 8px 12px; border-bottom: 1px solid #EEF2F7; vertical-align: middle; }
+.rc-table tbody tr:nth-child(even) { background: #F8FAFC; }
+.rc-table tbody tr:last-child td { border-bottom: 0; }
+.rc-fail td:first-child { box-shadow: inset 3px 0 #DC2626; }
+.rc-sn { font-weight: 600; font-size: 13.5px; }
+.rc-muted { color: var(--mute); font-size: 12px; }
+.rc-tot-cell { min-width: 95px; }
+.rc-total { font-weight: 700; font-size: 14.5px; display: inline-block; width: 28px; }
+.rc-bar { display: inline-block; vertical-align: middle; width: 44px; height: 5px; border-radius: 3px; background: #E8EDF4; overflow: hidden; margin-left: 4px; }
+.rc-bar i { display: block; height: 100%; border-radius: 3px; }
+.rc-gpill { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; font-weight: 700; font-size: 11.5px; }
+.rc-none { text-align: center; padding: 24px; color: var(--mute); border: 2px dashed var(--line); border-radius: 8px; font-size: 13.5px; }
+
+/* Lower Section 2-Columns */
+.rc-lower-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px; }
+.rc-lower-col { display: flex; flex-direction: column; gap: 10px; }
+
+/* Psychomotor */
+.rc-psycho-table-wrap { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; }
+.rc-psycho-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.rc-psycho-table thead tr { background: #F1F5F9; border-bottom: 1px solid var(--line); }
+.rc-psycho-th-trait { padding: 6px 10px; font-weight: 700; text-align: left; color: var(--primary-theme); }
+.rc-psycho-th-num { width: 26px; padding: 6px 0; font-weight: 800; color: var(--primary-theme); border-left: 1px solid var(--line); text-align: center; }
+.rc-psycho-table td { padding: 5px 10px; border-bottom: 1px solid #EEF2F7; }
+.rc-psycho-table tbody tr:last-child td { border-bottom: 0; }
+.rc-psycho-trait { font-weight: 500; color: #334155; }
+.rc-psycho-cell { border-left: 1px solid var(--line); font-weight: 800; color: #166534; cursor: pointer; user-select: none; text-align: center; }
+.rc-psycho-cell.active { background: #F0FDF4; }
+.rc-psycho-key { padding: 4px 10px; background: #F8FAFC; border-top: 1px solid var(--line); font-size: 10px; color: var(--mute); text-align: center; font-weight: 600; }
+
+/* Grading key */
+.rc-gkey { display: grid; grid-template-columns: repeat(6, 1fr); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.rc-gki { padding: 6px 4px; text-align: center; border-right: 1px solid var(--line); background: #fff; }
+.rc-gki:last-child { border-right: 0; }
+.rc-gki-letter { font-family: 'Fraunces', serif; font-size: 16px; font-weight: 800; line-height: 1; }
+.rc-gki-range { font-size: 11px; color: #475569; font-weight: 600; margin-top: 2px; }
+.rc-gki-label { font-size: 10px; color: var(--mute); }
+
+/* Summary */
+.rc-sumgrid { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.rc-sumcard { padding: 8px 10px; border-right: 1px solid var(--line); background: #fff; text-align: center; }
+.rc-sumcard:last-child { border-right: 0; }
+.rc-suml { font-size: 11px; color: var(--mute); margin-bottom: 2px; font-weight: 600; }
+.rc-sumv { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 800; line-height: 1.1; }
+.rc-insight { margin: 6px 2px 0; font-size: 12px; color: #334155; line-height: 1.5; }
+
+/* Remarks */
+.rc-rbox { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; background: #fff; }
+.rc-rlabel { font-size: 11px; font-weight: 700; color: var(--primary-theme); margin-bottom: 2px; }
+.rc-rtext { min-height: 32px; font-size: 12.5px; color: #334155; line-height: 1.45; border-top: 1px dashed var(--line); padding-top: 4px; }
+
+/* Next term */
+.rc-nextgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rc-nextcard { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; background: #fff; }
+.rc-nextl { font-size: 11px; color: var(--mute); margin-bottom: 2px; font-weight: 600; }
+.rc-nextv { font-size: 14px; font-weight: 700; color: #0F172A; }
+
+/* Signatures */
+.rc-signgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 18px; }
+.rc-signbox { text-align: center; }
+.rc-signgap { height: 38px; }
+.rc-signline { border-top: 1.5px solid var(--primary-theme); margin-bottom: 4px; }
+.rc-signtitle { font-size: 12px; font-weight: 700; color: #0F172A; }
+.rc-signrole { font-size: 11px; color: var(--mute); }
+.rc-footer { margin-top: 16px; padding-top: 8px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #94A3B8; }
+.rc-footer-stamp { background: var(--primary-theme); color: rgba(255, 255, 255, .9); padding: 3px 10px; border-radius: 20px; font-size: 10.5px; font-weight: 600; }
+
+/* ────────── NATIVE BROWSER PRINT (CTRL + P) ────────── */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 6mm 8mm !important;
+  }
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-sizing: border-box !important;
+  }
+  html, body, #root, .app-layout, .main-content, .page-content, .rc-root {
+    display: block !important;
+    position: static !important;
+    overflow: hidden !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  .topbar, .sidebar, #mobile-menu-btn, .rc-toolbar, nav, aside {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  ${PRINT_CORE_CSS}
+}
+
+@media (max-width: 720px) {
+  .rc-header-inner { flex-direction: column; align-items: flex-start; padding: 20px 16px; }
+  .rc-badge { align-self: stretch; }
+  .rc-school-name { font-size: 21px; }
+  .rc-body { padding: 16px 12px; }
+  .rc-id { flex-direction: column; align-items: flex-start; }
+  .rc-id-pos { border-left: 0; padding-left: 0; text-align: left; }
+  .rc-igrid, .rc-nextgrid, .rc-signgrid, .rc-lower-grid { grid-template-columns: 1fr; }
+  .rc-sumgrid, .rc-gkey { grid-template-columns: repeat(2, 1fr); }
+  .rc-footer { flex-direction: column; align-items: flex-start; }
+}
+`;

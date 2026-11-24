@@ -207,15 +207,16 @@ async function runSync(config, session, termRaw, onLog = () => {}) {
         }
       }
 
-      // If no explicit CA item was found by name, pick the quiz module or course total
+      // If no explicit CA item was found by name, warn and default to 0.
+      // We do NOT silently pick an unrelated quiz/module as CA because for a CBT
+      // exam the quiz score should be mapped as EXAM, not CA.  Any previously
+      // uploaded CA score will be preserved via the existingMap fallback below.
       if (ca === null) {
-        const modItem    = gradeItems.find(i => i.itemtype === 'mod');
-        const courseItem = gradeItems.find(i => i.itemtype === 'course');
-        if (modItem && modItem.graderaw !== null && modItem.graderaw !== undefined) {
-          ca = parseFloat(modItem.graderaw) || 0;
-        } else if (courseItem && courseItem.graderaw !== null && courseItem.graderaw !== undefined) {
-          ca = parseFloat(courseItem.graderaw) || 0;
-        }
+        onLog({
+          type: 'warn',
+          message: `⚠ No grade item matching "${caGradeItemName}" found for student "${rawId}" in course ${courseId}. CA will fall back to existing DB value (or 0). Rename the Moodle grade item to match, or update the CA Grade Item field in Configuration.`,
+        });
+        // ca stays null → existingMap fallback applies when writing to DB
       }
 
       if (!gradesByStudent.has(smsStudent.id)) {

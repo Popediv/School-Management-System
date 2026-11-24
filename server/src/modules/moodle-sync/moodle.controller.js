@@ -213,13 +213,22 @@ const getCourses = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// ── In-memory job store (survives for the lifetime of the server process) ─────
+// jobId → { status, log, result, startedAt, session, term, triggeredBy }
+const jobs = new Map();
+
+function makeJobId() {
+  return `sync_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
 // ── POST /api/moodle-sync/run ────────────────────────────────────────────────
+// Returns immediately with { jobId } — sync runs in the background.
 const triggerSync = async (req, res, next) => {
   try {
     const { session, term } = req.body;
 
     if (!session || !term) {
-      return res.status(400).json({ message: 'session and term are required (e.g. "2025/2026", "FIRST")' });
+      return res.status(400).json({ message: 'session and term are required (e.g. "2026/2027", "FIRST")' });
     }
 
     const cfg = getMoodleConfig();
@@ -230,42 +239,82 @@ const triggerSync = async (req, res, next) => {
       return res.status(400).json({ message: 'No course mappings configured. Add at least one course in Moodle config.' });
     }
 
-    const logLines = [];
-    const onLog    = (entry) => {
-      logLines.push({ time: new Date().toISOString(), ...entry });
-    };
-
+    const jobId     = makeJobId();
     const startedAt = new Date().toISOString();
-    let result;
-    let status = 'success';
 
-    try {
-      result = await runSync(cfg, session, term, onLog);
-    } catch (syncErr) {
-      status = 'error';
-      onLog({ type: 'error', message: syncErr.message });
-      result = { total: 0, saved: 0, skipped: 0, errors: [syncErr.message] };
-    }
-
-    // Persist log entry
-    appendLog({
+    // Initialise job state
+    jobs.set(jobId, {
+      jobId,
+      status:      'running',
+      log:         [{ time: startedAt, type: 'info', message: '🚀 Sync job started in background...' }],
+      result:      null,
       startedAt,
-      completedAt: new Date().toISOString(),
       session,
       term,
-      status,
       triggeredBy: req.user?.email || 'system',
-      ...result,
-      log: logLines,
     });
 
+    // Respond immediately — browser is freed
+    res.json({ jobId, status: 'running', message: 'Sync started. Poll /status/:jobId for progress.' });
+
+    // Run the actual sync in the background (fire-and-forget)
+    (async () => {
+      const job = jobs.get(jobId);
+      const onLog = (entry) => {
+        job.log.push({ time: new Date().toISOString(), ...entry });
+      };
+
+      let result;
+      let finalStatus = 'success';
+
+      try {
+        result = await runSync(cfg, session, term, onLog);
+      } catch (syncErr) {
+        finalStatus = 'error';
+        onLog({ type: 'error', message: `Sync error: ${syncErr.message}` });
+        result = { total: 0, saved: 0, skipped: 0, errors: [syncErr.message] };
+      }
+
+      job.status = finalStatus;
+      job.result = result;
+      job.completedAt = new Date().toISOString();
+
+      // Persist to log file
+      appendLog({
+        startedAt,
+        completedAt: job.completedAt,
+        session,
+        term,
+        status: finalStatus,
+        triggeredBy: job.triggeredBy,
+        ...result,
+        log: job.log,
+      });
+
+      // Clean up from memory after 10 minutes
+      setTimeout(() => jobs.delete(jobId), 10 * 60 * 1000);
+    })();
+
+  } catch (err) { next(err); }
+};
+
+// ── GET /api/moodle-sync/status/:jobId ────────────────────────────────────────
+// Polled by the client every 2 seconds to get live log lines and final result.
+const getJobStatus = (req, res, next) => {
+  try {
+    const job = jobs.get(req.params.jobId);
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found. It may have expired (10 min TTL).' });
+    }
     res.json({
-      message:   status === 'success' ? `Sync complete — ${result.saved} result(s) saved` : 'Sync failed',
-      session,
-      term,
-      status,
-      ...result,
-      log: logLines,
+      jobId:       job.jobId,
+      status:      job.status,       // 'running' | 'success' | 'error'
+      log:         job.log,
+      result:      job.result,       // null while running, populated when done
+      startedAt:   job.startedAt,
+      completedAt: job.completedAt || null,
+      session:     job.session,
+      term:        job.term,
     });
   } catch (err) { next(err); }
 };
@@ -279,4 +328,4 @@ const getLogs = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { getConfig, saveConfig, testConnection, getCourses, triggerSync, getLogs };
+module.exports = { getConfig, saveConfig, testConnection, getCourses, triggerSync, getJobStatus, getLogs };

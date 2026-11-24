@@ -47,6 +47,7 @@ import KioskAttendancePage from '../pages/attendance/KioskAttendancePage';
 import UploadResultsPage from '../pages/results/UploadResultsPage';
 import ReportCardPage from '../pages/results/ReportCardPage';
 import MoodleSyncPage from '../pages/results/MoodleSyncPage';
+import PsychomotorPage from '../pages/results/PsychomotorPage';
 
 // Fees
 import FeesPage from '../pages/fees/FeesPage';
@@ -194,6 +195,11 @@ export default function AppRouter() {
               <Route path="/results/upload" element={
                 <ProtectedRoute roles={[ROLES.TEACHER, ...ADMIN_ROLES]}>
                   <DashboardLayout><UploadResultsPage /></DashboardLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/results/psychomotor" element={
+                <ProtectedRoute roles={[ROLES.TEACHER, ...ADMIN_ROLES]}>
+                  <DashboardLayout><PsychomotorPage /></DashboardLayout>
                 </ProtectedRoute>
               } />
               <Route path="/results/moodle-sync" element={
