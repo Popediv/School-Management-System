@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, GraduationCap, BookOpen,
   ClipboardList, BarChart2, CreditCard, IdCard,
   Bell, LogOut, ChevronRight, School, UserCog,
-  BookMarked, TrendingUp, Key, QrCode, Link2, Award
+  BookMarked, TrendingUp, Key, QrCode, Link2, Award, Printer
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../services/api';
@@ -33,6 +33,7 @@ const NAV = {
         { label: 'Attendance Kiosk', icon: QrCode, to: '/attendance/kiosk' },
         { label: 'Results', icon: BookMarked, to: '/results/upload' },
         { label: 'Psychomotor', icon: Award, to: '/results/psychomotor' },
+        { label: 'Batch Results', icon: Printer, to: '/results/bulk-report-cards' },
         { label: 'Moodle Sync', icon: Link2, to: '/results/moodle-sync' },
         { label: 'Scheme of Work', icon: BookOpen, to: '/schemes' },
         { label: 'Reports', icon: BarChart2, to: '/attendance/report' },
@@ -61,6 +62,7 @@ const NAV = {
         { label: 'Subjects', icon: BookOpen, to: '/subjects' },
         { label: 'Results', icon: BookMarked, to: '/results/upload' },
         { label: 'Psychomotor', icon: Award, to: '/results/psychomotor' },
+        { label: 'Batch Results', icon: Printer, to: '/results/bulk-report-cards' },
         { label: 'Scheme of Work', icon: BookOpen, to: '/schemes' },
         { label: 'Attendance', icon: ClipboardList, to: '/attendance/report' },
       ]
@@ -84,6 +86,7 @@ const NAV = {
         { label: 'Classes', icon: School, to: '/classes' },
         { label: 'Subjects', icon: BookOpen, to: '/subjects' },
         { label: 'Psychomotor', icon: Award, to: '/results/psychomotor' },
+        { label: 'Batch Results', icon: Printer, to: '/results/bulk-report-cards' },
         { label: 'Scheme of Work', icon: BookOpen, to: '/schemes' },
         { label: 'Attendance', icon: ClipboardList, to: '/attendance/report' },
       ]
@@ -102,6 +105,7 @@ const NAV = {
         { label: 'Attendance', icon: ClipboardList, to: '/attendance/mark' },
         { label: 'Results', icon: BookMarked, to: '/results/upload' },
         { label: 'Psychomotor', icon: Award, to: '/results/psychomotor' },
+        { label: 'Batch Results', icon: Printer, to: '/results/bulk-report-cards' },
         { label: 'Scheme of Work', icon: BookOpen, to: '/schemes' },
         { label: 'Reports', icon: BarChart2, to: '/attendance/report' },
       ]

@@ -40,6 +40,7 @@ const TITLES = {
   '/attendance/report': 'Attendance Reports',
   '/results/upload': 'Upload Results',
   '/results/psychomotor': 'Psychomotor Assessment',
+  '/results/bulk-report-cards': 'Batch Report Cards',
   '/fees': 'Fees & Bursary',
   '/idcards': 'ID Card Generator',
   '/notifications': 'Notifications',

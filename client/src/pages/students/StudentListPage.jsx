@@ -93,6 +93,14 @@ export default function StudentListPage() {
     navigate(`/students/admission-letters/bulk?ids=${selectedIds.join(',')}`);
   };
 
+  const handleBulkPrintReportCards = () => {
+    if (selectedIds.length === 0) {
+      toast.info('Please select at least one student or select all to print bulk report cards.');
+      return;
+    }
+    navigate(`/results/bulk-report-cards?ids=${selectedIds.join(',')}`);
+  };
+
   const { mutate: transferStudents, isPending: isTransferring } = useMutation({
     mutationFn: (data) => studentService.transferClass(data),
     onSuccess: (res) => {
@@ -174,6 +182,9 @@ export default function StudentListPage() {
               </button>
               <button onClick={handleBulkPrintLetters} className="btn btn-primary" style={{ backgroundColor: '#0284C7', borderColor: '#0284C7' }}>
                 <Printer size={16} /> Bulk Admission Letters ({selectedIds.length})
+              </button>
+              <button onClick={handleBulkPrintReportCards} className="btn btn-primary" style={{ backgroundColor: '#0E244E', borderColor: '#0E244E' }}>
+                <Printer size={16} /> Print Report Cards ({selectedIds.length})
               </button>
               <button onClick={handleBulkDelete} className="btn btn-danger" style={{ backgroundColor: '#DC2626', borderColor: '#DC2626' }}>
                 <Trash2 size={16} /> Delete Selected ({selectedIds.length})

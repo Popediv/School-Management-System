@@ -253,6 +253,15 @@ export default function ReportCardPage() {
             <select className="rc-sel" aria-label="Term" value={term} onChange={(e) => setTerm(e.target.value)}>
               {TERMS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
+            {!isStudent && student?.currentClassId && (
+              <Link
+                to={`/results/bulk-report-cards?classId=${student.currentClassId}&session=${session}&term=${term}`}
+                className="rc-bulk-btn"
+                title="Batch print all report cards for this class"
+              >
+                <Printer size={15} /> Batch Print Class ({student.currentClass?.name || 'Class'})
+              </Link>
+            )}
             <button className="rc-pbtn" onClick={handlePrint} disabled={!data || isLoading}>
               <Printer size={16} />
               Print / Save PDF (A4)
@@ -592,13 +601,13 @@ html, body {
   --border-theme: #CBD5E1;
 }
 
-#rc-card.theme-senior {
-  --primary-theme: #500714;
-  --secondary-theme: #7A1B28;
+#rc-card.theme-senior, .theme-senior {
+  --primary-theme: #064E3B;
+  --secondary-theme: #047857;
   --accent-gold: #F0C85A;
-  --header-bg: linear-gradient(125deg, #3B0A11 0%, #5E131E 50%, #831B2A 100%);
-  --ribbon-bg: linear-gradient(90deg, #831B2A, #D4AF37 30%, #831B2A 50%, #F0C85A 70%, #831B2A);
-  --border-theme: #D9C3C6;
+  --header-bg: linear-gradient(125deg, #022C22 0%, #064E3B 50%, #065F46 100%);
+  --ribbon-bg: linear-gradient(90deg, #B45309, #F0C85A 30%, #B45309 50%, #F0C85A 70%, #B45309);
+  --border-theme: #A7F3D0;
 }
 
 #rc-card {
@@ -870,13 +879,13 @@ const SCREEN_AND_PAGE_CSS = `
   --border-theme: #CBD5E1;
 }
 
-#rc-card.theme-senior {
-  --primary-theme: #4A0E17;
-  --secondary-theme: #7A1B28;
+#rc-card.theme-senior, .theme-senior {
+  --primary-theme: #064E3B;
+  --secondary-theme: #047857;
   --accent-gold: #F0C85A;
-  --header-bg: linear-gradient(125deg, #3B0A11 0%, #5E131E 50%, #831B2A 100%);
-  --ribbon-bg: linear-gradient(90deg, #831B2A, #D4AF37 30%, #831B2A 50%, #F0C85A 70%, #831B2A);
-  --border-theme: #E2D3D5;
+  --header-bg: linear-gradient(125deg, #022C22 0%, #064E3B 50%, #065F46 100%);
+  --ribbon-bg: linear-gradient(90deg, #B45309, #F0C85A 30%, #B45309 50%, #F0C85A 70%, #B45309);
+  --border-theme: #A7F3D0;
 }
 
 /* Toolbar */
@@ -933,6 +942,27 @@ const SCREEN_AND_PAGE_CSS = `
 }
 .rc-pbtn:hover { background: var(--navy2); }
 .rc-pbtn:disabled { opacity: .45; cursor: not-allowed; }
+.rc-bulk-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  background: #fff;
+  border: 1px solid #CBD5E1;
+  color: var(--ink);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.rc-bulk-btn:hover {
+  background: #F1F5F9;
+  color: var(--navy);
+  border-color: var(--navy);
+}
 
 /* States */
 .rc-state {

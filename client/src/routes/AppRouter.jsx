@@ -46,6 +46,7 @@ import KioskAttendancePage from '../pages/attendance/KioskAttendancePage';
 // Results
 import UploadResultsPage from '../pages/results/UploadResultsPage';
 import ReportCardPage from '../pages/results/ReportCardPage';
+import BulkReportCardsPage from '../pages/results/BulkReportCardsPage';
 import MoodleSyncPage from '../pages/results/MoodleSyncPage';
 import PsychomotorPage from '../pages/results/PsychomotorPage';
 
@@ -210,6 +211,11 @@ export default function AppRouter() {
               <Route path="/results/report-card/:studentId" element={
                 <ProtectedRoute roles={[...ADMIN_ROLES, ROLES.TEACHER, ROLES.PARENT, ROLES.STUDENT]}>
                   <DashboardLayout><ReportCardPage /></DashboardLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/results/bulk-report-cards" element={
+                <ProtectedRoute roles={[...ADMIN_ROLES, ROLES.TEACHER]}>
+                  <DashboardLayout><BulkReportCardsPage /></DashboardLayout>
                 </ProtectedRoute>
               } />
 

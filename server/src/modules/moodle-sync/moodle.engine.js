@@ -1,29 +1,39 @@
 /**
- * moodle.engine.js
+ * moodle.engine.js (High-Performance Optimized)
  * ─────────────────────────────────────────────────────────────────────────────
  * Core sync engine: pulls grade data from Moodle REST API and writes results
  * directly into the SMS PostgreSQL database via Prisma.
  *
- * Moodle API calls used:
- *  1. core_enrol_get_enrolled_users     → get users (with their usernames) per course
- *  2. gradereport_user_get_grade_items  → get grade items for a user in a course
+ * Performance Optimizations:
+ *  1. Persistent HTTP Keep-Alive connection pooling (re-uses TCP sockets to Moodle)
+ *  2. Parallel course syncing (5 courses concurrent) + parallel enrol/grade fetching
+ *  3. Global Moodle user cache across courses (cuts redundant enrollment lookups)
+ *  4. Single course-level log warnings instead of spamming per-student warnings
+ *  5. Batched database upserts (50 per batch)
+ *  6. Fast in-memory position recalculation (1 bulk query instead of 750+ queries)
+ *  7. Strictly whole numbers for total scores (Math.round)
  */
 
 const https  = require('https');
 const http   = require('http');
 const prisma = require('../../config/db');
-const { calculateGrade, gradeRemark, calculatePositions } = require('../../utils/grading');
+const { calculateGrade, gradeRemark, calculatePositions, formatPosition } = require('../../utils/grading');
 
-// ── Tiny HTTP helper (no axios dependency) ───────────────────────────────────
+// ── Persistent Keep-Alive HTTP Agents ─────────────────────────────────────────
+// Reuses open TCP sockets for rapid-fire requests to the local Moodle server
+const httpAgent  = new http.Agent({ keepAlive: true, maxSockets: 10, keepAliveMsecs: 30000 });
+const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 10, keepAliveMsecs: 30000 });
 
 /**
- * Makes a GET request to a URL and resolves with the parsed JSON body.
- * Works for both http:// and https://.
+ * Makes a GET request with connection reuse and resolves with parsed JSON.
  */
 function httpGet(url) {
   return new Promise((resolve, reject) => {
-    const lib = url.startsWith('https') ? https : http;
-    const req = lib.get(url, (res) => {
+    const isHttps = url.startsWith('https');
+    const lib     = isHttps ? https : http;
+    const agent   = isHttps ? httpsAgent : httpAgent;
+
+    const req = lib.get(url, { agent }, (res) => {
       let body = '';
       res.on('data', (chunk) => { body += chunk; });
       res.on('end', () => {
@@ -34,43 +44,52 @@ function httpGet(url) {
         }
       });
     });
+
     req.on('error', reject);
-    req.setTimeout(15000, () => {
-      req.destroy(new Error('Moodle API request timed out after 15 seconds'));
+    req.setTimeout(12000, () => {
+      req.destroy(new Error('Moodle API request timed out after 12 seconds'));
     });
   });
 }
 
 /**
  * Calls a Moodle Web Service function.
- * @param {string} baseUrl    - e.g. "https://moodle.example.com"
- * @param {string} token      - Moodle web service token
- * @param {string} wsfunction - e.g. "core_enrol_get_enrolled_users"
- * @param {Object} params     - additional query params
  */
 async function moodleCall(baseUrl, token, wsfunction, params = {}) {
   let base = (baseUrl || '').trim().replace(/\/$/, '');
   if (!base.startsWith('http://') && !base.startsWith('https://')) {
     base = `http://${base}`;
   }
-  const qs   = new URLSearchParams({
+  const qs = new URLSearchParams({
     wstoken:            token,
     moodlewsrestformat: 'json',
     wsfunction,
     ...Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)])),
   });
-  const url = `${base}/webservice/rest/server.php?${qs.toString()}`;
+  const url  = `${base}/webservice/rest/server.php?${qs.toString()}`;
   const data = await httpGet(url);
 
-  // Moodle returns { exception, message } on errors
   if (data && data.exception) {
     throw new Error(`Moodle API error [${wsfunction}]: ${data.message}`);
   }
   return data;
 }
 
-// ── Term normalizer ──────────────────────────────────────────────────────────
+// ── Lightweight Concurrency Pool (Zero Dependency) ───────────────────────────
+async function pMap(items, fn, concurrency = 5) {
+  const results = [];
+  let index = 0;
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (index < items.length) {
+      const i = index++;
+      results[i] = await fn(items[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
 
+// ── Term normalizer ──────────────────────────────────────────────────────────
 const VALID_TERMS = ['FIRST', 'SECOND', 'THIRD'];
 
 function normalizeTerm(raw) {
@@ -84,17 +103,6 @@ function normalizeTerm(raw) {
 }
 
 // ── Main sync function ───────────────────────────────────────────────────────
-
-/**
- * Fetches grades from Moodle for every configured course and upserts Results
- * in the SMS database.
- *
- * @param {Object} config   - from getMoodleConfig()
- * @param {string} session  - e.g. "2025/2026"
- * @param {string} termRaw  - e.g. "FIRST"
- * @param {Function} onLog  - callback(logEntry) for streaming progress
- * @returns {{ total: number, skipped: number, errors: string[] }}
- */
 async function runSync(config, session, termRaw, onLog = () => {}) {
   const { moodleUrl, moodleToken, idField = 'username', courseMap = [] } = config;
   const term = normalizeTerm(termRaw);
@@ -102,140 +110,153 @@ async function runSync(config, session, termRaw, onLog = () => {}) {
   if (!moodleUrl || !moodleToken) throw new Error('Moodle URL and token are required in config');
   if (!courseMap.length)          throw new Error('No course mappings configured');
 
-  // ── Load all SMS students & subjects once ────────────────────────────────
-  onLog({ type: 'info', message: 'Loading SMS students and subjects...' });
+  // 1. Load all SMS students & subjects once
+  onLog({ type: 'info', message: '⚡ Loading SMS student records and subjects...' });
 
-  const [smsStudents, smsSubjects] = await Promise.all([
+  const [smsStudents, smsSubjects, existingResults] = await Promise.all([
     prisma.student.findMany({
-      select: { id: true, admissionNo: true, moodleUsername: true },
+      select: { id: true, admissionNo: true, moodleUsername: true, currentClassId: true },
     }),
     prisma.subject.findMany({ select: { id: true, code: true } }),
+    prisma.result.findMany({
+      where: { session, term },
+      select: { studentId: true, subjectId: true, caScore: true, examScore: true },
+    }),
   ]);
 
-  // Build lookup maps (all lowercased for case-insensitive matching)
-  const studentByAdmNo   = new Map(smsStudents.map(s => [s.admissionNo?.toLowerCase(),   s]));
-  const studentByMoodle  = new Map(smsStudents.map(s => [s.moodleUsername?.toLowerCase(), s]));
-  const subjectByCode    = new Map(smsSubjects.map(s => [s.code.toUpperCase(), s]));
+  // Build lookup maps
+  const studentByAdmNo  = new Map(smsStudents.map(s => [s.admissionNo?.toLowerCase(), s]));
+  const studentByMoodle = new Map(smsStudents.map(s => [s.moodleUsername?.toLowerCase(), s]));
+  const subjectByCode   = new Map(smsSubjects.map(s => [s.code.toUpperCase(), s]));
+  const existingMap     = new Map(existingResults.map(r => [`${r.studentId}_${r.subjectId}`, r]));
 
-  onLog({ type: 'info', message: `Loaded ${smsStudents.length} students, ${smsSubjects.length} subjects` });
+  onLog({ type: 'info', message: `✅ Loaded ${smsStudents.length} students, ${smsSubjects.length} subjects in memory` });
 
-  // ── Collect grades per student across all courses ────────────────────────
-  // Pre-load all existing results for this session & term to preserve scores in memory
-  const existingResults = await prisma.result.findMany({
-    where: { session, term },
-    select: { studentId: true, subjectId: true, caScore: true, examScore: true },
-  });
-  const existingMap = new Map(existingResults.map(r => [`${r.studentId}_${r.subjectId}`, r]));
+  // Structure: studentId → { smsStudent, subjects: Map<subjectId, { ca, exam }> }
+  const gradesByStudent   = new Map();
+  const globalMoodleUsers = new Map(); // Global cache: moodleUserId -> moodleUser
+  const touchedSubjectIds = new Set();
+  const errors            = [];
+  let totalFetched        = 0;
+  let skipped             = 0;
 
-  // Structure: { admissionNo → { subjectCode → { ca, exam } } }
-  const gradesByStudent = new Map();
+  onLog({ type: 'info', message: `🚀 Syncing ${courseMap.length} course(s) from Moodle (parallel pipeline active)...` });
 
-  let totalFetched = 0;
-  let skipped      = 0;
-  const errors     = [];
-
-  for (const mapping of courseMap) {
+  // 2. Fetch courses in parallel with a controlled concurrency of 5
+  await pMap(courseMap, async (mapping, idx) => {
     const { courseId, subjectCode, caGradeItemName = 'CA', examGradeItemName = 'EXAM' } = mapping;
-    const subjectCodeUC = subjectCode.toUpperCase();
+    const subjectCodeUC = (subjectCode || '').toUpperCase();
     const smsSubject    = subjectByCode.get(subjectCodeUC);
 
     if (!smsSubject) {
       const msg = `Subject code "${subjectCode}" not found in SMS — skipping course ${courseId}`;
       onLog({ type: 'warn', message: msg });
       errors.push(msg);
-      continue;
+      return;
     }
 
-    onLog({ type: 'info', message: `Syncing course ${courseId} (${subjectCode})...` });
+    touchedSubjectIds.add(smsSubject.id);
 
-    // Step 1: Get enrolled users for this course
-    let enrolled;
     try {
-      enrolled = await moodleCall(moodleUrl, moodleToken, 'core_enrol_get_enrolled_users', { courseid: courseId });
-    } catch (e) {
-      const msg = `Failed to fetch enrolled users for course ${courseId}: ${e.message}`;
-      onLog({ type: 'error', message: msg });
-      errors.push(msg);
-      continue;
-    }
+      // Fetch enrolled users & grade items in parallel for maximum speed
+      const [enrolledRes, gradeReportRes] = await Promise.all([
+        moodleCall(moodleUrl, moodleToken, 'core_enrol_get_enrolled_users', { courseid: courseId })
+          .catch(e => {
+            errors.push(`Course ${courseId} enroll error: ${e.message}`);
+            return [];
+          }),
+        moodleCall(moodleUrl, moodleToken, 'gradereport_user_get_grade_items', { courseid: courseId })
+          .catch(e => {
+            errors.push(`Course ${courseId} grade error: ${e.message}`);
+            return null;
+          }),
+      ]);
 
-    if (!Array.isArray(enrolled) || !enrolled.length) {
-      onLog({ type: 'warn', message: `No enrolled users found for course ${courseId}` });
-      continue;
-    }
+      // Cache all enrolled users globally
+      if (Array.isArray(enrolledRes)) {
+        for (const u of enrolledRes) {
+          if (u.id) globalMoodleUsers.set(u.id, u);
+        }
+      }
 
-    const moodleUserMap = new Map(enrolled.map(u => [u.id, u]));
+      const usergrades = gradeReportRes?.usergrades || [];
+      if (!usergrades.length) {
+        onLog({ type: 'info', message: `Course ${courseId} (${subjectCode}): No student grade records found` });
+        return;
+      }
 
-    // Step 2: Fetch ALL grades for the entire course in 1 single bulk API call!
-    let gradeReport;
-    try {
-      gradeReport = await moodleCall(moodleUrl, moodleToken, 'gradereport_user_get_grade_items', { courseid: courseId });
-    } catch (e) {
-      const msg = `Could not fetch grades for course ${courseId}: ${e.message}`;
+      let courseCaFound = false;
+
+      for (const ug of usergrades) {
+        const moodleUser = globalMoodleUsers.get(ug.userid);
+        if (!moodleUser) {
+          skipped++;
+          continue;
+        }
+
+        const rawId = String(moodleUser[idField] || '').trim().toLowerCase();
+        if (!rawId) {
+          skipped++;
+          continue;
+        }
+
+        const smsStudent = studentByAdmNo.get(rawId) || studentByMoodle.get(rawId);
+        if (!smsStudent) {
+          skipped++;
+          continue;
+        }
+
+        const gradeItems = ug.gradeitems || [];
+        let ca   = null;
+        let exam = null;
+
+        for (const item of gradeItems) {
+          const itemName = (item.itemname || '').toUpperCase();
+          if (caGradeItemName && itemName.includes(caGradeItemName.toUpperCase())) {
+            ca = (item.graderaw !== null && item.graderaw !== undefined) ? parseFloat(item.graderaw) : 0;
+            courseCaFound = true;
+          }
+          if (examGradeItemName && itemName.includes(examGradeItemName.toUpperCase())) {
+            exam = (item.graderaw !== null && item.graderaw !== undefined) ? parseFloat(item.graderaw) : 0;
+          }
+        }
+
+        if (!gradesByStudent.has(smsStudent.id)) {
+          gradesByStudent.set(smsStudent.id, { smsStudent, subjects: new Map() });
+        }
+
+        gradesByStudent.get(smsStudent.id).subjects.set(smsSubject.id, {
+          subjectId: smsSubject.id,
+          subjectCode: subjectCodeUC,
+          ca,
+          exam,
+        });
+
+        totalFetched++;
+      }
+
+      if (!courseCaFound && caGradeItemName) {
+        onLog({
+          type: 'info',
+          message: `ℹ Course ${courseId} (${subjectCode}): No "${caGradeItemName}" item in Moodle. Preserving existing CA scores in SMS DB.`,
+        });
+      } else {
+        onLog({
+          type: 'info',
+          message: `✔ Course ${courseId} (${subjectCode}): Pulled grades for ${usergrades.length} students`,
+        });
+      }
+
+    } catch (err) {
+      const msg = `Error syncing course ${courseId}: ${err.message}`;
       onLog({ type: 'warn', message: msg });
       errors.push(msg);
-      continue;
     }
+  }, 5);
 
-    const usergrades = gradeReport?.usergrades || [];
-    onLog({ type: 'info', message: `Found grades for ${usergrades.length} students in course ${courseId}` });
+  onLog({ type: 'info', message: `Writing grades for ${gradesByStudent.size} student(s) into database...` });
 
-    for (const ug of usergrades) {
-      const moodleUser = moodleUserMap.get(ug.userid);
-      if (!moodleUser) continue;
-
-      const rawId = String(moodleUser[idField] || '').trim().toLowerCase();
-      if (!rawId) { skipped++; continue; }
-
-      const smsStudent = studentByAdmNo.get(rawId) || studentByMoodle.get(rawId);
-      if (!smsStudent) {
-        skipped++;
-        continue;
-      }
-
-      const gradeItems = ug.gradeitems || [];
-      let ca   = null;
-      let exam = null;
-
-      for (const item of gradeItems) {
-        const itemName = (item.itemname || '').toUpperCase();
-        if (caGradeItemName && itemName.includes(caGradeItemName.toUpperCase())) {
-          ca = (item.graderaw !== null && item.graderaw !== undefined) ? parseFloat(item.graderaw) : 0;
-        }
-        if (examGradeItemName && itemName.includes(examGradeItemName.toUpperCase())) {
-          exam = (item.graderaw !== null && item.graderaw !== undefined) ? parseFloat(item.graderaw) : 0;
-        }
-      }
-
-      // If no explicit CA item was found by name, warn and default to 0.
-      // We do NOT silently pick an unrelated quiz/module as CA because for a CBT
-      // exam the quiz score should be mapped as EXAM, not CA.  Any previously
-      // uploaded CA score will be preserved via the existingMap fallback below.
-      if (ca === null) {
-        onLog({
-          type: 'warn',
-          message: `⚠ No grade item matching "${caGradeItemName}" found for student "${rawId}" in course ${courseId}. CA will fall back to existing DB value (or 0). Rename the Moodle grade item to match, or update the CA Grade Item field in Configuration.`,
-        });
-        // ca stays null → existingMap fallback applies when writing to DB
-      }
-
-      if (!gradesByStudent.has(smsStudent.id)) {
-        gradesByStudent.set(smsStudent.id, { smsStudent, subjects: new Map() });
-      }
-      gradesByStudent.get(smsStudent.id).subjects.set(smsSubject.id, {
-        subjectId: smsSubject.id,
-        subjectCode: subjectCodeUC,
-        ca,
-        exam,
-      });
-
-      totalFetched++;
-    }
-  }
-
-  onLog({ type: 'info', message: `Grade data collected for ${gradesByStudent.size} students. Writing to database...` });
-
-  // ── Upsert all results into database ─────────────────────────────────────
+  // 3. Prepare batched upserts with strictly whole numbers
   const ops = [];
 
   for (const [studentId, { smsStudent, subjects }] of gradesByStudent) {
@@ -246,13 +267,12 @@ async function runSync(config, session, termRaw, onLog = () => {}) {
       const ca   = (rawCa !== null)   ? rawCa   : (existing?.caScore ?? 0);
       const exam = (rawExam !== null) ? rawExam : (existing?.examScore ?? 0);
 
-      let total      = ca + exam;
-      let finalTotal = total;
-      let remarkText = gradeRemark(calculateGrade(total));
+      // Strictly whole number total score
+      const total      = Math.round(ca + exam);
+      const finalTotal = total;
+      const remarkText = gradeRemark(calculateGrade(total));
+      const grade      = calculateGrade(finalTotal);
 
-      const grade = calculateGrade(finalTotal);
-
-      // Store as a lazy function, NOT an eagerly executed promise
       ops.push(() =>
         prisma.result.upsert({
           where:  { result_unique: { studentId, subjectId, session, term } },
@@ -263,51 +283,75 @@ async function runSync(config, session, termRaw, onLog = () => {}) {
     }
   }
 
-  onLog({ type: 'info', message: `Writing ${ops.length} results to database...` });
-
-  // Execute in batches of 20 to speed up execution while respecting Supabase connection pool
-  const BATCH_SIZE = 20;
+  // Execute database upserts in batches of 50
+  const BATCH_SIZE = 50;
   for (let i = 0; i < ops.length; i += BATCH_SIZE) {
     const batch = ops.slice(i, i + BATCH_SIZE);
     await Promise.all(batch.map(fn => fn()));
   }
 
-  // Recalculate student positions in database for this session and term
-  try {
-    onLog({ type: 'info', message: 'Recalculating student subject positions across classes...' });
-    const classes = await prisma.class.findMany({ select: { id: true } });
-    const subjects = await prisma.subject.findMany({ select: { id: true } });
+  // 4. Ultra-Fast In-Memory Position Recalculation (1 query + bulk transaction)
+  if (touchedSubjectIds.size > 0) {
+    try {
+      onLog({ type: 'info', message: '⚡ Calculating student ranks and subject positions...' });
 
-    for (const c of classes) {
-      const classStudents = await prisma.student.findMany({
-        where: { currentClassId: c.id },
-        select: { id: true },
+      const touchedResults = await prisma.result.findMany({
+        where: {
+          subjectId: { in: Array.from(touchedSubjectIds) },
+          session,
+          term,
+        },
+        select: {
+          id: true,
+          studentId: true,
+          subjectId: true,
+          total: true,
+          student: { select: { currentClassId: true } },
+        },
       });
-      if (!classStudents.length) continue;
-      const classStudentIds = classStudents.map(s => s.id);
 
-      for (const sub of subjects) {
-        const subResults = await prisma.result.findMany({
-          where: { studentId: { in: classStudentIds }, subjectId: sub.id, session, term },
-          select: { id: true, studentId: true, total: true },
-        });
-        if (!subResults.length) continue;
+      // Group results by `${classId}_${subjectId}`
+      const groups = new Map();
+      for (const r of touchedResults) {
+        const classId = r.student?.currentClassId;
+        if (!classId) continue;
+        const key = `${classId}_${r.subjectId}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push({ id: r.id, studentId: r.studentId, total: r.total });
+      }
 
-        const posMap = calculatePositions(subResults);
-        for (const [sid, pos] of Object.entries(posMap)) {
-          await prisma.result.updateMany({
-            where: { studentId: sid, subjectId: sub.id, session, term },
-            data: { position: pos },
-          });
+      // Compute ranks in memory
+      const updateOps = [];
+      for (const [, groupList] of groups) {
+        const posMap = calculatePositions(groupList);
+        for (const item of groupList) {
+          const rankNum = posMap[item.studentId];
+          if (rankNum) {
+            updateOps.push(
+              prisma.result.update({
+                where: { id: item.id },
+                data:  { position: formatPosition(rankNum) },
+              })
+            );
+          }
         }
       }
+
+      // Run position updates in transactions of 50
+      for (let i = 0; i < updateOps.length; i += 50) {
+        const batch = updateOps.slice(i, i + 50);
+        await prisma.$transaction(batch);
+      }
+    } catch (posErr) {
+      onLog({ type: 'warn', message: `Position calculation notice: ${posErr.message}` });
     }
-  } catch (posErr) {
-    onLog({ type: 'warn', message: `Position calculation notice: ${posErr.message}` });
   }
 
   const saved = ops.length;
-  onLog({ type: 'success', message: `✅ Sync complete. Saved ${saved} result(s). Skipped ${skipped}. Errors: ${errors.length}` });
+  onLog({
+    type: 'success',
+    message: `✅ Sync complete! Saved ${saved} student result(s). Skipped ${skipped}. Errors: ${errors.length}`,
+  });
 
   return { total: totalFetched, saved, skipped, errors };
 }

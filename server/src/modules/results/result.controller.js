@@ -187,6 +187,158 @@ const getClassScores = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// Helper: build a single student's complete report card
+const buildStudentReportCard = async (studentId, session, term, userRole) => {
+  const [student, results, attendances] = await Promise.all([
+    prisma.student.findUnique({
+      where: { id: studentId },
+      include: {
+        currentClass: true,
+        parent: { select: { name: true } },
+      },
+    }),
+
+    prisma.result.findMany({
+      where: {
+        studentId,
+        ...(session && { session }),
+        ...(term && { term }),
+      },
+      include: { subject: { select: { name: true, code: true } } },
+      orderBy: { subject: { name: 'asc' } },
+    }),
+
+    // Attendance for this student
+    prisma.attendance.groupBy({
+      by: ['status'],
+      _count: { status: true },
+      where: { studentId },
+    }),
+  ]);
+
+  if (!student) return null;
+
+  const storedSettings = getStoredSettings();
+  const isResultsReleased = Boolean(storedSettings?.resultsReleased);
+
+  // If student is viewing report card and results are withheld:
+  if (userRole === 'STUDENT' && !isResultsReleased) {
+    const err = new Error('Official report cards for this term have not yet been released by the school administration.');
+    err.status = 403;
+    throw err;
+  }
+
+  const attPresent = attendances.find(a => a.status === 'PRESENT')?._count.status || 0;
+  const attAbsent = attendances.find(a => a.status === 'ABSENT')?._count.status || 0;
+  const attLate = attendances.find(a => a.status === 'LATE')?._count.status || 0;
+  const attTotal = attPresent + attAbsent + attLate;
+  const attRate = attTotal ? Math.round((attPresent / attTotal) * 100) : 0;
+  // Attendance Score (value from attendance page - out of 10)
+  const attScore = attTotal ? Math.round((attPresent / attTotal) * 10 * 10) / 10 : 0;
+
+  // Load classmate results to compute real positions if not set
+  let classResults = [];
+  let classmateIds = [];
+  if (student.currentClassId && results.length > 0) {
+    const classmates = await prisma.student.findMany({
+      where: { currentClassId: student.currentClassId },
+      select: { id: true },
+    });
+    classmateIds = classmates.map(c => c.id);
+    const subjectIds = results.map(r => r.subjectId);
+    classResults = await prisma.result.findMany({
+      where: {
+        studentId: { in: classmateIds },
+        subjectId: { in: subjectIds },
+        ...(session && { session }),
+        ...(term && { term }),
+      },
+      select: { studentId: true, subjectId: true, total: true },
+    });
+  }
+
+  // Process results: CA capped at 30, Exam at 70, Total strictly a whole number
+  const processedResults = results.map(r => {
+    const combinedCA = Math.min(30, Math.round(((r.caScore || 0) + attScore) * 10) / 10);
+    const total = Math.round(combinedCA + (r.examScore || 0));
+    const grade = calculateGrade(total);
+    const remark = gradeRemark(grade);
+
+    let pos = r.position;
+    if (!pos && classResults.length > 0) {
+      const subRes = classResults.filter(cr => cr.subjectId === r.subjectId);
+      const ranks = calculatePositions(subRes);
+      pos = ranks[student.id] || null;
+    }
+
+    return {
+      ...r,
+      rawCaScore: r.caScore,
+      attendanceScore: attScore,
+      caScore: combinedCA,
+      total,
+      grade,
+      remark,
+      position: pos ? formatPosition(pos) : '—',
+    };
+  });
+
+  const totalScore = Math.round(processedResults.reduce((s, r) => s + r.total, 0));
+  const average = processedResults.length
+    ? (totalScore / processedResults.length).toFixed(1)
+    : 0;
+
+  // Overall class position
+  let overallPosDisplay = '—';
+  if (student.currentClassId && classResults.length > 0) {
+    const studentTotals = {};
+    classmateIds.forEach(id => { studentTotals[id] = 0; });
+    classResults.forEach(cr => {
+      studentTotals[cr.studentId] = (studentTotals[cr.studentId] || 0) + (cr.total || 0);
+    });
+    const overallRankings = Object.entries(studentTotals).map(([sid, tot]) => ({ studentId: sid, total: tot }));
+    const overallPositions = calculatePositions(overallRankings);
+    const myRank = overallPositions[student.id];
+    if (myRank) {
+      overallPosDisplay = `${formatPosition(myRank)} of ${classmateIds.length}`;
+    }
+  }
+
+  const studentPsychomotor = getStudentPsychomotor(studentId, session, term || 'FIRST');
+  const photoUrl = student.photo
+    ? (student.photo.startsWith('http') || student.photo.startsWith('data:')
+        ? student.photo
+        : (student.photo.startsWith('/uploads/')
+            ? student.photo
+            : (student.photo.startsWith('/') ? student.photo : `/uploads/${student.photo}`)))
+    : null;
+
+  return {
+    student: {
+      ...student,
+      photoUrl,
+      photo: photoUrl || student.photo,
+      attendance: {
+        present: attPresent,
+        absent: attAbsent,
+        late: attLate,
+        rate: attRate,
+        score: attScore,
+        maxScore: 10,
+        display: `${attScore}/10`,
+      },
+    },
+    results: processedResults,
+    summary: {
+      totalScore,
+      average,
+      subjectCount: processedResults.length,
+      position: overallPosDisplay,
+    },
+    psychomotor: studentPsychomotor,
+  };
+};
+
 // GET /api/results/report-card/:studentId?session=&term=
 const getReportCard = async (req, res, next) => {
   try {
@@ -194,154 +346,50 @@ const getReportCard = async (req, res, next) => {
     const { session } = req.query;
     const term = req.query.term ? normalizeTerm(req.query.term) : undefined;
 
-    const [student, results, attendances] = await Promise.all([
-      prisma.student.findUnique({
-        where: { id: studentId },
-        include: {
-          currentClass: true,
-          parent: { select: { name: true } },
-        },
-      }),
+    const reportCard = await buildStudentReportCard(studentId, session, term, req.user?.role);
+    if (!reportCard) return res.status(404).json({ message: 'Student not found' });
 
-      prisma.result.findMany({
-        where: {
-          studentId,
-          ...(session && { session }),
-          ...(term && { term }),
-        },
-        include: { subject: { select: { name: true, code: true } } },
-        orderBy: { subject: { name: 'asc' } },
-      }),
+    res.json(reportCard);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ message: err.message, resultsReleased: false });
+    next(err);
+  }
+};
 
-      // Attendance for this student
-      prisma.attendance.groupBy({
-        by: ['status'],
-        _count: { status: true },
-        where: { studentId },
-      }),
-    ]);
+// GET /api/results/bulk-report-cards?classId=&studentIds=&session=&term=
+const getBulkReportCards = async (req, res, next) => {
+  try {
+    const { classId, session } = req.query;
+    const studentIdsParam = req.query.studentIds;
+    const term = req.query.term ? normalizeTerm(req.query.term) : undefined;
 
-    if (!student) return res.status(404).json({ message: 'Student not found' });
-
-    const storedSettings = getStoredSettings();
-    const isResultsReleased = Boolean(storedSettings?.resultsReleased);
-
-    // If student is viewing report card and results are withheld:
-    if (req.user?.role === 'STUDENT' && !isResultsReleased) {
-      return res.status(403).json({
-        message: 'Official report cards for this term have not yet been released by the school administration.',
-        resultsReleased: false,
-      });
-    }
-
-    const attPresent = attendances.find(a => a.status === 'PRESENT')?._count.status || 0;
-    const attAbsent = attendances.find(a => a.status === 'ABSENT')?._count.status || 0;
-    const attLate = attendances.find(a => a.status === 'LATE')?._count.status || 0;
-    const attTotal = attPresent + attAbsent + attLate;
-    const attRate = attTotal ? Math.round((attPresent / attTotal) * 100) : 0;
-    // Attendance Score (value from attendance page - out of 10)
-    const attScore = attTotal ? Math.round((attPresent / attTotal) * 10 * 10) / 10 : 0;
-
-    // Load classmate results to compute real positions if not set
-    let classResults = [];
-    let classmateIds = [];   // declared here so both blocks below can access it
-    if (student.currentClassId && results.length > 0) {
-      const classmates = await prisma.student.findMany({
-        where: { currentClassId: student.currentClassId },
+    let targetStudentIds = [];
+    if (studentIdsParam) {
+      targetStudentIds = studentIdsParam.split(',').map(s => s.trim()).filter(Boolean);
+    } else if (classId) {
+      const classStudents = await prisma.student.findMany({
+        where: { currentClassId: classId },
         select: { id: true },
+        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
       });
-      classmateIds = classmates.map(c => c.id);   // assign (no const — uses outer let)
-      const subjectIds = results.map(r => r.subjectId);
-      classResults = await prisma.result.findMany({
-        where: {
-          studentId: { in: classmateIds },
-          subjectId: { in: subjectIds },
-          ...(session && { session }),
-          ...(term && { term }),
-        },
-        select: { studentId: true, subjectId: true, total: true },
-      });
+      targetStudentIds = classStudents.map(s => s.id);
     }
 
-    // Process results: On final report sheet, CA score and Attendance score are summed as one CA (max 30: 20 CA + 10 Attendance, Exam is 70)
-    // Note: total is strictly rounded to a whole number per school academic requirements
-    const processedResults = results.map(r => {
-      const combinedCA = Math.min(30, Math.round(((r.caScore || 0) + attScore) * 10) / 10);
-      const total = Math.round(combinedCA + (r.examScore || 0));
-      const grade = calculateGrade(total);
-      const remark = gradeRemark(grade);
+    if (targetStudentIds.length === 0) {
+      return res.json({ reportCards: [], count: 0 });
+    }
 
-      let pos = r.position;
-      if (!pos && classResults.length > 0) {
-        const subRes = classResults.filter(cr => cr.subjectId === r.subjectId);
-        const ranks = calculatePositions(subRes);
-        pos = ranks[student.id] || null;
-      }
-
-      return {
-        ...r,
-        rawCaScore: r.caScore,
-        attendanceScore: attScore,
-        caScore: combinedCA,
-        total,
-        grade,
-        remark,          // always use freshly computed remark — matches the displayed grade
-        position: pos ? formatPosition(pos) : '—',
-      };
-    });
-
-    const totalScore = Math.round(processedResults.reduce((s, r) => s + r.total, 0));
-    const average = processedResults.length
-      ? (totalScore / processedResults.length).toFixed(1)
-      : 0;
-
-    // Overall class position
-    let overallPosDisplay = '—';
-    if (student.currentClassId && classResults.length > 0) {
-      const studentTotals = {};
-      classmateIds.forEach(id => { studentTotals[id] = 0; });
-      classResults.forEach(cr => {
-        studentTotals[cr.studentId] = (studentTotals[cr.studentId] || 0) + (cr.total || 0);
-      });
-      const overallRankings = Object.entries(studentTotals).map(([sid, tot]) => ({ studentId: sid, total: tot }));
-      const overallPositions = calculatePositions(overallRankings);
-      const myRank = overallPositions[student.id];
-      if (myRank) {
-        overallPosDisplay = `${formatPosition(myRank)} of ${classmateIds.length}`;
+    const reportCards = [];
+    for (const sid of targetStudentIds) {
+      try {
+        const rc = await buildStudentReportCard(sid, session, term, req.user?.role);
+        if (rc) reportCards.push(rc);
+      } catch (err) {
+        console.error(`Failed to generate report card for student ${sid}:`, err.message);
       }
     }
 
-    const studentPsychomotor = getStudentPsychomotor(studentId, session, term || 'FIRST');
-    const photoUrl = student.photo
-      ? (student.photo.startsWith('http') || student.photo.startsWith('data:')
-          ? student.photo
-          : (student.photo.startsWith('/') ? student.photo : `/uploads/${student.photo}`))
-      : null;
-
-    res.json({
-      student: {
-        ...student,
-        photoUrl,
-        photo: photoUrl || student.photo,
-        attendance: {
-          present: attPresent,
-          absent: attAbsent,
-          late: attLate,
-          rate: attRate,
-          score: attScore,
-          maxScore: 10,
-          display: `${attScore}/10`,
-        },
-      },
-      results: processedResults,
-      summary: {
-        totalScore,
-        average,
-        subjectCount: processedResults.length,
-        position: overallPosDisplay,
-      },
-      psychomotor: studentPsychomotor,
-    });
+    res.json({ reportCards, count: reportCards.length });
   } catch (err) { next(err); }
 };
 
@@ -598,6 +646,7 @@ module.exports = {
   upload,
   getByStudent,
   getReportCard,
+  getBulkReportCards,
   calculate,
   publish,
   uploadTeacherExcel,
