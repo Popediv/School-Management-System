@@ -96,6 +96,7 @@ export default function ReportCardPage() {
   const [session, setSession] = useState(def.session);
   const [term, setTerm] = useState(def.term);
   const [localPsychomotor, setLocalPsychomotor] = useState({});
+  const [photoFailed, setPhotoFailed] = useState(false);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['report-card', studentId || 'me', session, term],
@@ -340,25 +341,19 @@ export default function ReportCardPage() {
               <div className="rc-id">
                 {/* Official Passport Box */}
                 <div className="rc-passport-box">
-                  {photoSrc ? (
+                  {photoSrc && !photoFailed ? (
                     <img
                       src={photoSrc}
                       alt={fullName}
                       className="rc-passport-img"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        const p = e.currentTarget.parentElement?.querySelector('.rc-passport-placeholder');
-                        if (p) p.style.display = 'flex';
-                      }}
+                      onError={() => setPhotoFailed(true)}
                     />
-                  ) : null}
-                  <div
-                    className="rc-passport-placeholder"
-                    style={{ display: photoSrc ? 'none' : 'flex' }}
-                  >
-                    <User size={26} style={{ color: 'var(--mute)' }} />
-                    <span className="rc-passport-lbl">PASSPORT</span>
-                  </div>
+                  ) : (
+                    <div className="rc-passport-placeholder">
+                      <User size={24} style={{ color: '#94A3B8' }} />
+                      <span className="rc-passport-lbl">PASSPORT</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="rc-id-main">
@@ -498,6 +493,7 @@ export default function ReportCardPage() {
                         ['Subjects', stats.count, 'var(--primary-theme)'],
                         ['Total Score', stats.total, 'var(--primary-theme)'],
                         ['Average', stats.avg ? stats.avg.toFixed(1) : '—', '#B45309'],
+                        ['Att. Score', student?.attendance?.score != null ? `${student.attendance.score}/10` : '—', '#0369A1'],
                         ['Overall Grade', og?.g || '—', og?.fg || '#374151'],
                       ].map(([l, v, c]) => (
                         <div key={l} className="rc-sumcard">
@@ -644,9 +640,9 @@ html, body {
   background-size: contain !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
-  opacity: 0.045 !important;
+  opacity: 0.08 !important;
   pointer-events: none !important;
-  z-index: 0 !important;
+  z-index: 2 !important;
 }
 
 .rc-header {
@@ -720,8 +716,9 @@ html, body {
   justify-content: space-between !important;
   padding: 8px 18px 6px !important;
   position: relative !important;
-  z-index: 1 !important;
+  z-index: 3 !important;
   min-height: 0 !important;
+  background: transparent !important;
 }
 
 /* Student ID with Passport */
@@ -733,7 +730,7 @@ html, body {
   border: 1px solid #CBD5E1 !important;
   border-left: 4px solid var(--primary-theme) !important;
   border-radius: 8px !important;
-  background: #FBFCFE !important;
+  background: rgba(251,252,254,0.72) !important;
 }
 .rc-passport-box {
   width: 58px !important;
@@ -742,13 +739,30 @@ html, body {
   border: 1.5px solid #94A3B8 !important;
   overflow: hidden !important;
   background: #F1F5F9 !important;
-  display: flex !important;
+  display: block !important;
+  flex-shrink: 0 !important;
+  position: relative !important;
+}
+.rc-passport-img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+.rc-passport-placeholder {
+  width: 100% !important;
+  height: 100% !important;
+  display: none !important;
+  flex-direction: column !important;
   align-items: center !important;
   justify-content: center !important;
-  flex-shrink: 0 !important;
 }
-.rc-passport-img { width: 100% !important; height: 100% !important; object-fit: cover !important; }
-.rc-passport-placeholder { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; }
+.rc-passport-placeholder:only-child {
+  display: flex !important;
+}
+.rc-passport-box img + .rc-passport-placeholder {
+  display: none !important;
+}
 .rc-passport-lbl { font-size: 7px !important; color: #94A3B8 !important; font-weight: 700 !important; margin-top: 2px !important; }
 .rc-id-main { flex: 1 !important; min-width: 0 !important; }
 .rc-id-name { font-family: 'Fraunces', serif !important; font-size: 16px !important; font-weight: 800 !important; line-height: 1.15 !important; color: #0F172A !important; }
@@ -819,7 +833,7 @@ html, body {
 .rc-gki-label { font-size: 7.5px !important; color: #64748B !important; }
 
 /* Summary */
-.rc-sumgrid { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; border: 1px solid #CBD5E1 !important; border-radius: 6px !important; overflow: hidden !important; background: #fff !important; }
+.rc-sumgrid { display: grid !important; grid-template-columns: repeat(5, 1fr) !important; border: 1px solid #CBD5E1 !important; border-radius: 6px !important; overflow: hidden !important; background: #fff !important; }
 .rc-sumcard { padding: 6px 8px !important; border-right: 1px solid #CBD5E1 !important; text-align: center !important; }
 .rc-sumcard:last-child { border-right: 0 !important; }
 .rc-suml { font-size: 8.5px !important; color: #64748B !important; margin-bottom: 2px !important; font-weight: 600 !important; }
@@ -1017,9 +1031,9 @@ const SCREEN_AND_PAGE_CSS = `
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
-  opacity: 0.045;
+  opacity: 0.08;
   pointer-events: none;
-  z-index: 0;
+  z-index: 2;
 }
 
 .rc-header {
@@ -1074,7 +1088,8 @@ const SCREEN_AND_PAGE_CSS = `
   justify-content: space-between;
   padding: 20px 28px 16px;
   position: relative;
-  z-index: 1;
+  z-index: 3;
+  background: transparent;
 }
 .rc-sec { margin-top: 18px; }
 .rc-sh {
@@ -1098,7 +1113,7 @@ const SCREEN_AND_PAGE_CSS = `
   border: 1px solid var(--line);
   border-left: 4px solid var(--primary-theme);
   border-radius: 8px;
-  background: #FBFCFE;
+  background: rgba(251,252,254,0.75);
 }
 .rc-passport-box {
   width: 66px;
@@ -1107,14 +1122,15 @@ const SCREEN_AND_PAGE_CSS = `
   border: 1.5px solid #CBD5E1;
   overflow: hidden;
   background: #F1F5F9;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   flex-shrink: 0;
   box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  position: relative;
 }
-.rc-passport-img { width: 100%; height: 100%; object-fit: cover; }
-.rc-passport-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.rc-passport-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rc-passport-placeholder { width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.rc-passport-placeholder:only-child { display: flex; }
+.rc-passport-box img + .rc-passport-placeholder { display: none !important; }
 .rc-passport-lbl { font-size: 8px; color: var(--mute); font-weight: 700; letter-spacing: 0.5px; }
 .rc-id-main { flex: 1; min-width: 0; }
 .rc-id-name { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 800; line-height: 1.2; color: #0F172A; }
@@ -1131,8 +1147,8 @@ const SCREEN_AND_PAGE_CSS = `
 .rc-table th { padding: 9px 12px; font-size: 11.5px; color: rgba(255, 255, 255, .95); font-weight: 700; text-align: left; white-space: nowrap; }
 .rc-table th span { opacity: .7; font-weight: 400; font-size: 10px; }
 .rc-table .c { text-align: center; }
-.rc-table td { padding: 8px 12px; border-bottom: 1px solid #EEF2F7; vertical-align: middle; }
-.rc-table tbody tr:nth-child(even) { background: #F8FAFC; }
+.rc-table td { padding: 8px 12px; border-bottom: 1px solid #EEF2F7; vertical-align: middle; background: rgba(255,255,255,0.65); }
+.rc-table tbody tr:nth-child(even) td { background: rgba(248,250,252,0.55); }
 .rc-table tbody tr:last-child td { border-bottom: 0; }
 .rc-fail td:first-child { box-shadow: inset 3px 0 #DC2626; }
 .rc-sn { font-weight: 600; font-size: 13.5px; }
@@ -1149,36 +1165,36 @@ const SCREEN_AND_PAGE_CSS = `
 .rc-lower-col { display: flex; flex-direction: column; gap: 10px; }
 
 /* Psychomotor */
-.rc-psycho-table-wrap { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; }
+.rc-psycho-table-wrap { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: rgba(255,255,255,0.72); }
 .rc-psycho-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.rc-psycho-table thead tr { background: #F1F5F9; border-bottom: 1px solid var(--line); }
+.rc-psycho-table thead tr { background: rgba(241,245,249,0.8); border-bottom: 1px solid var(--line); }
 .rc-psycho-th-trait { padding: 6px 10px; font-weight: 700; text-align: left; color: var(--primary-theme); }
 .rc-psycho-th-num { width: 26px; padding: 6px 0; font-weight: 800; color: var(--primary-theme); border-left: 1px solid var(--line); text-align: center; }
-.rc-psycho-table td { padding: 5px 10px; border-bottom: 1px solid #EEF2F7; }
+.rc-psycho-table td { padding: 5px 10px; border-bottom: 1px solid #EEF2F7; background: rgba(255,255,255,0.65); }
 .rc-psycho-table tbody tr:last-child td { border-bottom: 0; }
 .rc-psycho-trait { font-weight: 500; color: #334155; }
 .rc-psycho-cell { border-left: 1px solid var(--line); font-weight: 800; color: #166534; cursor: pointer; user-select: none; text-align: center; }
-.rc-psycho-cell.active { background: #F0FDF4; }
-.rc-psycho-key { padding: 4px 10px; background: #F8FAFC; border-top: 1px solid var(--line); font-size: 10px; color: var(--mute); text-align: center; font-weight: 600; }
+.rc-psycho-cell.active { background: rgba(240,253,244,0.75); }
+.rc-psycho-key { padding: 4px 10px; background: rgba(248,250,252,0.6); border-top: 1px solid var(--line); font-size: 10px; color: var(--mute); text-align: center; font-weight: 600; }
 
 /* Grading key */
 .rc-gkey { display: grid; grid-template-columns: repeat(6, 1fr); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.rc-gki { padding: 6px 4px; text-align: center; border-right: 1px solid var(--line); background: #fff; }
+.rc-gki { padding: 6px 4px; text-align: center; border-right: 1px solid var(--line); background: rgba(255,255,255,0.72); }
 .rc-gki:last-child { border-right: 0; }
 .rc-gki-letter { font-family: 'Fraunces', serif; font-size: 16px; font-weight: 800; line-height: 1; }
 .rc-gki-range { font-size: 11px; color: #475569; font-weight: 600; margin-top: 2px; }
 .rc-gki-label { font-size: 10px; color: var(--mute); }
 
 /* Summary */
-.rc-sumgrid { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.rc-sumcard { padding: 8px 10px; border-right: 1px solid var(--line); background: #fff; text-align: center; }
+.rc-sumgrid { display: grid; grid-template-columns: repeat(5, 1fr); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.rc-sumcard { padding: 8px 10px; border-right: 1px solid var(--line); background: rgba(255,255,255,0.72); text-align: center; }
 .rc-sumcard:last-child { border-right: 0; }
 .rc-suml { font-size: 11px; color: var(--mute); margin-bottom: 2px; font-weight: 600; }
 .rc-sumv { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 800; line-height: 1.1; }
 .rc-insight { margin: 6px 2px 0; font-size: 12px; color: #334155; line-height: 1.5; }
 
 /* Remarks */
-.rc-rbox { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; background: #fff; }
+.rc-rbox { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; background: rgba(255,255,255,0.72); }
 .rc-rlabel { font-size: 11px; font-weight: 700; color: var(--primary-theme); margin-bottom: 2px; }
 .rc-rtext { min-height: 32px; font-size: 12.5px; color: #334155; line-height: 1.45; border-top: 1px dashed var(--line); padding-top: 4px; }
 
@@ -1236,7 +1252,7 @@ const SCREEN_AND_PAGE_CSS = `
   .rc-id { flex-direction: column; align-items: flex-start; }
   .rc-id-pos { border-left: 0; padding-left: 0; text-align: left; }
   .rc-igrid, .rc-nextgrid, .rc-signgrid, .rc-lower-grid { grid-template-columns: 1fr; }
-  .rc-sumgrid, .rc-gkey { grid-template-columns: repeat(2, 1fr); }
+  .rc-sumgrid, .rc-gkey { grid-template-columns: repeat(3, 1fr); }
   .rc-footer { flex-direction: column; align-items: flex-start; }
 }
 `;

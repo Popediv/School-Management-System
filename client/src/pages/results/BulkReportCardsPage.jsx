@@ -1,9 +1,46 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Printer, ArrowLeft, CheckSquare, Square, Filter, Users } from 'lucide-react';
+import { Printer, ArrowLeft, CheckSquare, Square, Filter, Users, AlertCircle } from 'lucide-react';
 import api from '../../services/api';
 import { ReportCardDocument, PRINT_CORE_CSS, TERMS } from '../../components/results/ReportCardDocument';
+
+/* Robust Error Boundary for batch printing */
+class ReportCardErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('ReportCard render failure:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          padding: '16px 20px',
+          background: '#FFF1F2',
+          border: '1px solid #FECDD3',
+          borderRadius: '8px',
+          margin: '12px auto',
+          maxWidth: '820px',
+          color: '#9F1239'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '14px' }}>
+            <AlertCircle size={16} /> Notice: Could not render report card for {this.props.studentName || 'this student'}
+          </div>
+          <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#BE123C' }}>
+            {this.state.error?.message || 'Data formatting error in this student record.'}
+          </p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const currentSession = () => {
   const now = new Date(), m = now.getMonth() + 1;
@@ -28,16 +65,27 @@ export default function BulkReportCardsPage() {
     idsParam ? idsParam.split(',').filter(Boolean) : []
   );
 
-  // 1. Fetch available classes
-  const { data: classesData = [] } = useQuery({
+  // 1. Fetch available classes (resilient against object/array wrappers and auth errors)
+  const { data: classesRaw, isLoading: isClassesLoading } = useQuery({
     queryKey: ['classes'],
-    queryFn: () => api.get('/classes').then(r => r.data?.data || r.data || []),
+    queryFn: () =>
+      api
+        .get('/classes')
+        .then((r) => r.data?.classes || r.data?.data || (Array.isArray(r.data) ? r.data : []))
+        .catch(() => []),
   });
+
+  const classList = useMemo(() => {
+    if (Array.isArray(classesRaw)) return classesRaw;
+    if (Array.isArray(classesRaw?.classes)) return classesRaw.classes;
+    if (Array.isArray(classesRaw?.data)) return classesRaw.data;
+    return [];
+  }, [classesRaw]);
 
   // 2. Fetch school settings (logo & metadata)
   const { data: settings } = useQuery({
     queryKey: ['school-settings'],
-    queryFn: () => api.get('/settings').then(r => r.data),
+    queryFn: () => api.get('/settings').then(r => r.data).catch(() => ({})),
     placeholderData: { logoUrl: null, schoolName: 'PATIMO SCHOOLS INTERNATIONAL' },
   });
 
@@ -58,12 +106,18 @@ export default function BulkReportCardsPage() {
     enabled: Boolean(selectedClassId || idsParam),
   });
 
-  const allReportCards = bulkData?.reportCards || [];
+  // Filter only valid report card records with a student object
+  const allReportCards = useMemo(() => {
+    const list = Array.isArray(bulkData?.reportCards)
+      ? bulkData.reportCards
+      : (Array.isArray(bulkData) ? bulkData : []);
+    return list.filter((rc) => rc && rc.student && rc.student.id);
+  }, [bulkData]);
 
   // Initialize selected IDs if not already set by query params
   const effectiveSelectedIds = useMemo(() => {
     if (idsParam && selectedStudentIds.length === 0) {
-      return idsParam.split(',').filter(Boolean);
+      return idsParam.split(',').map(s => s.trim()).filter(Boolean);
     }
     if (!idsParam && selectedStudentIds.length === 0 && allReportCards.length > 0) {
       return allReportCards.map(rc => rc.student.id);
@@ -80,6 +134,7 @@ export default function BulkReportCardsPage() {
   };
 
   const toggleStudent = (id) => {
+    if (!id) return;
     if (effectiveSelectedIds.includes(id)) {
       setSelectedStudentIds(effectiveSelectedIds.filter(i => i !== id));
     } else {
@@ -89,8 +144,8 @@ export default function BulkReportCardsPage() {
 
   // Filter report cards to print only selected students
   const visibleReportCards = useMemo(() => {
-    if (effectiveSelectedIds.length === 0) return [];
-    return allReportCards.filter(rc => effectiveSelectedIds.includes(rc.student.id));
+    if (!Array.isArray(allReportCards) || effectiveSelectedIds.length === 0) return [];
+    return allReportCards.filter(rc => rc?.student?.id && effectiveSelectedIds.includes(rc.student.id));
   }, [allReportCards, effectiveSelectedIds]);
 
   /* Bulletproof print function using isolated iframe for all selected cards */
@@ -215,8 +270,8 @@ export default function BulkReportCardsPage() {
                   setSearchParams({ classId: e.target.value, session, term });
                 }}
               >
-                <option value="">-- Choose Class --</option>
-                {classesData.map((c) => (
+                <option value="">{isClassesLoading ? 'Loading classes...' : '-- Choose Class --'}</option>
+                {classList.map((c) => (
                   <option key={c.id} value={c.id}>{c.name} ({c.level || 'Class'})</option>
                 ))}
               </select>
@@ -287,7 +342,8 @@ export default function BulkReportCardsPage() {
             </div>
             <div className="rc-checklist-grid">
               {allReportCards.map((rc) => {
-                const s = rc.student;
+                const s = rc?.student;
+                if (!s || !s.id) return null;
                 const isChecked = effectiveSelectedIds.includes(s.id);
                 return (
                   <label
@@ -301,7 +357,7 @@ export default function BulkReportCardsPage() {
                       onChange={() => {}}
                     />
                     <div className="rc-check-text">
-                      <span className="rc-check-name">{s.firstName} {s.lastName}</span>
+                      <span className="rc-check-name">{s.firstName || ''} {s.lastName || ''}</span>
                       <span className="rc-check-meta">{s.admissionNo || 'No Adm No'}</span>
                     </div>
                   </label>
@@ -344,15 +400,17 @@ export default function BulkReportCardsPage() {
         {/* ═════ PRINTABLE REPORT CARDS CONTAINER ═════ */}
         <div id="rc-bulk-container" className="rc-bulk-container">
           {visibleReportCards.map((rc, idx) => (
-            <div key={rc.student.id} className="rc-bulk-page-wrap">
-              <ReportCardDocument
-                data={rc}
-                settings={settings}
-                session={session}
-                term={term}
-                isBulk={true}
-                cardId={`rc-bulk-card-${idx}`}
-              />
+            <div key={rc?.student?.id || idx} className="rc-bulk-page-wrap">
+              <ReportCardErrorBoundary studentName={rc?.student ? `${rc.student.firstName || ''} ${rc.student.lastName || ''}`.trim() : `Student #${idx + 1}`}>
+                <ReportCardDocument
+                  data={rc}
+                  settings={settings}
+                  session={session}
+                  term={term}
+                  isBulk={true}
+                  cardId={`rc-bulk-card-${idx}`}
+                />
+              </ReportCardErrorBoundary>
             </div>
           ))}
         </div>

@@ -225,11 +225,15 @@ async function runSync(config, session, termRaw, onLog = () => {}) {
           gradesByStudent.set(smsStudent.id, { smsStudent, subjects: new Map() });
         }
 
-        gradesByStudent.get(smsStudent.id).subjects.set(smsSubject.id, {
+        // Intelligently merge multiple courses mapped to the same subject (e.g. separate CA course & Exam course)
+        const studentEntry = gradesByStudent.get(smsStudent.id);
+        const prevSubject = studentEntry.subjects.get(smsSubject.id);
+
+        studentEntry.subjects.set(smsSubject.id, {
           subjectId: smsSubject.id,
           subjectCode: subjectCodeUC,
-          ca,
-          exam,
+          ca: (ca !== null && ca !== undefined) ? ca : (prevSubject?.ca ?? null),
+          exam: (exam !== null && exam !== undefined) ? exam : (prevSubject?.exam ?? null),
         });
 
         totalFetched++;
@@ -256,8 +260,8 @@ async function runSync(config, session, termRaw, onLog = () => {}) {
 
   onLog({ type: 'info', message: `Writing grades for ${gradesByStudent.size} student(s) into database...` });
 
-  // 3. Prepare batched upserts with strictly whole numbers
-  const ops = [];
+  // 3. Prepare items for database upsert with strictly whole numbers
+  const gradeItems = [];
 
   for (const [studentId, { smsStudent, subjects }] of gradesByStudent) {
     for (const [, gradeEntry] of subjects) {
@@ -273,24 +277,48 @@ async function runSync(config, session, termRaw, onLog = () => {}) {
       const remarkText = gradeRemark(calculateGrade(total));
       const grade      = calculateGrade(finalTotal);
 
-      ops.push(() =>
-        prisma.result.upsert({
-          where:  { result_unique: { studentId, subjectId, session, term } },
-          update: { caScore: ca, examScore: exam, total: finalTotal, grade, remark: remarkText },
-          create: { studentId, subjectId, session, term, caScore: ca, examScore: exam, total: finalTotal, grade, remark: remarkText },
-        })
-      );
+      gradeItems.push({
+        studentId,
+        subjectId,
+        ca,
+        exam,
+        total: finalTotal,
+        grade,
+        remark: remarkText,
+      });
     }
   }
 
-  // Execute database upserts in batches of 50
-  const BATCH_SIZE = 50;
-  for (let i = 0; i < ops.length; i += BATCH_SIZE) {
-    const batch = ops.slice(i, i + BATCH_SIZE);
-    await Promise.all(batch.map(fn => fn()));
-  }
+  // Execute database upserts with a controlled concurrency of 4
+  // This guarantees Prisma's connection pool (limit 15) is NEVER saturated or timed out.
+  let upsertedCount = 0;
+  const totalToSave = gradeItems.length;
 
-  // 4. Ultra-Fast In-Memory Position Recalculation (1 query + bulk transaction)
+  const safeUpsert = async (item, attempt = 1) => {
+    try {
+      return await prisma.result.upsert({
+        where:  { result_unique: { studentId: item.studentId, subjectId: item.subjectId, session, term } },
+        update: { caScore: item.ca, examScore: item.exam, total: item.total, grade: item.grade, remark: item.remark },
+        create: { studentId: item.studentId, subjectId: item.subjectId, session, term, caScore: item.ca, examScore: item.exam, total: item.total, grade: item.grade, remark: item.remark },
+      });
+    } catch (err) {
+      if (attempt <= 2) {
+        await new Promise(r => setTimeout(r, 600));
+        return safeUpsert(item, attempt + 1);
+      }
+      throw err;
+    }
+  };
+
+  await pMap(gradeItems, async (item) => {
+    await safeUpsert(item);
+    upsertedCount++;
+    if (upsertedCount % 50 === 0 || upsertedCount === totalToSave) {
+      onLog({ type: 'info', message: `💾 Saved ${upsertedCount}/${totalToSave} grades into SMS database...` });
+    }
+  }, 4);
+
+  // 4. Ultra-Fast In-Memory Position Recalculation (1 bulk query + controlled updates)
   if (touchedSubjectIds.size > 0) {
     try {
       onLog({ type: 'info', message: '⚡ Calculating student ranks and subject positions...' });
@@ -321,33 +349,35 @@ async function runSync(config, session, termRaw, onLog = () => {}) {
       }
 
       // Compute ranks in memory
-      const updateOps = [];
+      const updateList = [];
       for (const [, groupList] of groups) {
         const posMap = calculatePositions(groupList);
         for (const item of groupList) {
           const rankNum = posMap[item.studentId];
           if (rankNum) {
-            updateOps.push(
-              prisma.result.update({
-                where: { id: item.id },
-                data:  { position: formatPosition(rankNum) },
-              })
-            );
+            updateList.push({
+              id: item.id,
+              position: Number(rankNum),
+            });
           }
         }
       }
 
-      // Run position updates in transactions of 50
-      for (let i = 0; i < updateOps.length; i += 50) {
-        const batch = updateOps.slice(i, i + 50);
-        await prisma.$transaction(batch);
-      }
+      // Run position updates with concurrency of 4
+      await pMap(updateList, async ({ id, position }) => {
+        return prisma.result.update({
+          where: { id },
+          data:  { position },
+        }).catch(err => {
+          console.warn(`Position update notice for result ${id}:`, err.message);
+        });
+      }, 4);
     } catch (posErr) {
       onLog({ type: 'warn', message: `Position calculation notice: ${posErr.message}` });
     }
   }
 
-  const saved = ops.length;
+  const saved = gradeItems.length;
   onLog({
     type: 'success',
     message: `✅ Sync complete! Saved ${saved} student result(s). Skipped ${skipped}. Errors: ${errors.length}`,

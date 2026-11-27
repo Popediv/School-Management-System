@@ -68,6 +68,7 @@ export function ReportCardDocument({
 }) {
   const { student, results = [], summary = {}, psychomotor: savedPsychomotor } = data || {};
   const [localPsychomotor, setLocalPsychomotor] = useState({});
+  const [photoFailed, setPhotoFailed] = useState(false);
 
   /* Derived statistics with STRICTLY whole number totals */
   const stats = useMemo(() => {
@@ -122,7 +123,7 @@ export function ReportCardDocument({
     if (localPsychomotor[trait] !== undefined) {
       return Number(localPsychomotor[trait]);
     }
-    const hash = (student?.admissionNo || student?.id || 'A')
+    const hash = String(student?.admissionNo || student?.id || 'A')
       .split('')
       .reduce((acc, char, idx) => acc + char.charCodeAt(0) * (idx + 1), 0);
     const traitIdx = PSYCHOMOTOR_TRAITS.indexOf(trait);
@@ -186,25 +187,19 @@ export function ReportCardDocument({
         <div className="rc-id">
           {/* Official Passport Box */}
           <div className="rc-passport-box">
-            {photoSrc ? (
+            {photoSrc && !photoFailed ? (
               <img
                 src={photoSrc}
                 alt={fullName}
                 className="rc-passport-img"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                  const p = e.currentTarget.parentElement?.querySelector('.rc-passport-placeholder');
-                  if (p) p.style.display = 'flex';
-                }}
+                onError={() => setPhotoFailed(true)}
               />
-            ) : null}
-            <div
-              className="rc-passport-placeholder"
-              style={{ display: photoSrc ? 'none' : 'flex' }}
-            >
-              <User size={26} style={{ color: 'var(--mute)' }} />
-              <span className="rc-passport-lbl">PASSPORT</span>
-            </div>
+            ) : (
+              <div className="rc-passport-placeholder">
+                <User size={24} style={{ color: '#94A3B8' }} />
+                <span className="rc-passport-lbl">PASSPORT</span>
+              </div>
+            )}
           </div>
 
           <div className="rc-id-main">
@@ -214,8 +209,8 @@ export function ReportCardDocument({
               {student.admissionNo ? ` · Adm No: ${student.admissionNo}` : ''}
             </div>
             <div className="rc-id-meta-row">
-              <span><b>Gender:</b> {student.gender ? student.gender[0].toUpperCase() + student.gender.slice(1).toLowerCase() : '—'}</span>
-              <span><b>DOB:</b> {student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString('en-GB') : '—'}</span>
+              <span><b>Gender:</b> {typeof student?.gender === 'string' && student.gender.length > 0 ? student.gender[0].toUpperCase() + student.gender.slice(1).toLowerCase() : '—'}</span>
+              <span><b>DOB:</b> {student?.dateOfBirth ? (() => { try { return new Date(student.dateOfBirth).toLocaleDateString('en-GB'); } catch (_) { return '—'; } })() : '—'}</span>
               <span><b>Date Printed:</b> {now.toLocaleDateString('en-GB')}</span>
             </div>
           </div>
@@ -349,6 +344,7 @@ export function ReportCardDocument({
                   ['Subjects', stats.count, 'var(--primary-theme)'],
                   ['Total Score', stats.total, 'var(--primary-theme)'],
                   ['Average', stats.avg ? stats.avg.toFixed(1) : '—', '#B45309'],
+                  ['Att. Score', student?.attendance?.score != null ? `${student.attendance.score}/10` : '—', '#0369A1'],
                   ['Overall Grade', og?.g || '—', og?.fg || '#374151'],
                 ].map(([l, v, c]) => (
                   <div key={l} className="rc-sumcard">
@@ -500,9 +496,9 @@ html, body {
   background-size: contain !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
-  opacity: 0.045 !important;
+  opacity: 0.08 !important;
   pointer-events: none !important;
-  z-index: 0 !important;
+  z-index: 2 !important;
 }
 
 .rc-header {
@@ -576,8 +572,9 @@ html, body {
   justify-content: space-between !important;
   padding: 8px 18px 6px !important;
   position: relative !important;
-  z-index: 1 !important;
+  z-index: 3 !important;
   min-height: 0 !important;
+  background: transparent !important;
 }
 
 /* Student ID with Passport */
@@ -589,7 +586,7 @@ html, body {
   border: 1px solid #CBD5E1 !important;
   border-left: 4px solid var(--primary-theme) !important;
   border-radius: 8px !important;
-  background: #FBFCFE !important;
+  background: rgba(251,252,254,0.72) !important;
 }
 .rc-passport-box {
   width: 58px !important;
@@ -598,13 +595,30 @@ html, body {
   border: 1.5px solid #94A3B8 !important;
   overflow: hidden !important;
   background: #F1F5F9 !important;
-  display: flex !important;
+  display: block !important;
+  flex-shrink: 0 !important;
+  position: relative !important;
+}
+.rc-passport-img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+.rc-passport-placeholder {
+  width: 100% !important;
+  height: 100% !important;
+  display: none !important;
+  flex-direction: column !important;
   align-items: center !important;
   justify-content: center !important;
-  flex-shrink: 0 !important;
 }
-.rc-passport-img { width: 100% !important; height: 100% !important; object-fit: cover !important; }
-.rc-passport-placeholder { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; }
+.rc-passport-placeholder:only-child {
+  display: flex !important;
+}
+.rc-passport-box img + .rc-passport-placeholder {
+  display: none !important;
+}
 .rc-passport-lbl { font-size: 7px !important; color: #94A3B8 !important; font-weight: 700 !important; margin-top: 2px !important; }
 .rc-id-main { flex: 1 !important; min-width: 0 !important; }
 .rc-id-name { font-family: 'Fraunces', serif !important; font-size: 16px !important; font-weight: 800 !important; line-height: 1.15 !important; color: #0F172A !important; }
@@ -635,8 +649,8 @@ html, body {
 .rc-table th { padding: 5px 8px !important; font-size: 9px !important; color: rgba(255, 255, 255, .95) !important; font-weight: 700 !important; text-align: left !important; }
 .rc-table th span { opacity: .75 !important; font-weight: 400 !important; font-size: 8px !important; }
 .rc-table .c { text-align: center !important; }
-.rc-table td { padding: 4.5px 8px !important; border-bottom: 1px solid #E2E8F0 !important; vertical-align: middle !important; }
-.rc-table tbody tr:nth-child(even) { background: #F8FAFC !important; }
+.rc-table td { padding: 4.5px 8px !important; border-bottom: 1px solid #E2E8F0 !important; vertical-align: middle !important; background: rgba(255,255,255,0.65) !important; }
+.rc-table tbody tr:nth-child(even) td { background: rgba(248,250,252,0.55) !important; }
 .rc-sn { font-weight: 600 !important; font-size: 10.5px !important; color: #0F172A !important; }
 .rc-muted { color: #64748B !important; font-size: 9.5px !important; }
 .rc-tot-cell { min-width: 80px !important; }
@@ -655,19 +669,19 @@ html, body {
 .rc-lower-col { display: flex !important; flex-direction: column !important; gap: 6px !important; }
 
 /* Psychomotor */
-.rc-psycho-table-wrap { border: 1px solid #CBD5E1 !important; border-radius: 6px !important; overflow: hidden !important; background: #fff !important; }
+.rc-psycho-table-wrap { border: 1px solid #CBD5E1 !important; border-radius: 6px !important; overflow: hidden !important; background: rgba(255,255,255,0.65) !important; }
 .rc-psycho-table { width: 100% !important; border-collapse: collapse !important; font-size: 9px !important; }
-.rc-psycho-table thead tr { background: #F1F5F9 !important; border-bottom: 1px solid #CBD5E1 !important; }
+.rc-psycho-table thead tr { background: rgba(241,245,249,0.8) !important; border-bottom: 1px solid #CBD5E1 !important; }
 .rc-psycho-th-trait { padding: 4px 8px !important; font-weight: 700 !important; text-align: left !important; color: var(--primary-theme) !important; }
 .rc-psycho-th-num { width: 22px !important; padding: 4px 0 !important; font-weight: 800 !important; color: var(--primary-theme) !important; border-left: 1px solid #CBD5E1 !important; text-align: center !important; }
-.rc-psycho-table td { padding: 3px 8px !important; border-bottom: 1px solid #E2E8F0 !important; }
+.rc-psycho-table td { padding: 3px 8px !important; border-bottom: 1px solid #E2E8F0 !important; background: rgba(255,255,255,0.65) !important; }
 .rc-psycho-trait { font-weight: 500 !important; color: #334155 !important; }
 .rc-psycho-cell { border-left: 1px solid #CBD5E1 !important; font-weight: 800 !important; color: #166534 !important; text-align: center !important; font-size: 10.5px !important; }
-.rc-psycho-cell.active { background: #F0FDF4 !important; }
-.rc-psycho-key { padding: 3px 8px !important; background: #F8FAFC !important; border-top: 1px solid #CBD5E1 !important; font-size: 7.5px !important; color: #64748B !important; text-align: center !important; font-weight: 600 !important; }
+.rc-psycho-cell.active { background: rgba(240,253,244,0.7) !important; }
+.rc-psycho-key { padding: 3px 8px !important; background: rgba(248,250,252,0.55) !important; border-top: 1px solid #CBD5E1 !important; font-size: 7.5px !important; color: #64748B !important; text-align: center !important; font-weight: 600 !important; }
 
 /* Grading Scale */
-.rc-gkey { display: grid !important; grid-template-columns: repeat(6, 1fr) !important; border: 1px solid #CBD5E1 !important; border-radius: 6px !important; overflow: hidden !important; background: #fff !important; }
+.rc-gkey { display: grid !important; grid-template-columns: repeat(6, 1fr) !important; border: 1px solid #CBD5E1 !important; border-radius: 6px !important; overflow: hidden !important; background: rgba(255,255,255,0.65) !important; }
 .rc-gki { padding: 4px 2px !important; text-align: center !important; border-right: 1px solid #CBD5E1 !important; }
 .rc-gki:last-child { border-right: 0 !important; }
 .rc-gki-letter { font-family: 'Fraunces', serif !important; font-size: 13px !important; font-weight: 800 !important; line-height: 1 !important; }
@@ -675,7 +689,7 @@ html, body {
 .rc-gki-label { font-size: 7px !important; color: #64748B !important; }
 
 /* Summary */
-.rc-sumgrid { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; border: 1px solid #CBD5E1 !important; border-radius: 6px !important; overflow: hidden !important; background: #fff !important; }
+.rc-sumgrid { display: grid !important; grid-template-columns: repeat(5, 1fr) !important; border: 1px solid #CBD5E1 !important; border-radius: 6px !important; overflow: hidden !important; background: rgba(255,255,255,0.65) !important; }
 .rc-sumcard { padding: 5px 6px !important; border-right: 1px solid #CBD5E1 !important; text-align: center !important; }
 .rc-sumcard:last-child { border-right: 0 !important; }
 .rc-suml { font-size: 8px !important; color: #64748B !important; margin-bottom: 1px !important; font-weight: 600 !important; }
@@ -683,13 +697,13 @@ html, body {
 .rc-insight { font-size: 8.5px !important; color: #334155 !important; margin: 3px 0 0 !important; line-height: 1.3 !important; }
 
 /* Remarks */
-.rc-rbox { border: 1px solid #CBD5E1 !important; border-radius: 6px !important; padding: 5px 8px !important; margin-bottom: 5px !important; background: #fff !important; }
+.rc-rbox { border: 1px solid #CBD5E1 !important; border-radius: 6px !important; padding: 5px 8px !important; margin-bottom: 5px !important; background: rgba(255,255,255,0.65) !important; }
 .rc-rlabel { font-size: 8px !important; font-weight: 700 !important; color: var(--primary-theme) !important; margin-bottom: 1px !important; }
 .rc-rtext { min-height: 26px !important; font-size: 9px !important; color: #334155 !important; line-height: 1.3 !important; border-top: 1px dashed #E2E8F0 !important; padding-top: 2px !important; }
 
 /* Next Term */
 .rc-nextgrid { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 6px !important; }
-.rc-nextcard { border: 1px solid #CBD5E1 !important; border-radius: 6px !important; padding: 5px 8px !important; background: #fff !important; }
+.rc-nextcard { border: 1px solid #CBD5E1 !important; border-radius: 6px !important; padding: 5px 8px !important; background: rgba(255,255,255,0.65) !important; }
 .rc-nextl { font-size: 7.5px !important; color: #64748B !important; margin-bottom: 1px !important; font-weight: 600 !important; }
 .rc-nextv { font-size: 10.5px !important; font-weight: 700 !important; color: #0F172A !important; }
 

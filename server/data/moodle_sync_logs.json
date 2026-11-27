@@ -1,5 +1,1688 @@
 [
   {
+    "startedAt": "2026-11-26T20:58:35.447Z",
+    "completedAt": "2026-11-26T21:02:06.017Z",
+    "session": "2026/2027",
+    "term": "FIRST",
+    "status": "success",
+    "triggeredBy": "admin@school.edu",
+    "total": 622,
+    "saved": 556,
+    "skipped": 0,
+    "errors": [],
+    "log": [
+      {
+        "time": "2026-11-26T20:58:35.447Z",
+        "type": "info",
+        "message": "🚀 Sync job started in background..."
+      },
+      {
+        "time": "2026-11-26T20:58:35.447Z",
+        "type": "info",
+        "message": "⚡ Loading SMS student records and subjects..."
+      },
+      {
+        "time": "2026-11-26T20:58:37.451Z",
+        "type": "info",
+        "message": "✅ Loaded 52 students, 38 subjects in memory"
+      },
+      {
+        "time": "2026-11-26T20:58:37.451Z",
+        "type": "info",
+        "message": "🚀 Syncing 68 course(s) from Moodle (parallel pipeline active)..."
+      },
+      {
+        "time": "2026-11-26T20:58:38.752Z",
+        "type": "info",
+        "message": "ℹ Course 90 (BST): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:38.770Z",
+        "type": "info",
+        "message": "ℹ Course 89 (BST): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:38.816Z",
+        "type": "info",
+        "message": "ℹ Course 92 (NVE-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:39.081Z",
+        "type": "info",
+        "message": "ℹ Course 88 (BST): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:39.116Z",
+        "type": "info",
+        "message": "ℹ Course 91 (NVE-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:39.605Z",
+        "type": "info",
+        "message": "✔ Course 95 (CCA-JSS): Pulled grades for 9 students"
+      },
+      {
+        "time": "2026-11-26T20:58:39.738Z",
+        "type": "info",
+        "message": "ℹ Course 93 (NVE-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:39.835Z",
+        "type": "info",
+        "message": "✔ Course 94 (CCA-JSS): Pulled grades for 14 students"
+      },
+      {
+        "time": "2026-11-26T20:58:40.018Z",
+        "type": "info",
+        "message": "✔ Course 96 (CCA-JSS): Pulled grades for 10 students"
+      },
+      {
+        "time": "2026-11-26T20:58:40.201Z",
+        "type": "info",
+        "message": "ℹ Course 97 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:40.447Z",
+        "type": "info",
+        "message": "ℹ Course 98 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:40.627Z",
+        "type": "info",
+        "message": "ℹ Course 99 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:40.688Z",
+        "type": "info",
+        "message": "ℹ Course 100 (CHE-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:40.929Z",
+        "type": "info",
+        "message": "ℹ Course 102 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:41.020Z",
+        "type": "info",
+        "message": "ℹ Course 101 (CHE-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:41.146Z",
+        "type": "info",
+        "message": "ℹ Course 104 (BIO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:41.348Z",
+        "type": "info",
+        "message": "ℹ Course 107 (GOV-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:41.537Z",
+        "type": "info",
+        "message": "ℹ Course 103 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:41.637Z",
+        "type": "info",
+        "message": "ℹ Course 106 (GOV-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:41.676Z",
+        "type": "info",
+        "message": "ℹ Course 105 (BIO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:41.821Z",
+        "type": "info",
+        "message": "ℹ Course 108 (BIO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:42.343Z",
+        "type": "info",
+        "message": "ℹ Course 110 (MTH-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:42.538Z",
+        "type": "info",
+        "message": "ℹ Course 109 (MTH-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:42.662Z",
+        "type": "info",
+        "message": "ℹ Course 113 (ENG-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:42.697Z",
+        "type": "info",
+        "message": "ℹ Course 111 (MTH-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:42.723Z",
+        "type": "info",
+        "message": "ℹ Course 112 (ENG-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:43.231Z",
+        "type": "info",
+        "message": "ℹ Course 114 (ENG-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:43.459Z",
+        "type": "info",
+        "message": "ℹ Course 117 (BUS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:43.581Z",
+        "type": "info",
+        "message": "ℹ Course 115 (BUS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:43.583Z",
+        "type": "info",
+        "message": "ℹ Course 116 (BUS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:43.990Z",
+        "type": "info",
+        "message": "ℹ Course 118 (PVS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:44.055Z",
+        "type": "info",
+        "message": "ℹ Course 119 (PVS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:44.168Z",
+        "type": "info",
+        "message": "ℹ Course 121 (LIV): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:44.232Z",
+        "type": "info",
+        "message": "Course 123 (LIV): No student grade records found"
+      },
+      {
+        "time": "2026-11-26T20:58:44.541Z",
+        "type": "info",
+        "message": "ℹ Course 120 (PVS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:44.554Z",
+        "type": "info",
+        "message": "ℹ Course 124 (PHY-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:44.614Z",
+        "type": "info",
+        "message": "ℹ Course 122 (LIV): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:44.968Z",
+        "type": "info",
+        "message": "ℹ Course 126 (ECO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:45.105Z",
+        "type": "info",
+        "message": "ℹ Course 125 (PHY-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:45.527Z",
+        "type": "info",
+        "message": "ℹ Course 129 (CMP-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:45.668Z",
+        "type": "info",
+        "message": "ℹ Course 128 (CMP-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:45.698Z",
+        "type": "info",
+        "message": "ℹ Course 127 (ECO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:45.890Z",
+        "type": "info",
+        "message": "ℹ Course 130 (CMP-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:46.190Z",
+        "type": "info",
+        "message": "ℹ Course 131 (PHE): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:46.330Z",
+        "type": "info",
+        "message": "ℹ Course 132 (PHE): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:46.683Z",
+        "type": "info",
+        "message": "ℹ Course 133 (PHE): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:46.702Z",
+        "type": "info",
+        "message": "ℹ Course 135 (HIS-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:46.906Z",
+        "type": "info",
+        "message": "ℹ Course 137 (ECO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:46.968Z",
+        "type": "info",
+        "message": "ℹ Course 134 (HIS-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:47.158Z",
+        "type": "info",
+        "message": "ℹ Course 138 (FAC-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:47.178Z",
+        "type": "info",
+        "message": "ℹ Course 139 (LIT-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:47.209Z",
+        "type": "info",
+        "message": "ℹ Course 136 (HIS-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:47.364Z",
+        "type": "info",
+        "message": "ℹ Course 140 (MTH-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:47.616Z",
+        "type": "info",
+        "message": "✔ Course 142 (CIV-SS): Pulled grades for 4 students"
+      },
+      {
+        "time": "2026-11-26T20:58:47.765Z",
+        "type": "info",
+        "message": "ℹ Course 144 (ENG-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:47.959Z",
+        "type": "info",
+        "message": "✔ Course 146 (CIV-SS): Pulled grades for 3 students"
+      },
+      {
+        "time": "2026-11-26T20:58:48.308Z",
+        "type": "info",
+        "message": "ℹ Course 145 (ENG-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:48.534Z",
+        "type": "info",
+        "message": "✔ Course 143 (CIV-SS): Pulled grades for 12 students"
+      },
+      {
+        "time": "2026-11-26T20:58:48.581Z",
+        "type": "info",
+        "message": "✔ Course 149 (YOR-JSS): Pulled grades for 9 students"
+      },
+      {
+        "time": "2026-11-26T20:58:48.789Z",
+        "type": "info",
+        "message": "ℹ Course 147 (MTH-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:58:49.001Z",
+        "type": "info",
+        "message": "✔ Course 148 (YOR-JSS): Pulled grades for 14 students"
+      },
+      {
+        "time": "2026-11-26T20:58:49.237Z",
+        "type": "info",
+        "message": "✔ Course 150 (YOR-JSS): Pulled grades for 10 students"
+      },
+      {
+        "time": "2026-11-26T20:58:49.673Z",
+        "type": "info",
+        "message": "✔ Course 153 (PVS-JSS): Pulled grades for 9 students"
+      },
+      {
+        "time": "2026-11-26T20:58:49.710Z",
+        "type": "info",
+        "message": "✔ Course 155 (COM-SS): Pulled grades for 2 students"
+      },
+      {
+        "time": "2026-11-26T20:58:49.778Z",
+        "type": "info",
+        "message": "✔ Course 152 (PVS-JSS): Pulled grades for 14 students"
+      },
+      {
+        "time": "2026-11-26T20:58:49.785Z",
+        "type": "info",
+        "message": "✔ Course 151 (DIT-SS): Pulled grades for 19 students"
+      },
+      {
+        "time": "2026-11-26T20:58:49.801Z",
+        "type": "info",
+        "message": "✔ Course 154 (PVS-JSS): Pulled grades for 10 students"
+      },
+      {
+        "time": "2026-11-26T20:58:49.867Z",
+        "type": "info",
+        "message": "✔ Course 156 (COM-SS): Pulled grades for 1 students"
+      },
+      {
+        "time": "2026-11-26T20:58:49.867Z",
+        "type": "info",
+        "message": "Writing grades for 52 student(s) into database..."
+      },
+      {
+        "time": "2026-11-26T20:58:59.512Z",
+        "type": "info",
+        "message": "💾 Saved 50/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T20:59:07.714Z",
+        "type": "info",
+        "message": "💾 Saved 100/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T20:59:16.054Z",
+        "type": "info",
+        "message": "💾 Saved 150/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T20:59:24.663Z",
+        "type": "info",
+        "message": "💾 Saved 200/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T20:59:33.455Z",
+        "type": "info",
+        "message": "💾 Saved 250/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T20:59:42.598Z",
+        "type": "info",
+        "message": "💾 Saved 300/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T20:59:51.363Z",
+        "type": "info",
+        "message": "💾 Saved 350/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T20:59:59.851Z",
+        "type": "info",
+        "message": "💾 Saved 400/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T21:00:08.718Z",
+        "type": "info",
+        "message": "💾 Saved 450/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T21:00:19.100Z",
+        "type": "info",
+        "message": "💾 Saved 500/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T21:00:27.668Z",
+        "type": "info",
+        "message": "💾 Saved 550/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T21:00:28.612Z",
+        "type": "info",
+        "message": "💾 Saved 556/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T21:00:28.613Z",
+        "type": "info",
+        "message": "⚡ Calculating student ranks and subject positions..."
+      },
+      {
+        "time": "2026-11-26T21:02:06.017Z",
+        "type": "success",
+        "message": "✅ Sync complete! Saved 556 student result(s). Skipped 0. Errors: 0"
+      }
+    ]
+  },
+  {
+    "startedAt": "2026-11-26T20:33:42.091Z",
+    "completedAt": "2026-11-26T20:37:33.467Z",
+    "session": "2026/2027",
+    "term": "FIRST",
+    "status": "success",
+    "triggeredBy": "admin@school.edu",
+    "total": 622,
+    "saved": 556,
+    "skipped": 0,
+    "errors": [],
+    "log": [
+      {
+        "time": "2026-11-26T20:33:42.091Z",
+        "type": "info",
+        "message": "🚀 Sync job started in background..."
+      },
+      {
+        "time": "2026-11-26T20:33:42.092Z",
+        "type": "info",
+        "message": "⚡ Loading SMS student records and subjects..."
+      },
+      {
+        "time": "2026-11-26T20:33:45.671Z",
+        "type": "info",
+        "message": "✅ Loaded 52 students, 38 subjects in memory"
+      },
+      {
+        "time": "2026-11-26T20:33:45.671Z",
+        "type": "info",
+        "message": "🚀 Syncing 68 course(s) from Moodle (parallel pipeline active)..."
+      },
+      {
+        "time": "2026-11-26T20:33:46.679Z",
+        "type": "info",
+        "message": "ℹ Course 89 (BST): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:46.698Z",
+        "type": "info",
+        "message": "ℹ Course 92 (NVE-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:46.768Z",
+        "type": "info",
+        "message": "ℹ Course 90 (BST): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:46.917Z",
+        "type": "info",
+        "message": "ℹ Course 88 (BST): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:47.168Z",
+        "type": "info",
+        "message": "ℹ Course 91 (NVE-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:47.565Z",
+        "type": "info",
+        "message": "✔ Course 95 (CCA-JSS): Pulled grades for 9 students"
+      },
+      {
+        "time": "2026-11-26T20:33:47.820Z",
+        "type": "info",
+        "message": "✔ Course 94 (CCA-JSS): Pulled grades for 14 students"
+      },
+      {
+        "time": "2026-11-26T20:33:47.841Z",
+        "type": "info",
+        "message": "✔ Course 96 (CCA-JSS): Pulled grades for 10 students"
+      },
+      {
+        "time": "2026-11-26T20:33:47.933Z",
+        "type": "info",
+        "message": "ℹ Course 93 (NVE-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:48.341Z",
+        "type": "info",
+        "message": "ℹ Course 100 (CHE-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:48.354Z",
+        "type": "info",
+        "message": "ℹ Course 97 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:48.437Z",
+        "type": "info",
+        "message": "ℹ Course 98 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:48.715Z",
+        "type": "info",
+        "message": "ℹ Course 99 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:48.920Z",
+        "type": "info",
+        "message": "ℹ Course 102 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:48.982Z",
+        "type": "info",
+        "message": "ℹ Course 104 (BIO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:49.033Z",
+        "type": "info",
+        "message": "ℹ Course 101 (CHE-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:49.411Z",
+        "type": "info",
+        "message": "ℹ Course 106 (GOV-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:49.479Z",
+        "type": "info",
+        "message": "ℹ Course 107 (GOV-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:49.516Z",
+        "type": "info",
+        "message": "ℹ Course 103 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:49.550Z",
+        "type": "info",
+        "message": "ℹ Course 108 (BIO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:49.666Z",
+        "type": "info",
+        "message": "ℹ Course 105 (BIO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:50.418Z",
+        "type": "info",
+        "message": "ℹ Course 110 (MTH-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:50.460Z",
+        "type": "info",
+        "message": "ℹ Course 109 (MTH-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:50.539Z",
+        "type": "info",
+        "message": "ℹ Course 111 (MTH-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:50.639Z",
+        "type": "info",
+        "message": "ℹ Course 113 (ENG-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:50.672Z",
+        "type": "info",
+        "message": "ℹ Course 112 (ENG-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:51.349Z",
+        "type": "info",
+        "message": "ℹ Course 116 (BUS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:51.367Z",
+        "type": "info",
+        "message": "ℹ Course 114 (ENG-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:51.565Z",
+        "type": "info",
+        "message": "ℹ Course 115 (BUS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:51.703Z",
+        "type": "info",
+        "message": "ℹ Course 118 (PVS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:51.806Z",
+        "type": "info",
+        "message": "ℹ Course 117 (BUS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:52.070Z",
+        "type": "info",
+        "message": "Course 123 (LIV): No student grade records found"
+      },
+      {
+        "time": "2026-11-26T20:33:52.074Z",
+        "type": "info",
+        "message": "ℹ Course 121 (LIV): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:52.152Z",
+        "type": "info",
+        "message": "ℹ Course 120 (PVS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:52.165Z",
+        "type": "info",
+        "message": "ℹ Course 119 (PVS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:52.662Z",
+        "type": "info",
+        "message": "ℹ Course 124 (PHY-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:52.722Z",
+        "type": "info",
+        "message": "ℹ Course 126 (ECO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:53.039Z",
+        "type": "info",
+        "message": "ℹ Course 122 (LIV): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:53.115Z",
+        "type": "info",
+        "message": "ℹ Course 125 (PHY-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:53.279Z",
+        "type": "info",
+        "message": "ℹ Course 127 (ECO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:53.567Z",
+        "type": "info",
+        "message": "ℹ Course 128 (CMP-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:53.744Z",
+        "type": "info",
+        "message": "ℹ Course 129 (CMP-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:53.957Z",
+        "type": "info",
+        "message": "ℹ Course 130 (CMP-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:54.110Z",
+        "type": "info",
+        "message": "ℹ Course 132 (PHE): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:54.214Z",
+        "type": "info",
+        "message": "ℹ Course 131 (PHE): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:54.296Z",
+        "type": "info",
+        "message": "ℹ Course 133 (PHE): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:54.667Z",
+        "type": "info",
+        "message": "ℹ Course 137 (ECO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:54.821Z",
+        "type": "info",
+        "message": "ℹ Course 134 (HIS-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:54.876Z",
+        "type": "info",
+        "message": "ℹ Course 138 (FAC-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:54.944Z",
+        "type": "info",
+        "message": "ℹ Course 135 (HIS-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:55.098Z",
+        "type": "info",
+        "message": "ℹ Course 136 (HIS-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:55.394Z",
+        "type": "info",
+        "message": "✔ Course 142 (CIV-SS): Pulled grades for 4 students"
+      },
+      {
+        "time": "2026-11-26T20:33:55.405Z",
+        "type": "info",
+        "message": "ℹ Course 139 (LIT-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:55.416Z",
+        "type": "info",
+        "message": "ℹ Course 140 (MTH-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:55.553Z",
+        "type": "info",
+        "message": "ℹ Course 144 (ENG-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:55.901Z",
+        "type": "info",
+        "message": "✔ Course 146 (CIV-SS): Pulled grades for 3 students"
+      },
+      {
+        "time": "2026-11-26T20:33:55.956Z",
+        "type": "info",
+        "message": "✔ Course 143 (CIV-SS): Pulled grades for 12 students"
+      },
+      {
+        "time": "2026-11-26T20:33:56.445Z",
+        "type": "info",
+        "message": "ℹ Course 145 (ENG-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:56.625Z",
+        "type": "info",
+        "message": "ℹ Course 147 (MTH-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:56.680Z",
+        "type": "info",
+        "message": "ℹ Course 149 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:56.701Z",
+        "type": "info",
+        "message": "ℹ Course 148 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:57.118Z",
+        "type": "info",
+        "message": "ℹ Course 150 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T20:33:57.496Z",
+        "type": "info",
+        "message": "✔ Course 153 (PVS-JSS): Pulled grades for 9 students"
+      },
+      {
+        "time": "2026-11-26T20:33:57.544Z",
+        "type": "info",
+        "message": "✔ Course 154 (PVS-JSS): Pulled grades for 10 students"
+      },
+      {
+        "time": "2026-11-26T20:33:57.632Z",
+        "type": "info",
+        "message": "✔ Course 155 (COM-SS): Pulled grades for 2 students"
+      },
+      {
+        "time": "2026-11-26T20:33:57.694Z",
+        "type": "info",
+        "message": "✔ Course 152 (PVS-JSS): Pulled grades for 14 students"
+      },
+      {
+        "time": "2026-11-26T20:33:57.746Z",
+        "type": "info",
+        "message": "✔ Course 151 (DIT-SS): Pulled grades for 19 students"
+      },
+      {
+        "time": "2026-11-26T20:33:57.766Z",
+        "type": "info",
+        "message": "✔ Course 156 (COM-SS): Pulled grades for 1 students"
+      },
+      {
+        "time": "2026-11-26T20:33:57.766Z",
+        "type": "info",
+        "message": "Writing grades for 52 student(s) into database..."
+      },
+      {
+        "time": "2026-11-26T20:34:07.110Z",
+        "type": "info",
+        "message": "💾 Saved 50/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T20:34:15.996Z",
+        "type": "info",
+        "message": "💾 Saved 100/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T20:34:26.581Z",
+        "type": "info",
+        "message": "💾 Saved 150/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T20:34:35.386Z",
+        "type": "info",
+        "message": "💾 Saved 200/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T20:34:44.855Z",
+        "type": "info",
+        "message": "💾 Saved 250/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T20:34:53.834Z",
+        "type": "info",
+        "message": "💾 Saved 300/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T20:35:03.093Z",
+        "type": "info",
+        "message": "💾 Saved 350/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T20:35:12.588Z",
+        "type": "info",
+        "message": "💾 Saved 400/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T20:35:22.268Z",
+        "type": "info",
+        "message": "💾 Saved 450/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T20:35:31.454Z",
+        "type": "info",
+        "message": "💾 Saved 500/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T20:35:41.102Z",
+        "type": "info",
+        "message": "💾 Saved 550/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T20:35:42.182Z",
+        "type": "info",
+        "message": "💾 Saved 556/556 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T20:35:42.182Z",
+        "type": "info",
+        "message": "⚡ Calculating student ranks and subject positions..."
+      },
+      {
+        "time": "2026-11-26T20:37:33.467Z",
+        "type": "success",
+        "message": "✅ Sync complete! Saved 556 student result(s). Skipped 0. Errors: 0"
+      }
+    ]
+  },
+  {
+    "startedAt": "2026-11-26T19:53:30.132Z",
+    "completedAt": "2026-11-26T19:57:22.629Z",
+    "session": "2026/2027",
+    "term": "FIRST",
+    "status": "success",
+    "triggeredBy": "admin@school.edu",
+    "total": 586,
+    "saved": 553,
+    "skipped": 0,
+    "errors": [],
+    "log": [
+      {
+        "time": "2026-11-26T19:53:30.132Z",
+        "type": "info",
+        "message": "🚀 Sync job started in background..."
+      },
+      {
+        "time": "2026-11-26T19:53:30.134Z",
+        "type": "info",
+        "message": "⚡ Loading SMS student records and subjects..."
+      },
+      {
+        "time": "2026-11-26T19:53:31.792Z",
+        "type": "info",
+        "message": "✅ Loaded 52 students, 38 subjects in memory"
+      },
+      {
+        "time": "2026-11-26T19:53:31.792Z",
+        "type": "info",
+        "message": "🚀 Syncing 63 course(s) from Moodle (parallel pipeline active)..."
+      },
+      {
+        "time": "2026-11-26T19:53:37.635Z",
+        "type": "info",
+        "message": "ℹ Course 92 (NVE-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:37.641Z",
+        "type": "info",
+        "message": "ℹ Course 89 (BST): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:37.649Z",
+        "type": "info",
+        "message": "ℹ Course 90 (BST): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:37.783Z",
+        "type": "info",
+        "message": "ℹ Course 88 (BST): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:37.883Z",
+        "type": "info",
+        "message": "ℹ Course 91 (NVE-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:38.548Z",
+        "type": "info",
+        "message": "✔ Course 95 (CCA-JSS): Pulled grades for 9 students"
+      },
+      {
+        "time": "2026-11-26T19:53:38.550Z",
+        "type": "info",
+        "message": "ℹ Course 93 (NVE-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:38.731Z",
+        "type": "info",
+        "message": "✔ Course 94 (CCA-JSS): Pulled grades for 14 students"
+      },
+      {
+        "time": "2026-11-26T19:53:38.754Z",
+        "type": "info",
+        "message": "✔ Course 96 (CCA-JSS): Pulled grades for 10 students"
+      },
+      {
+        "time": "2026-11-26T19:53:39.120Z",
+        "type": "info",
+        "message": "ℹ Course 97 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:39.339Z",
+        "type": "info",
+        "message": "ℹ Course 100 (CHE-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:39.466Z",
+        "type": "info",
+        "message": "ℹ Course 99 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:39.496Z",
+        "type": "info",
+        "message": "ℹ Course 98 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:39.574Z",
+        "type": "info",
+        "message": "ℹ Course 101 (CHE-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:39.704Z",
+        "type": "info",
+        "message": "ℹ Course 102 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:40.086Z",
+        "type": "info",
+        "message": "ℹ Course 104 (BIO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:40.187Z",
+        "type": "info",
+        "message": "ℹ Course 106 (GOV-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:40.219Z",
+        "type": "info",
+        "message": "ℹ Course 107 (GOV-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:40.465Z",
+        "type": "info",
+        "message": "ℹ Course 108 (BIO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:40.487Z",
+        "type": "info",
+        "message": "ℹ Course 105 (BIO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:40.658Z",
+        "type": "info",
+        "message": "ℹ Course 103 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:41.144Z",
+        "type": "info",
+        "message": "ℹ Course 110 (MTH-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:41.299Z",
+        "type": "info",
+        "message": "ℹ Course 111 (MTH-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:41.500Z",
+        "type": "info",
+        "message": "ℹ Course 109 (MTH-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:41.535Z",
+        "type": "info",
+        "message": "ℹ Course 112 (ENG-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:41.721Z",
+        "type": "info",
+        "message": "ℹ Course 113 (ENG-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:42.143Z",
+        "type": "info",
+        "message": "ℹ Course 115 (BUS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:42.146Z",
+        "type": "info",
+        "message": "ℹ Course 114 (ENG-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:42.400Z",
+        "type": "info",
+        "message": "ℹ Course 116 (BUS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:42.477Z",
+        "type": "info",
+        "message": "ℹ Course 117 (BUS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:42.870Z",
+        "type": "info",
+        "message": "ℹ Course 118 (PVS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:43.031Z",
+        "type": "info",
+        "message": "ℹ Course 121 (LIV): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:43.080Z",
+        "type": "info",
+        "message": "Course 123 (LIV): No student grade records found"
+      },
+      {
+        "time": "2026-11-26T19:53:43.152Z",
+        "type": "info",
+        "message": "ℹ Course 120 (PVS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:43.186Z",
+        "type": "info",
+        "message": "ℹ Course 119 (PVS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:43.640Z",
+        "type": "info",
+        "message": "ℹ Course 124 (PHY-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:43.746Z",
+        "type": "info",
+        "message": "ℹ Course 126 (ECO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:43.747Z",
+        "type": "info",
+        "message": "ℹ Course 122 (LIV): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:44.051Z",
+        "type": "info",
+        "message": "ℹ Course 125 (PHY-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:44.127Z",
+        "type": "info",
+        "message": "ℹ Course 127 (ECO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:44.441Z",
+        "type": "info",
+        "message": "ℹ Course 128 (CMP-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:44.632Z",
+        "type": "info",
+        "message": "ℹ Course 130 (CMP-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:44.702Z",
+        "type": "info",
+        "message": "ℹ Course 129 (CMP-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:45.051Z",
+        "type": "info",
+        "message": "ℹ Course 132 (PHE): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:45.131Z",
+        "type": "info",
+        "message": "ℹ Course 133 (PHE): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:45.488Z",
+        "type": "info",
+        "message": "ℹ Course 131 (PHE): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:45.583Z",
+        "type": "info",
+        "message": "ℹ Course 135 (HIS-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:45.652Z",
+        "type": "info",
+        "message": "ℹ Course 134 (HIS-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:45.661Z",
+        "type": "info",
+        "message": "ℹ Course 137 (ECO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:46.021Z",
+        "type": "info",
+        "message": "ℹ Course 136 (HIS-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:46.050Z",
+        "type": "info",
+        "message": "ℹ Course 139 (LIT-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:46.125Z",
+        "type": "info",
+        "message": "ℹ Course 140 (MTH-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:46.243Z",
+        "type": "info",
+        "message": "ℹ Course 138 (FAC-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:46.253Z",
+        "type": "info",
+        "message": "✔ Course 142 (CIV-SS): Pulled grades for 4 students"
+      },
+      {
+        "time": "2026-11-26T19:53:46.539Z",
+        "type": "info",
+        "message": "ℹ Course 144 (ENG-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:46.736Z",
+        "type": "info",
+        "message": "✔ Course 146 (CIV-SS): Pulled grades for 3 students"
+      },
+      {
+        "time": "2026-11-26T19:53:47.003Z",
+        "type": "info",
+        "message": "✔ Course 143 (CIV-SS): Pulled grades for 12 students"
+      },
+      {
+        "time": "2026-11-26T19:53:47.333Z",
+        "type": "info",
+        "message": "ℹ Course 145 (ENG-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:47.590Z",
+        "type": "info",
+        "message": "ℹ Course 149 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:47.641Z",
+        "type": "info",
+        "message": "ℹ Course 148 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:47.652Z",
+        "type": "info",
+        "message": "ℹ Course 147 (MTH-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:47.779Z",
+        "type": "info",
+        "message": "ℹ Course 150 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:53:48.642Z",
+        "type": "info",
+        "message": "✔ Course 151 (DIT-SS): Pulled grades for 19 students"
+      },
+      {
+        "time": "2026-11-26T19:53:48.642Z",
+        "type": "info",
+        "message": "Writing grades for 52 student(s) into database..."
+      },
+      {
+        "time": "2026-11-26T19:53:58.570Z",
+        "type": "info",
+        "message": "💾 Saved 50/553 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T19:54:09.067Z",
+        "type": "info",
+        "message": "💾 Saved 100/553 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T19:54:18.530Z",
+        "type": "info",
+        "message": "💾 Saved 150/553 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T19:54:27.803Z",
+        "type": "info",
+        "message": "💾 Saved 200/553 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T19:54:37.094Z",
+        "type": "info",
+        "message": "💾 Saved 250/553 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T19:54:47.082Z",
+        "type": "info",
+        "message": "💾 Saved 300/553 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T19:54:56.202Z",
+        "type": "info",
+        "message": "💾 Saved 350/553 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T19:55:05.541Z",
+        "type": "info",
+        "message": "💾 Saved 400/553 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T19:55:15.983Z",
+        "type": "info",
+        "message": "💾 Saved 450/553 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T19:55:26.247Z",
+        "type": "info",
+        "message": "💾 Saved 500/553 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T19:55:35.255Z",
+        "type": "info",
+        "message": "💾 Saved 550/553 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T19:55:36.214Z",
+        "type": "info",
+        "message": "💾 Saved 553/553 grades into SMS database..."
+      },
+      {
+        "time": "2026-11-26T19:55:36.214Z",
+        "type": "info",
+        "message": "⚡ Calculating student ranks and subject positions..."
+      },
+      {
+        "time": "2026-11-26T19:57:22.629Z",
+        "type": "success",
+        "message": "✅ Sync complete! Saved 553 student result(s). Skipped 0. Errors: 0"
+      }
+    ]
+  },
+  {
+    "startedAt": "2026-11-26T19:36:46.712Z",
+    "completedAt": "2026-11-26T19:37:10.374Z",
+    "session": "2026/2027",
+    "term": "FIRST",
+    "status": "error",
+    "triggeredBy": "admin@school.edu",
+    "total": 0,
+    "saved": 0,
+    "skipped": 0,
+    "errors": [
+      "\nInvalid `prisma.result.upsert()` invocation:\n\n\nTimed out fetching a new connection from the connection pool. More info: http://pris.ly/d/connection-pool (Current connection pool timeout: 10, connection limit: 10)"
+    ],
+    "log": [
+      {
+        "time": "2026-11-26T19:36:46.712Z",
+        "type": "info",
+        "message": "🚀 Sync job started in background..."
+      },
+      {
+        "time": "2026-11-26T19:36:46.714Z",
+        "type": "info",
+        "message": "⚡ Loading SMS student records and subjects..."
+      },
+      {
+        "time": "2026-11-26T19:36:49.188Z",
+        "type": "info",
+        "message": "✅ Loaded 52 students, 38 subjects in memory"
+      },
+      {
+        "time": "2026-11-26T19:36:49.188Z",
+        "type": "info",
+        "message": "🚀 Syncing 63 course(s) from Moodle (parallel pipeline active)..."
+      },
+      {
+        "time": "2026-11-26T19:36:50.547Z",
+        "type": "info",
+        "message": "ℹ Course 92 (NVE-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:50.554Z",
+        "type": "info",
+        "message": "ℹ Course 89 (BST): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:50.561Z",
+        "type": "info",
+        "message": "ℹ Course 90 (BST): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:50.747Z",
+        "type": "info",
+        "message": "ℹ Course 91 (NVE-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:51.091Z",
+        "type": "info",
+        "message": "ℹ Course 88 (BST): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:51.325Z",
+        "type": "info",
+        "message": "✔ Course 95 (CCA-JSS): Pulled grades for 9 students"
+      },
+      {
+        "time": "2026-11-26T19:36:51.352Z",
+        "type": "info",
+        "message": "ℹ Course 93 (NVE-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:51.612Z",
+        "type": "info",
+        "message": "✔ Course 96 (CCA-JSS): Pulled grades for 10 students"
+      },
+      {
+        "time": "2026-11-26T19:36:51.741Z",
+        "type": "info",
+        "message": "✔ Course 94 (CCA-JSS): Pulled grades for 14 students"
+      },
+      {
+        "time": "2026-11-26T19:36:51.939Z",
+        "type": "info",
+        "message": "ℹ Course 97 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:52.093Z",
+        "type": "info",
+        "message": "ℹ Course 98 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:52.263Z",
+        "type": "info",
+        "message": "ℹ Course 99 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:52.265Z",
+        "type": "info",
+        "message": "ℹ Course 100 (CHE-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:52.401Z",
+        "type": "info",
+        "message": "ℹ Course 102 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:52.785Z",
+        "type": "info",
+        "message": "ℹ Course 101 (CHE-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:52.808Z",
+        "type": "info",
+        "message": "ℹ Course 104 (BIO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:53.026Z",
+        "type": "info",
+        "message": "ℹ Course 106 (GOV-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:53.033Z",
+        "type": "info",
+        "message": "ℹ Course 107 (GOV-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:53.113Z",
+        "type": "info",
+        "message": "ℹ Course 105 (BIO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:53.283Z",
+        "type": "info",
+        "message": "ℹ Course 103 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:53.398Z",
+        "type": "info",
+        "message": "ℹ Course 108 (BIO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:53.809Z",
+        "type": "info",
+        "message": "ℹ Course 110 (MTH-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:54.147Z",
+        "type": "info",
+        "message": "ℹ Course 113 (ENG-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:54.168Z",
+        "type": "info",
+        "message": "ℹ Course 111 (MTH-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:54.231Z",
+        "type": "info",
+        "message": "ℹ Course 112 (ENG-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:54.330Z",
+        "type": "info",
+        "message": "ℹ Course 109 (MTH-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:54.570Z",
+        "type": "info",
+        "message": "ℹ Course 114 (ENG-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:55.040Z",
+        "type": "info",
+        "message": "ℹ Course 116 (BUS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:55.150Z",
+        "type": "info",
+        "message": "ℹ Course 115 (BUS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:55.258Z",
+        "type": "info",
+        "message": "ℹ Course 117 (BUS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:55.318Z",
+        "type": "info",
+        "message": "ℹ Course 118 (PVS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:55.400Z",
+        "type": "info",
+        "message": "ℹ Course 119 (PVS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:55.474Z",
+        "type": "info",
+        "message": "Course 123 (LIV): No student grade records found"
+      },
+      {
+        "time": "2026-11-26T19:36:55.669Z",
+        "type": "info",
+        "message": "ℹ Course 121 (LIV): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:55.840Z",
+        "type": "info",
+        "message": "ℹ Course 124 (PHY-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:55.961Z",
+        "type": "info",
+        "message": "ℹ Course 125 (PHY-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:56.239Z",
+        "type": "info",
+        "message": "ℹ Course 120 (PVS-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:56.266Z",
+        "type": "info",
+        "message": "ℹ Course 122 (LIV): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:56.606Z",
+        "type": "info",
+        "message": "ℹ Course 126 (ECO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:56.726Z",
+        "type": "info",
+        "message": "ℹ Course 128 (CMP-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:56.859Z",
+        "type": "info",
+        "message": "ℹ Course 127 (ECO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:57.008Z",
+        "type": "info",
+        "message": "ℹ Course 130 (CMP-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:57.060Z",
+        "type": "info",
+        "message": "ℹ Course 129 (CMP-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:57.497Z",
+        "type": "info",
+        "message": "ℹ Course 132 (PHE): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:57.721Z",
+        "type": "info",
+        "message": "ℹ Course 133 (PHE): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:57.766Z",
+        "type": "info",
+        "message": "ℹ Course 131 (PHE): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:58.088Z",
+        "type": "info",
+        "message": "ℹ Course 134 (HIS-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:58.101Z",
+        "type": "info",
+        "message": "ℹ Course 135 (HIS-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:58.176Z",
+        "type": "info",
+        "message": "ℹ Course 138 (FAC-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:58.203Z",
+        "type": "info",
+        "message": "ℹ Course 137 (ECO-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:58.278Z",
+        "type": "info",
+        "message": "ℹ Course 136 (HIS-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:58.673Z",
+        "type": "info",
+        "message": "✔ Course 142 (CIV-SS): Pulled grades for 4 students"
+      },
+      {
+        "time": "2026-11-26T19:36:58.697Z",
+        "type": "info",
+        "message": "ℹ Course 139 (LIT-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:58.745Z",
+        "type": "info",
+        "message": "ℹ Course 140 (MTH-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:58.764Z",
+        "type": "info",
+        "message": "ℹ Course 144 (ENG-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:59.179Z",
+        "type": "info",
+        "message": "✔ Course 143 (CIV-SS): Pulled grades for 12 students"
+      },
+      {
+        "time": "2026-11-26T19:36:59.271Z",
+        "type": "info",
+        "message": "✔ Course 146 (CIV-SS): Pulled grades for 3 students"
+      },
+      {
+        "time": "2026-11-26T19:36:59.806Z",
+        "type": "info",
+        "message": "ℹ Course 145 (ENG-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:59.864Z",
+        "type": "info",
+        "message": "ℹ Course 148 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:59.896Z",
+        "type": "info",
+        "message": "ℹ Course 147 (MTH-SS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:36:59.981Z",
+        "type": "info",
+        "message": "ℹ Course 149 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:37:00.037Z",
+        "type": "info",
+        "message": "ℹ Course 150 (YOR-JSS): No \"CA\" item in Moodle. Preserving existing CA scores in SMS DB."
+      },
+      {
+        "time": "2026-11-26T19:37:00.355Z",
+        "type": "info",
+        "message": "✔ Course 151 (DIT-SS): Pulled grades for 19 students"
+      },
+      {
+        "time": "2026-11-26T19:37:00.356Z",
+        "type": "info",
+        "message": "Writing grades for 52 student(s) into database..."
+      },
+      {
+        "time": "2026-11-26T19:37:10.374Z",
+        "type": "error",
+        "message": "Sync error: \nInvalid `prisma.result.upsert()` invocation:\n\n\nTimed out fetching a new connection from the connection pool. More info: http://pris.ly/d/connection-pool (Current connection pool timeout: 10, connection limit: 10)"
+      }
+    ]
+  },
+  {
     "startedAt": "2026-10-18T17:49:24.950Z",
     "completedAt": "2026-10-18T18:04:09.534Z",
     "session": "2026/2027",

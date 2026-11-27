@@ -1,12 +1,17 @@
 const { PrismaClient } = require('@prisma/client');
 
+let dbUrl = process.env.DATABASE_URL || '';
+if (dbUrl && !dbUrl.includes('pool_timeout')) {
+  dbUrl += (dbUrl.includes('?') ? '&' : '?') + 'pool_timeout=60';
+}
+
 const prisma = new PrismaClient({
   log: process.env.NODE_ENV === 'development'
     ? [{ emit: 'stdout', level: 'query' }, { emit: 'stdout', level: 'error' }]
     : [{ emit: 'stdout', level: 'error' }],
   datasources: {
     db: {
-      url: process.env.DATABASE_URL,
+      url: dbUrl || process.env.DATABASE_URL,
     },
   },
 });

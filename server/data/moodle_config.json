@@ -218,21 +218,21 @@
       "courseName": "PVS JSS1",
       "subjectCode": "PVS-JSS",
       "caGradeItemName": "CA",
-      "examGradeItemName": "EXAM"
+      "examGradeItemName": ""
     },
     {
       "courseId": 119,
       "courseName": "PVS JSS2",
       "subjectCode": "PVS-JSS",
       "caGradeItemName": "CA",
-      "examGradeItemName": "EXAM"
+      "examGradeItemName": ""
     },
     {
       "courseId": 120,
       "courseName": "PVS JSS3",
       "subjectCode": "PVS-JSS",
       "caGradeItemName": "CA",
-      "examGradeItemName": "EXAM"
+      "examGradeItemName": ""
     },
     {
       "courseId": 121,
@@ -414,6 +414,69 @@
       "courseName": "Mathematics SSS2 n SSS3",
       "subjectCode": "MTH-SS",
       "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 148,
+      "courseName": "Yoruba JSS1 Exam",
+      "subjectCode": "YOR-JSS",
+      "caGradeItemName": "",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 149,
+      "courseName": "Yoruba JSS2 Exam",
+      "subjectCode": "YOR-JSS",
+      "caGradeItemName": "",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 150,
+      "courseName": "Yoruba JSS3 Exam",
+      "subjectCode": "YOR-JSS",
+      "caGradeItemName": "",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 151,
+      "courseName": "Computer CA Senior",
+      "subjectCode": "DIT-SS",
+      "caGradeItemName": "CA",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 152,
+      "courseName": "PVS Exam JSS1",
+      "subjectCode": "PVS-JSS",
+      "caGradeItemName": "",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 153,
+      "courseName": "PVS Exam JSS2",
+      "subjectCode": "PVS-JSS",
+      "caGradeItemName": "",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 154,
+      "courseName": "PVS Exam JSS3",
+      "subjectCode": "PVS-JSS",
+      "caGradeItemName": "",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 155,
+      "courseName": "Commerce Exam SSS2 ",
+      "subjectCode": "COM-SS",
+      "caGradeItemName": "",
+      "examGradeItemName": "EXAM"
+    },
+    {
+      "courseId": 156,
+      "courseName": "Commerce Exam SSS3",
+      "subjectCode": "COM-SS",
+      "caGradeItemName": "",
       "examGradeItemName": "EXAM"
     }
   ]
